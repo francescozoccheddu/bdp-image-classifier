@@ -1,0 +1,4 @@
+/.vscode
+/driver/app/image-classifier/target
+/driver/app/image-classifier/project
+/driver/app/image-classifier/.bsp
