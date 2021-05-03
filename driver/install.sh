@@ -1,8 +1,8 @@
 # Spark setup
 
-# Install OpenJDK 11
+# Install OpenJDK 8
 sudo apt update
-sudo apt install openjdk-11-jdk -y
+sudo apt install openjdk-8-jdk -y
 
 # Install Scala 2.12.13
 wget https://downloads.lightbend.com/scala/2.12.13/scala-2.12.13.deb -O .scala.deb -nv --show-progress

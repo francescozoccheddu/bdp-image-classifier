@@ -7,3 +7,4 @@ libraryDependencies ++= Seq(
 	"org.apache.spark" %% "spark-mllib" % "3.1.1",
 	"com.github.pathikrit" %% "dijon" % "0.3.0"
 )
+
