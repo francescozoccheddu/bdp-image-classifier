@@ -8,10 +8,15 @@ object Main {
 			.appName("Image classification with BOVW")
 			.master("local[*]")
 			.getOrCreate()
-		val configFile = "~/Desktop/BD/archive/data.json"
-		val config = InputConfiguration.load(spark.sparkContext, configFile)
-		val descriptorFactory = new DescriptorFactory(config.localFeaturesCount)
-		val features = spark.sparkContext.union(config.classes.map(_.trainFiles))
-		println(features.count())
+		try {
+			spark.sparkContext.setLogLevel("WARN")
+			val configFile = "/home/fra/Desktop/BD/archive/data.json"
+			val config = InputConfiguration.load(spark.sparkContext, configFile)
+			val descriptorFactory = new DescriptorFactory(config.localFeaturesCount)
+			val features = spark.sparkContext.union(config.classes.map(_.trainFiles))
+			println(features.count())
+		}
+		finally
+			spark.close
 	}
 }

@@ -1,7 +1,7 @@
 # Spark uninstaller
 
-# Uninstall OpenJDK 11
-sudo apt purge openjdk-11-jdk -y
+# Uninstall OpenJDK 8
+sudo apt purge openjdk-8-jdk -y
 
 # Uninstall Scala
 sudo apt purge scala -y
