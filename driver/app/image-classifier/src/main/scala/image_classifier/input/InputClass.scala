@@ -8,6 +8,4 @@ private[input] case class InputClass(name : String, trainFiles : List[String], t
 
 	require(name.trim.nonEmpty && name.length < 128)
 
-	def load(sparkContext : SparkSession) : RDD[ImageSchema] = ???
-
 }

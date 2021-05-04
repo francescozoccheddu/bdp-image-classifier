@@ -39,6 +39,7 @@ private[input] object InputConfiguration {
 		val testFraction = configJson.testFraction.asDouble.getOrElse(defaultTestFraction)
 		val testSeed = configJson.testFraction.asInt
 		val classes = configJson.classes.toSeq.map(classFromJSON).toList
+		println("Ciao: "+ classes.mkString(";"))
 		new InputConfiguration(classes, codebookSize, localFeaturesCount, testFraction, testSeed)
 	}
 

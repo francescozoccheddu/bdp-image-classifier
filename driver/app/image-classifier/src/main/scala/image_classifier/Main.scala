@@ -3,19 +3,17 @@ package image_classifier
 object Main {
 	def main(args: Array[String]): Unit = {
 		import org.apache.spark.sql.SparkSession
+		import input.Input
 		val spark = SparkSession
 			.builder()
 			.appName("Image classification with BOVW")
 			.master("local[*]")
 			.getOrCreate()
 		try {
-			spark.read.format("c").
 			spark.sparkContext.setLogLevel("WARN")
 			val configFile = "/home/fra/Desktop/BD/archive/data.json"
-			val config = InputConfiguration.load(spark.sparkContext, configFile)
-			val descriptorFactory = new DescriptorFactory(config.localFeaturesCount)
-			val features = spark.sparkContext.union(config.classes.map(_.trainFiles))
-			println(features.count())
+			val input = Input.loadFromConfigFile(configFile, spark)
+			println(s"I have collected ${input.data.count} images")
 		}
 		finally
 			spark.close
