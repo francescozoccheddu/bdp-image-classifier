@@ -1,4 +1,4 @@
-package com.fra
+package image_classifier
 
 object Main {
 	def main(args: Array[String]): Unit = {
@@ -9,6 +9,7 @@ object Main {
 			.master("local[*]")
 			.getOrCreate()
 		try {
+			spark.read.format("c").
 			spark.sparkContext.setLogLevel("WARN")
 			val configFile = "/home/fra/Desktop/BD/archive/data.json"
 			val config = InputConfiguration.load(spark.sparkContext, configFile)
