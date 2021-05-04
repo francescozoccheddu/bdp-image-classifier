@@ -1,4 +1,4 @@
-package com.fra
+package image_classifier
 
 import org.bytedeco.javacpp.opencv_xfeatures2d.SIFT
 import DescriptorFactory.{defaultContrastThreshold, defaultEdgeThreshold, defaultFeaturesCount, defaultOctavesCount, defaultSigma}
