@@ -1,5 +1,7 @@
 package image_classifier
 
+import org.apache.spark.sql.functions.col
+
 object Main {
 	def main(args: Array[String]): Unit = {
 		import org.apache.spark.sql.SparkSession
@@ -14,7 +16,8 @@ object Main {
 		try {
 			spark.sparkContext.setLogLevel("WARN")
 			val input = Input.loadFromConfigFile(configFile, spark)
-			println(s"I have collected ${input.data.count} images")
+			val image = input.data.select(col(Input.imageCol)).first.get(0)
+			println(image)
 		}
 		finally
 			spark.close
