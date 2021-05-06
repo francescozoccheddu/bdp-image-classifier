@@ -1,6 +1,7 @@
 .vscode
 .metals
 .bloop
+.scalafmt.conf
 /driver/app/image-classifier/.bsp
 /driver/app/image-classifier/target
 /driver/app/image-classifier/project/*
