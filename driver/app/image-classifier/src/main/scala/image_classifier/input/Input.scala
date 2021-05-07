@@ -1,21 +1,5 @@
 package image_classifier.input
 
-import InputOptions.{defaultCodebookSize, defaultLocalFeaturesCount}
-
-case class InputOptions private[input] (codebookSize : Int = defaultCodebookSize, localFeaturesCount : Int = defaultLocalFeaturesCount) {
-
-	require(codebookSize > 10 && codebookSize < 1000)
-	require(localFeaturesCount > 0 && localFeaturesCount < 100)
-
-}
-
-private[input] object InputOptions {
-
-	val defaultCodebookSize: Int = 500
-	val defaultLocalFeaturesCount: Int = 10
-
-}
-
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
@@ -42,13 +26,13 @@ object Input {
 		val classesData = for ((c, i) <- config.classes.zipWithIndex) yield loadClass(config, c, workingDir, spark).withColumn(classCol, lit(i))
 		val data = classesData.reduce(_ union _)
 		val classNames = config.classes.map(_.name).toSeq
-		Input(config.toOptions, data, classNames)
+		Input(config.options, data, classNames)
 	}
 	
 	private def loadClass(config : InputConfiguration, classConfig : InputClass, workingDir : String, spark : SparkSession) : DataFrame = {
 		val trainImages = loadImages(classConfig.trainFiles, workingDir, spark)
 		val testImages = loadImages(classConfig.testFiles, workingDir, spark)
-		val mergedImages = loadImages(classConfig.mergedFiles, workingDir, spark)
+		val mergedImages = loadImages(classConfig.files, workingDir, spark)
 		val testSeed = config.testSeed.getOrElse(util.Random.nextInt)
 		val Array(mergedTrainImages, mergedTestImages) = mergedImages.randomSplit(Array(1.0 - config.testFraction, config.testFraction), testSeed)
 		mergeImages(trainImages union mergedTrainImages, testImages union mergedTestImages)
@@ -59,8 +43,16 @@ object Input {
 	}
 
 	private def loadImages(paths : Seq[String], workingDir : String, spark : SparkSession) : DataFrame = {
-		val resolvedPaths = paths.map(p => if (new java.io.File(p).isAbsolute) p else s"${workingDir}${java.io.File.separatorChar}${p}")
-		spark.read.format("image").option("dropInvalid", true).load(resolvedPaths : _*)
+		if (paths.nonEmpty) {
+			val resolvedPaths = paths.map(p => if (new java.io.File(p).isAbsolute) p else s"${workingDir}${java.io.File.separatorChar}${p}")
+			spark.read.format("image").option("dropInvalid", true).load(resolvedPaths : _*)
+		}
+		else {
+			import org.apache.spark.ml.image.ImageSchema
+			import org.apache.spark.sql.Row
+			import java.util.ArrayList
+			spark.createDataFrame(new ArrayList[Row], ImageSchema.imageSchema)
+		}
 	}
 
 }
