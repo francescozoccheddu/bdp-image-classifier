@@ -1,22 +1,35 @@
 package image_classifier.input
 
-import InputOptions.{defaultCodebookSize, defaultLocalFeaturesCount}
+import InputOptions.{defaultCodebookSize, defaultLocalFeaturesCount, defaultLocalFeaturesAlgorithm, defaultMaxImageSize}
 import InputConfiguration.defaultTestFraction
+import image_classifier.features.ExtractionAlgorithm
 
-private[input] case class InputConfiguration(
+private[input] case class InputClass (
+		name : String, 
+		trainFiles : Seq[String] = Seq[String](), 
+		testFiles : Seq[String] = Seq[String](), 
+		files : Seq[String] = Seq[String]()
+	) {
+
+		require(name.trim.nonEmpty)
+		require(files.nonEmpty || trainFiles.nonEmpty)
+
+}
+
+private[input] case class InputConfiguration (
 		classes: Seq[InputClass],
-		codebookSize: Int = defaultCodebookSize,
-		localFeaturesCount: Int = defaultLocalFeaturesCount,
+		codebookSize : Int = defaultCodebookSize,
+		localFeaturesCount : Int = defaultLocalFeaturesCount,
+		localFeaturesAlgorithm : String = defaultLocalFeaturesAlgorithm.toString.toLowerCase,
+		maxImageSize : Int = defaultMaxImageSize,
 		testFraction: Double = defaultTestFraction,
 		testSeed: Option[Int] = None
-) {
+	) {
 
-	require(classes.nonEmpty)
-	require(codebookSize > 10 && codebookSize < 1000)
-	require(localFeaturesCount > 0 && localFeaturesCount < 100)
 	require(testFraction >= 0 && testFraction <= 1)
+	require(classes.nonEmpty)
 
-	def toOptions: InputOptions = InputOptions(codebookSize, localFeaturesCount)
+	val options = InputOptions(codebookSize, localFeaturesCount, ExtractionAlgorithm.withName(localFeaturesAlgorithm.trim.toUpperCase), maxImageSize)	
 
 }
 
@@ -34,10 +47,10 @@ private[input] object InputConfiguration {
 	}
 
 	private def fromJson(configJsonString: String): InputConfiguration = {
-	import com.github.plokhotnyuk.jsoniter_scala.macros._
-	import com.github.plokhotnyuk.jsoniter_scala.core._
-	implicit val codec: JsonValueCodec[InputConfiguration] = JsonCodecMaker.make
-	readFromArray(configJsonString.getBytes("UTF-8"))
+		import com.github.plokhotnyuk.jsoniter_scala.macros._
+		import com.github.plokhotnyuk.jsoniter_scala.core._
+		implicit val codec: JsonValueCodec[InputConfiguration] = JsonCodecMaker.make
+		readFromArray(configJsonString.getBytes("UTF-8"))
 	}
 
 }

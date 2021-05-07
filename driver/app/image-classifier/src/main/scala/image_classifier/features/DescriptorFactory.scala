@@ -1,74 +1,47 @@
-package image_classifier
+package image_classifier.features
 
-import org.bytedeco.javacpp.opencv_xfeatures2d.SIFT
-import DescriptorFactory.{defaultContrastThreshold, defaultEdgeThreshold, defaultFeaturesCount, defaultOctavesCount, defaultSigma}
+import DescriptorFactory.{defaultAlgorithm, defaultFeaturesCount, defaultMaxImageSize}
+import org.apache.spark.mllib.linalg.{Vector => MLVector}
+import ExtractionAlgorithm._
 
-class DescriptorFactory private(private val sift: SIFT, val featuresCount: Int, val octavesCount: Int, val contrastThreshold: Double, val edgeThreshold: Double, val sigma: Double) extends Serializable {
-
-	def this(featuresCount: Int = defaultFeaturesCount, octavesCount: Int = defaultOctavesCount, contrastThreshold: Double = defaultContrastThreshold, edgeThreshold: Double = defaultEdgeThreshold, sigma: Double = defaultSigma) = {
-		this(SIFT.create(featuresCount, octavesCount, contrastThreshold, edgeThreshold, sigma), featuresCount, octavesCount, contrastThreshold, edgeThreshold, sigma)
-	}
+case class DescriptorFactory (algorithm : ExtractionAlgorithm, featuresCount : Int = defaultFeaturesCount, maxImageSize : Int = defaultMaxImageSize) {
 
 	private def this() = {
-		this(null, defaultFeaturesCount, defaultOctavesCount, defaultContrastThreshold, defaultEdgeThreshold, defaultSigma)
+		this(defaultAlgorithm, defaultFeaturesCount, defaultMaxImageSize)
 	}
+	
+	require(featuresCount >= 1 && featuresCount < 1000)
+	require(maxImageSize >= 4 && maxImageSize <= 8192)
 
-	import org.apache.spark.mllib.linalg
+	lazy val detector = FeatureExtractor.createDetector(algorithm, featuresCount)
+
+	def describe(width : Int, height : Int, mode : Int, data : Array[Byte]): Seq[MLVector] = {
+		val image = ImageReader.read(width, height, mode, data)
+		val resizedImage = ImageReader.limitSize(maxImageSize, image)
+		FeatureExtractor.describe(resizedImage, detector)
+	}
 
 	import java.io.{IOException, ObjectInputStream, ObjectOutputStream}
 
-	require(featuresCount > 1 && featuresCount < 1000)
-	require(octavesCount > 1 && octavesCount < 10)
-	require(contrastThreshold > 0)
-	require(edgeThreshold > 0)
-	require(sigma > 1)
-
-	def describe(imageFile: String): IndexedSeq[linalg.Vector] = {
-		import DescriptorFactory.siftSize
-		import org.bytedeco.javacpp.opencv_core.{CvType, KeyPointVector, Mat}
-		import org.bytedeco.javacpp.opencv_imgcodecs.imread
-		import org.apache.spark.mllib.linalg.Vectors
-		val img = imread(imageFile)
-		val kp = new KeyPointVector
-		sift.detect(img, kp)
-		val kpCount = kp.size.toInt
-		val desMat = new Mat(kpCount, siftSize)
-		sift.compute(img, kp, desMat)
-		for (d <- 0 until kpCount) yield {
-			val desRow = Array.ofDim[Double](siftSize)
-			val row = desMat.row(d).data
-			for (i <- 0 until siftSize) desRow(i) = row.getDouble(i)
-			Vectors.dense(desRow)
-		}
-	}
-
 	@throws(classOf[IOException]) private def writeObject(out: ObjectOutputStream): Unit = {
+		out.writeInt(algorithm.id)
 		out.writeInt(featuresCount)
-		out.writeInt(octavesCount)
-		out.writeDouble(contrastThreshold)
-		out.writeDouble(edgeThreshold)
-		out.writeDouble(sigma)
+		out.writeInt(maxImageSize)
 	}
 
 	@throws(classOf[IOException]) private def readResolve(in: ObjectInputStream): Object = {
+		val algorithm = in.readInt
 		val featuresCount = in.readInt
-		val octavesCount = in.readInt
-		val contrastThreshold = in.readDouble
-		val edgeThreshold = in.readDouble
-		val sigma = in.readDouble
-		new DescriptorFactory(featuresCount, octavesCount, contrastThreshold, edgeThreshold, sigma)
+		val maxImageSize = in.readInt
+		DescriptorFactory(ExtractionAlgorithm(algorithm), featuresCount, maxImageSize)
 	}
 
 }
 
 object DescriptorFactory {
 
-	private def siftSize: Int = 128
-
-	val defaultFeaturesCount: Int = 10
-	val defaultOctavesCount: Int = 3
-	val defaultContrastThreshold: Double = 0.04
-	val defaultEdgeThreshold: Double = 10
-	val defaultSigma: Double = 1.6
+	val defaultFeaturesCount : Int = 10
+	val defaultMaxImageSize : Int = 512
+	val defaultAlgorithm : ExtractionAlgorithm = ExtractionAlgorithm.SIFT
 
 }
