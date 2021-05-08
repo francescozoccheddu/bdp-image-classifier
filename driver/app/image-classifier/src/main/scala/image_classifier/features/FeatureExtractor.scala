@@ -2,7 +2,7 @@ package image_classifier.features
 
 import org.bytedeco.javacpp.opencv_features2d.Feature2D
 import org.bytedeco.javacpp.opencv_core.Mat
-import org.apache.spark.mllib.linalg.{Vector => MLVector}
+import org.apache.spark.ml.linalg.{Vector => MLVector}
 import ExtractionAlgorithm._
 
 private[features] object FeatureExtractor {
@@ -24,7 +24,7 @@ private[features] object FeatureExtractor {
 	def describe(image : Mat, detector : Feature2D): Seq[MLVector] = {
 		import org.bytedeco.javacpp.opencv_core.{CvType, KeyPointVector, Mat}
 		import org.bytedeco.javacpp.opencv_imgcodecs.imread
-		import org.apache.spark.mllib.linalg.Vectors
+		import org.apache.spark.ml.linalg.Vectors
 		val size = detector.descriptorSize
 		val kp = new KeyPointVector
 		detector.detect(image, kp)

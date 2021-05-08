@@ -1,11 +1,12 @@
 package image_classifier.input
 
-import InputOptions.{defaultCodebookSize, defaultLocalFeaturesCount, defaultLocalFeaturesAlgorithm, defaultMaxImageSize}
+import InputOptions.{defaultCodebookSize, defaultCodebookAssignNearest, defaultLocalFeaturesCount, defaultLocalFeaturesAlgorithm, defaultMaxImageSize}
 import image_classifier.features.ExtractionAlgorithm._
 import image_classifier.features.ExtractionAlgorithm
 
 case class InputOptions private[input] (
 	codebookSize : Int = defaultCodebookSize, 
+	codebookAssignNearest : Boolean = defaultCodebookAssignNearest,
 	localFeaturesCount : Int = defaultLocalFeaturesCount, 
 	localFeaturesAlgorithm : ExtractionAlgorithm = defaultLocalFeaturesAlgorithm,
 	maxImageSize : Int = defaultMaxImageSize) {
@@ -22,5 +23,6 @@ private[input] object InputOptions {
 	val defaultLocalFeaturesCount : Int = 10
 	val defaultLocalFeaturesAlgorithm : ExtractionAlgorithm = ExtractionAlgorithm.SIFT
 	val defaultMaxImageSize : Int = 512
+	val defaultCodebookAssignNearest : Boolean = true
 
 }
