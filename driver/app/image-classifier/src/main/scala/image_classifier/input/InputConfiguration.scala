@@ -19,17 +19,18 @@ private[input] case class InputClass (
 private[input] case class InputConfiguration (
 		classes: Seq[InputClass],
 		codebookSize : Int = defaultCodebookSize,
+		codebookAssignNearest : Boolean = true,
 		localFeaturesCount : Int = defaultLocalFeaturesCount,
 		localFeaturesAlgorithm : String = defaultLocalFeaturesAlgorithm.toString.toLowerCase,
 		maxImageSize : Int = defaultMaxImageSize,
 		testFraction: Double = defaultTestFraction,
-		testSeed: Option[Int] = None
+		testSeed: Option[Int] = None,
 	) {
 
 	require(testFraction >= 0 && testFraction <= 1)
 	require(classes.nonEmpty)
 
-	val options = InputOptions(codebookSize, localFeaturesCount, ExtractionAlgorithm.withName(localFeaturesAlgorithm.trim.toUpperCase), maxImageSize)	
+	val options = InputOptions(codebookSize, codebookAssignNearest, localFeaturesCount, ExtractionAlgorithm.withName(localFeaturesAlgorithm.trim.toUpperCase), maxImageSize)	
 
 }
 

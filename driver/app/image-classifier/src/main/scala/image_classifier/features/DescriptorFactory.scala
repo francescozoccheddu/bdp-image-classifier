@@ -1,7 +1,7 @@
 package image_classifier.features
 
 import DescriptorFactory.{defaultAlgorithm, defaultFeaturesCount, defaultMaxImageSize}
-import org.apache.spark.mllib.linalg.{Vector => MLVector}
+import org.apache.spark.ml.linalg.{Vector => MLVector}
 import ExtractionAlgorithm._
 
 case class DescriptorFactory (algorithm : ExtractionAlgorithm, featuresCount : Int = defaultFeaturesCount, maxImageSize : Int = defaultMaxImageSize) {
