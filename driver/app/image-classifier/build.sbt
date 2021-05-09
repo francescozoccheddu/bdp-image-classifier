@@ -10,3 +10,5 @@ libraryDependencies ++= Seq(
   	"com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core"   % "2.8.0",
   	"com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.8.0" % "compile-internal"
 )
+
+// TODO Setup for spark-submit
