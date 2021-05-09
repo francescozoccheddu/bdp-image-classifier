@@ -32,14 +32,11 @@ object Pipeline {
 	
 	private def createCodebook(size : Int, data : DataFrame, spark : SparkSession, assignNearest : Boolean = true) : DataFrame = {
 		import org.apache.spark.ml.clustering.KMeans
-		import org.apache.spark.sql.functions.negate
+		import org.apache.spark.sql.functions.not
 		import spark.implicits._
-		data.show()
-		val trainSet = data.filter(col(isTestCol))
-		trainSet.show()
-		val model = new KMeans().setK(size).setFeaturesCol(dataCol).fit(trainSet)
-		val centers = model.clusterCenters.map(Tuple1(_)).toSeq.toDF(dataCol)
-		println("Centers")
+		val trainSet = data.filter(not(col(isTestCol)))
+		val model = new KMeans().setK(size).setMaxIter(200).setFeaturesCol(dataCol).fit(trainSet)
+		val centers = model.clusterCenters.toSeq.map(Tuple1(_)).toDF(dataCol)
 		centers.show()
 		if (assignNearest) 
 			NearestNeighbor.compute(trainSet, centers, spark).select(col(NearestNeighbor.neighborCol).alias(dataCol))

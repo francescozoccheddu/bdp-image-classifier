@@ -1,9 +1,11 @@
 package image_classifier.features
 
 import org.bytedeco.javacpp.opencv_features2d.Feature2D
-import org.bytedeco.javacpp.opencv_core.Mat
+import org.bytedeco.javacpp.opencv_core.{Mat, CV_MAT_DEPTH, CV_64F, CV_64FC1}
 import org.apache.spark.ml.linalg.{Vector => MLVector}
 import ExtractionAlgorithm._
+import java.nio.FloatBuffer
+import java.nio.DoubleBuffer
 
 private[features] object FeatureExtractor {
 	
@@ -26,19 +28,27 @@ private[features] object FeatureExtractor {
 		import org.bytedeco.javacpp.opencv_imgcodecs.imread
 		import org.apache.spark.ml.linalg.Vectors
 		val size = detector.descriptorSize
-		val kp = new KeyPointVector
-		detector.detect(image, kp)
-		val kpCount = kp.size.toInt
-		val desMat = new Mat(kpCount, size, detector.descriptorType)
-		detector.compute(image, kp, desMat)
-		val des = Array.ofDim[MLVector](kpCount)
-		for (d <- 0 until kpCount) yield {
-			val desRow = Array.ofDim[Double](128)
-			val row = desMat.row(d).data
-			for (i <- 0 until 128) desRow(i) = row.getDouble(i)
-			des(d) = Vectors.dense(desRow)
+		val kpv = new KeyPointVector
+		val rawDesMat = new Mat
+		val mask = new Mat
+		detector.detectAndCompute(image, mask, kpv, rawDesMat)
+		val kpCount = kpv.size.toInt
+		val desMat = {
+			if (rawDesMat.depth != CV_64F) {
+				val mat = new Mat(kpCount, size, CV_64FC1)
+				rawDesMat.convertTo(mat, CV_64F)
+				mat
+			}
+			else rawDesMat
 		}
-		des.toSeq
+		val buffer = desMat.createBuffer[DoubleBuffer]()
+		val desArr = Array.ofDim[MLVector](kpCount)
+		for (d <- 0 until kpCount) {
+			val row = Array.ofDim[Double](size)
+			buffer.get(row, 0, size)
+			desArr(d) = Vectors.dense(row)
+		}
+		desArr.toSeq
 	}
 
 }

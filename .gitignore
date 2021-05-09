@@ -6,3 +6,4 @@
 /driver/app/image-classifier/target
 /driver/app/image-classifier/project/*
 !/driver/app/image-classifier/project/plugins.sbt
+/driver/app/image-classifier/src/main/scala/image_classifier/Testbench.scala
