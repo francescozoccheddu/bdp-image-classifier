@@ -21,6 +21,7 @@ object Pipeline {
 		val descriptorFactory = DescriptorFactory(input.options.localFeaturesAlgorithm, input.options.localFeaturesCount, input.options.maxImageSize)
 		val describeUdf = udf((row : Row) => descriptorFactory.describe(ImageSchema.getWidth(row), ImageSchema.getHeight(row), ImageSchema.getMode(row), ImageSchema.getData(row)))
 		val nestedData = input.data.withColumn(dataCol, describeUdf(col(dataCol)))
+		// TODO Use flatten() and select
 		nestedData
 			.withColumn(entryCol, monotonically_increasing_id)
 			.flatMap(row => 
@@ -37,7 +38,6 @@ object Pipeline {
 		val trainSet = data.filter(not(col(isTestCol)))
 		val model = new KMeans().setK(size).setMaxIter(200).setFeaturesCol(dataCol).fit(trainSet)
 		val centers = model.clusterCenters.toSeq.map(Tuple1(_)).toDF(dataCol)
-		centers.show()
 		if (assignNearest) 
 			NearestNeighbor.compute(trainSet, centers, spark).select(col(NearestNeighbor.neighborCol).alias(dataCol))
 		else 

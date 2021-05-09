@@ -6,26 +6,28 @@ import org.apache.spark.ml.linalg.{Vector => MLVector}
 
 object NearestNeighbor {
 
-	private val hashCol = "hash"
-	private val distCol = "distance"
 	val neighborCol = "neighbor"
 
-	def compute(test : DataFrame, key : DataFrame, spark : SparkSession) : DataFrame = {
-
-		import org.apache.spark.ml.feature.BucketedRandomProjectionLSH
-		import org.apache.spark.ml.linalg.Vectors
-		import org.apache.spark.sql.functions.{col, udf}
+	def join(test : DataFrame, key : DataFrame, spark : SparkSession) : DataFrame = 
+		join(test, key, test.schema.fieldNames.toSeq, spark)
 		
-		val model = new BucketedRandomProjectionLSH()
-			.setBucketLength(2.0)
-			.setNumHashTables(3)
-			.setInputCol(dataCol)
-			.setOutputCol(hashCol)
+	def join(test : DataFrame, key : DataFrame, auxCols : Seq[String], spark : SparkSession) : DataFrame = {
+
+		import org.apache.spark.ml.knn.KNN
+
+		// TODO Calculate TopTreeSize
+
+		val model = new KNN()
+			.setFeaturesCol(dataCol)
+			.setAuxCols(auxCols.toArray)
+			.setTopTreeSize(math.max((test.count() / 500).toInt, 2))
+			.setK(1)
 			.fit(test)
 
-		val transTest = model.transform(test)
-		val neighborUdf = udf((data : MLVector) => model.approxNearestNeighbors(transTest, data, 1, distCol).drop(distCol).first)
-		key.withColumn(neighborCol, neighborUdf(col(dataCol)))
+		model.transform(key).withColumnRenamed(model.getNeighborsCol, neighborCol)
+
+		println("A join B")
+		predicted.show()
 		
 	}
 

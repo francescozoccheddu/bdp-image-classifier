@@ -13,6 +13,7 @@ private[features] object FeatureExtractor {
 		require(featuresCount >= 1 && featuresCount < 1000)
 		import org.bytedeco.javacpp.opencv_xfeatures2d.{SIFT, SURF}
 		import org.bytedeco.javacpp.opencv_features2d.{ORB, FastFeatureDetector, MSER, GFTTDetector}
+		// TODO Allow other algorithms (other than SIFT)
 		algorithm match {
 			case ExtractionAlgorithm.SIFT => SIFT.create(featuresCount, 3, 0.04, 10, 1.6)
 			case ExtractionAlgorithm.MSER => MSER.create()
@@ -34,6 +35,7 @@ private[features] object FeatureExtractor {
 		detector.detectAndCompute(image, mask, kpv, rawDesMat)
 		val kpCount = kpv.size.toInt
 		val desMat = {
+			require(rawDesMat.channels == 1)
 			if (rawDesMat.depth != CV_64F) {
 				val mat = new Mat(kpCount, size, CV_64FC1)
 				rawDesMat.convertTo(mat, CV_64F)

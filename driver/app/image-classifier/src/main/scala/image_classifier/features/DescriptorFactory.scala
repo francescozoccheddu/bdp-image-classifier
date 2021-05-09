@@ -21,25 +21,6 @@ case class DescriptorFactory (algorithm : ExtractionAlgorithm, featuresCount : I
 		FeatureExtractor.describe(resizedImage, detector)
 	}
 
-	/*
-
-	import java.io.{IOException, ObjectInputStream, ObjectOutputStream}
-
-	@throws(classOf[IOException]) private def writeObject(out: ObjectOutputStream): Unit = {
-		out.writeInt(algorithm.id)
-		out.writeInt(featuresCount)
-		out.writeInt(maxImageSize)
-	}
-
-	@throws(classOf[IOException]) private def readResolve(in: ObjectInputStream): Object = {
-		val algorithm = in.readInt
-		val featuresCount = in.readInt
-		val maxImageSize = in.readInt
-		DescriptorFactory(ExtractionAlgorithm(algorithm), featuresCount, maxImageSize)
-	}
-
-	*/
-
 }
 
 object DescriptorFactory {
