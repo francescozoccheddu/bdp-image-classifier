@@ -5,6 +5,7 @@ import image_classifier.utils.NearestNeighbor
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession, Row}
 import org.apache.spark.sql.functions.{col}
 import org.apache.spark.ml.linalg.{Vector => MLVector}
+import image_classifier.utils.DataFrameImplicits._
 
 object Pipeline {
 	
@@ -52,8 +53,9 @@ object Pipeline {
 			val indexedCodebook = codebook.withColumn(entryColName, monotonically_increasing_id)
 			val joint = NearestNeighbor.join(spark, indexedCodebook, data, Seq(entryColName))
 				.select(entryCol, neighborCol.getField(entryColName).alias(neighborColName))
-			joint.join(data.drop(dataCol), entryColName)
+			joint.join(data.drop(dataCol).distinct, entryColName)
 		}
+		
 		???
 	}
 
