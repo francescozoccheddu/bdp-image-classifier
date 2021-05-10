@@ -255,7 +255,6 @@ case class SpillTree(leftChild: Tree,
 
       // fill candidates with points from other child excluding buffer so we don't double count.
       // depending on K and how high we are in the tree, this can be very expensive and undesirable
-      // TODO: revisit this idea when we do large scale testing
       if(candidates.notFull) {
         (if (leftQueryCost <= rightQueryCost) {
           rightChild.iterator.filter(childFilter(leftPivot, rightPivot))

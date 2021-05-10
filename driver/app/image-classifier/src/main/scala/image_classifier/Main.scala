@@ -3,8 +3,6 @@ package image_classifier
 import org.apache.spark.sql.SparkSession
 import input.Input
 
-// TODO Use $ instead of col and ! instead of not
-
 object Main {
 	
 	def main(args: Array[String]): Unit = {
@@ -19,8 +17,8 @@ object Main {
 		try {
 			spark.sparkContext.setLogLevel("WARN")
 			// TODO Use S3 or HAR or sequence files on HDFS
-			val input = Input.loadFromConfigFile(configFile, spark)
-			Pipeline.run(input, spark)
+			val input = Input.loadFromConfigFile(spark, configFile)
+			Pipeline.run(spark, input)
 		}
 		finally
 		spark.close

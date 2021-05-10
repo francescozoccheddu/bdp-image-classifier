@@ -271,7 +271,6 @@ class KNNModel private[ml](
   /** @group setParam */
   def setBufferSize(value: Double): this.type = set(bufferSize, value)
 
-  //TODO: All these can benefit from DataSet API
   override def transform(dataset: Dataset[_]): DataFrame = {
     val merged: RDD[(Long, Array[(Row,Double)])] = transform(dataset, topTree, subTrees)
 
@@ -428,7 +427,6 @@ class KNN(override val uid: String) extends Estimator[KNNModel] with KNNParams {
 
         Iterator(childTree)
     }.persist(StorageLevel.MEMORY_AND_DISK)
-    // TODO: force persisting trees primarily for benchmark. any reason not to do this for regular runs?
     trees.count()
 
     val model = new KNNModel(uid, trees.context.broadcast(topTree), trees).setParent(this)
@@ -568,7 +566,6 @@ object KNN {
     }
   }
 
-  //TODO: Might want to make this tail recursive
   private[ml] def searchIndices(v: VectorWithNorm, tree: Tree, tau: Double, acc: Int = 0): Seq[Int] = {
     tree match {
       case node: MetricTree =>

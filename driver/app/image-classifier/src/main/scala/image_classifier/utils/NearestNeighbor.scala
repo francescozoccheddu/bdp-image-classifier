@@ -1,33 +1,36 @@
 package image_classifier.utils
 
-import image_classifier.Pipeline.dataCol
 import org.apache.spark.sql.{SparkSession, DataFrame}
-import org.apache.spark.ml.linalg.{Vector => MLVector}
+import org.apache.spark.sql.functions.col
 
 object NearestNeighbor {
-
-	val neighborCol = "neighbor"
-
-	def join(test : DataFrame, key : DataFrame, spark : SparkSession) : DataFrame = 
-		join(test, key, test.schema.fieldNames.toSeq, spark)
+	
+	val neighborColName = "neighbor"
+	val neighborCol = col(neighborColName)
+	
+	def join(spark : SparkSession, test : DataFrame, key : DataFrame) : DataFrame = 
+	join(spark, test, key, test.schema.fieldNames.toSeq)
+	
+	def join(spark : SparkSession, test : DataFrame, key : DataFrame, auxCols : Seq[String]) : DataFrame = {
 		
-	def join(test : DataFrame, key : DataFrame, auxCols : Seq[String], spark : SparkSession) : DataFrame = {
-
+		import image_classifier.Pipeline.dataColName
+		import org.apache.spark.sql.functions.explode
 		import org.apache.spark.ml.knn.KNN
+		import spark.implicits._
 
-		// TODO Calculate TopTreeSize
+		val topTreeSize = math.max((test.count() / 500).toInt, 2)
 
 		val model = new KNN()
-			.setFeaturesCol(dataCol)
+			.setFeaturesCol(dataColName)
 			.setAuxCols(auxCols.toArray)
-			.setTopTreeSize(math.max((test.count() / 500).toInt, 2))
+			.setTopTreeSize(topTreeSize)
 			.setK(1)
 			.fit(test)
 
-		model.transform(key).withColumnRenamed(model.getNeighborsCol, neighborCol)
-
-		println("A join B")
-		predicted.show()
+		model
+			.transform(key)
+			.withColumnRenamed(model.getNeighborsCol, neighborColName)
+			.withColumn(neighborColName, explode(neighborCol))
 		
 	}
 

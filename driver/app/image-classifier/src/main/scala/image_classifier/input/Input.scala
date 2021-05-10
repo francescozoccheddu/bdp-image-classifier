@@ -1,10 +1,7 @@
 package image_classifier.input
 
-import image_classifier.Pipeline.{dataCol, isTestCol, classCol}
-import org.apache.spark.SparkContext
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.lit
+import image_classifier.Pipeline.{dataColName, isTestColName, classColName}
+import org.apache.spark.sql.{SparkSession, DataFrame}
 import org.apache.spark.ml.image.ImageSchema
 
 case class Input private (options : InputOptions, data : DataFrame, classes : Seq[String]) {
@@ -14,38 +11,40 @@ case class Input private (options : InputOptions, data : DataFrame, classes : Se
 }
 
 object Input {
-
-	private val imageCol = ImageSchema.imageSchema.fieldNames(0)
 	
-	def loadFromConfigFile(configFile : String, spark : SparkSession) : Input = {
+	private val imageColName = ImageSchema.imageSchema.fieldNames(0)
+	
+	def loadFromConfigFile(spark : SparkSession, configFile : String) : Input = {
 		val workingDir = java.nio.file.Paths.get(configFile).getParent.toString
-		load(InputConfiguration.fromFile(configFile), workingDir, spark)
+		load(spark, InputConfiguration.fromFile(configFile), workingDir)
 	}
-
-	private[input] def load(config : InputConfiguration, workingDir : String, spark : SparkSession) : Input = {
-		val classesData = for ((c, i) <- config.classes.zipWithIndex) yield loadClass(config, c, workingDir, spark).withColumn(classCol, lit(i))
-		val data = classesData.reduce(_ union _).withColumnRenamed(imageCol, dataCol)
+	
+	private[input] def load(spark : SparkSession, config : InputConfiguration, workingDir : String) : Input = {
+		import org.apache.spark.sql.functions.lit
+		val classesData = for ((c, i) <- config.classes.zipWithIndex) yield loadClass(spark, config, c, workingDir).withColumn(classColName, lit(i))
+		val data = classesData.reduce(_ union _).withColumnRenamed(imageColName, dataColName)
 		val classNames = config.classes.map(_.name).toSeq
 		Input(config.options, data, classNames)
 	}
 	
-	private def loadClass(config : InputConfiguration, classConfig : InputClass, workingDir : String, spark : SparkSession) : DataFrame = {
-		val trainImages = loadImages(classConfig.trainFiles, workingDir, spark)
-		val testImages = loadImages(classConfig.testFiles, workingDir, spark)
-		val mergedImages = loadImages(classConfig.files, workingDir, spark)
+	private def loadClass(spark : SparkSession, config : InputConfiguration, classConfig : InputClass, workingDir : String) : DataFrame = {
+		val trainImages = loadImages(spark, classConfig.trainFiles, workingDir)
+		val testImages = loadImages(spark, classConfig.testFiles, workingDir)
+		val mergedImages = loadImages(spark, classConfig.files, workingDir)
 		val testSeed = config.testSeed.getOrElse(util.Random.nextInt)
 		val Array(mergedTrainImages, mergedTestImages) = mergedImages.randomSplit(Array(1.0 - config.testFraction, config.testFraction), testSeed)
 		mergeImages(trainImages union mergedTrainImages, testImages union mergedTestImages)
 	}
 	
 	private def mergeImages(trainImages : DataFrame, testImages : DataFrame) : DataFrame = {
-		trainImages.withColumn(isTestCol, lit(false)) union testImages.withColumn(isTestCol, lit(true))
+		import org.apache.spark.sql.functions.lit
+		trainImages.withColumn(isTestColName, lit(false)) union testImages.withColumn(isTestColName, lit(true))
 	}
 
-	private def loadImages(paths : Seq[String], workingDir : String, spark : SparkSession) : DataFrame = {
+	private def loadImages(spark : SparkSession, paths : Seq[String], workingDir : String) : DataFrame = {
 		if (paths.nonEmpty) {
 			val resolvedPaths = paths.map(p => if (new java.io.File(p).isAbsolute) p else s"${workingDir}${java.io.File.separatorChar}${p}")
-			spark.read.format(imageCol).option("dropInvalid", true).load(resolvedPaths : _*)
+			spark.read.format("image").option("dropInvalid", true).load(resolvedPaths : _*)
 		}
 		else {
 			import org.apache.spark.sql.Row
