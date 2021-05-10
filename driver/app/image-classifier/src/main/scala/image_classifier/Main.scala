@@ -12,7 +12,7 @@ object Main {
 		val spark = SparkSession
 			.builder()
 			.appName("Image classification with BOVW")			
-			.master("local[1]") 
+			.master("local[*]") 
 			.getOrCreate()
 		try {
 			spark.sparkContext.setLogLevel("WARN")
