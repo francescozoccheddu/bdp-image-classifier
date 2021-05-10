@@ -1,8 +1,7 @@
 package image_classifier.input
 
-import InputOptions.{defaultCodebookSize, defaultLocalFeaturesCount, defaultLocalFeaturesAlgorithm, defaultMaxImageSize}
+import InputOptions.{defaultCodebookSize, defaultLocalFeaturesCount, defaultMaxImageSize}
 import InputConfiguration.defaultTestFraction
-import image_classifier.features.ExtractionAlgorithm
 
 private[input] case class InputClass (
 		name : String, 
@@ -21,7 +20,6 @@ private[input] case class InputConfiguration (
 		codebookSize : Int = defaultCodebookSize,
 		codebookAssignNearest : Boolean = true,
 		localFeaturesCount : Int = defaultLocalFeaturesCount,
-		localFeaturesAlgorithm : String = defaultLocalFeaturesAlgorithm.toString.toLowerCase,
 		maxImageSize : Int = defaultMaxImageSize,
 		testFraction: Double = defaultTestFraction,
 		testSeed: Option[Int] = None,
@@ -30,7 +28,7 @@ private[input] case class InputConfiguration (
 	require(testFraction >= 0 && testFraction <= 1)
 	require(classes.nonEmpty)
 
-	val options = InputOptions(codebookSize, codebookAssignNearest, localFeaturesCount, ExtractionAlgorithm.withName(localFeaturesAlgorithm.trim.toUpperCase), maxImageSize)	
+	val options = InputOptions(codebookSize, codebookAssignNearest, localFeaturesCount, maxImageSize)	
 
 }
 

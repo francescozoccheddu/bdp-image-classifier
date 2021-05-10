@@ -3,25 +3,15 @@ package image_classifier.features
 import org.bytedeco.javacpp.opencv_features2d.Feature2D
 import org.bytedeco.javacpp.opencv_core.{Mat, CV_MAT_DEPTH, CV_64F, CV_64FC1}
 import org.apache.spark.ml.linalg.{Vector => MLVector}
-import ExtractionAlgorithm._
 import java.nio.FloatBuffer
 import java.nio.DoubleBuffer
 
 private[features] object FeatureExtractor {
 	
-	def createDetector(algorithm : ExtractionAlgorithm, featuresCount : Int) : Feature2D = {
+	def createDetector(featuresCount : Int) : Feature2D = {
 		require(featuresCount >= 1 && featuresCount < 1000)
-		import org.bytedeco.javacpp.opencv_xfeatures2d.{SIFT, SURF}
-		import org.bytedeco.javacpp.opencv_features2d.{ORB, FastFeatureDetector, MSER, GFTTDetector}
-		// TODO Allow other algorithms (other than SIFT)
-		algorithm match {
-			case ExtractionAlgorithm.SIFT => SIFT.create(featuresCount, 3, 0.04, 10, 1.6)
-			case ExtractionAlgorithm.MSER => MSER.create()
-			case ExtractionAlgorithm.FAST => FastFeatureDetector.create()
-			case ExtractionAlgorithm.ORB => ORB.create()
-			case ExtractionAlgorithm.GFTT => GFTTDetector.create()
-			case ExtractionAlgorithm.SURF => SURF.create()
-		}
+		import org.bytedeco.javacpp.opencv_xfeatures2d.SIFT
+		SIFT.create(featuresCount, 3, 0.04, 10, 1.6)
 	}	
 
 	def describe(image : Mat, detector : Feature2D): Seq[MLVector] = {
