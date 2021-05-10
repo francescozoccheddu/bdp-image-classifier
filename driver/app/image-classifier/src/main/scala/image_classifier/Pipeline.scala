@@ -49,13 +49,17 @@ object Pipeline {
 	
 	private def computeBOFS(spark : SparkSession, data : DataFrame, codebook : DataFrame) : DataFrame = {
 		val matches = {
-			import org.apache.spark.sql.functions.monotonically_increasing_id
-			val indexedCodebook = codebook.withColumn(entryColName, monotonically_increasing_id)
+			val indexedCodebook = {
+				import org.apache.spark.sql.functions.{monotonically_increasing_id, row_number, lit}
+				import org.apache.spark.sql.expressions.Window
+				val window = Window.orderBy(monotonically_increasing_id).partitionBy(lit(0))
+				codebook.withColumn(entryColName, row_number.over(window).cast("long"))
+			}
 			val joint = NearestNeighbor.join(spark, indexedCodebook, data, Seq(entryColName))
 				.select(entryCol, neighborCol.getField(entryColName).alias(neighborColName))
 			joint.join(data.drop(dataCol).distinct, entryColName)
 		}
-		
+		matches.sample(0.1).print("Matches")
 		???
 	}
 
