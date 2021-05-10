@@ -6,16 +6,13 @@ import org.apache.spark.sql.functions.col
 
 object NearestNeighbor {
 	
-	val neighborColName = "neighbor"
-	val neighborCol = col(neighborColName)
-	
-	def join(spark : SparkSession, test : DataFrame, key : DataFrame) : DataFrame = 
-		join(spark, test, key, Pipeline.dataColName)
+	def join(spark : SparkSession, test : DataFrame, key : DataFrame, dataColName : String, neighborColName : String) : DataFrame = 
+		join(spark, test, key, test.schema.fieldNames intersect key.schema.fieldNames)
 
-	def join(spark : SparkSession, test : DataFrame, key : DataFrame, dataColName : String) : DataFrame = 
-		join(spark, test, key, test.schema.fieldNames intersect key.schema.fieldNames, dataColName)
-	
-	def join(spark : SparkSession, test : DataFrame, key : DataFrame, cols : Seq[String], dataColName : String = Pipeline.dataColName) : DataFrame = {
+	def join(spark : SparkSession, test : DataFrame, key : DataFrame, cols : Seq[String]) : DataFrame = 
+		join(spark, test, key, cols, Pipeline.dataColName, Pipeline.neighborColName)
+
+	def join(spark : SparkSession, test : DataFrame, key : DataFrame, cols : Seq[String], dataColName : String, neighborColName : String) : DataFrame = {
 		
 		import org.apache.spark.sql.functions.explode
 		import org.apache.spark.ml.knn.KNN
@@ -30,11 +27,11 @@ object NearestNeighbor {
 			.setTopTreeSize(topTreeSize)
 			.setK(1)
 			.fit(test)
+			.setNeighborsCol(neighborColName)
 
 		model
 			.transform(key)
-			.withColumnRenamed(model.getNeighborsCol, neighborColName)
-			.withColumn(neighborColName, explode(neighborCol))
+			.withColumn(neighborColName, explode(col(neighborColName)))
 		
 	}
 
