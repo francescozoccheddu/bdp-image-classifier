@@ -13,9 +13,9 @@ object NearestNeighbor {
 		join(spark, test, key, Pipeline.dataColName)
 
 	def join(spark : SparkSession, test : DataFrame, key : DataFrame, dataColName : String) : DataFrame = 
-		join(spark, test, key, test.schema.fieldNames.intersect(key.schema.fieldNames), dataColName)
+		join(spark, test, key, test.schema.fieldNames intersect key.schema.fieldNames, dataColName)
 	
-	def join(spark : SparkSession, test : DataFrame, key : DataFrame, auxCols : Seq[String], dataColName : String = Pipeline.dataColName) : DataFrame = {
+	def join(spark : SparkSession, test : DataFrame, key : DataFrame, cols : Seq[String], dataColName : String = Pipeline.dataColName) : DataFrame = {
 		
 		import org.apache.spark.sql.functions.explode
 		import org.apache.spark.ml.knn.KNN
@@ -26,7 +26,7 @@ object NearestNeighbor {
 
 		val model = new KNN()
 			.setFeaturesCol(dataColName)
-			.setAuxCols(auxCols.toArray)
+			.setAuxCols(cols.toArray)
 			.setTopTreeSize(topTreeSize)
 			.setK(1)
 			.fit(test)
