@@ -49,14 +49,22 @@ object Pipeline {
 			import org.apache.spark.sql.functions.{monotonically_increasing_id, row_number, lit}
 			import org.apache.spark.sql.expressions.Window
 			val window = Window.orderBy(monotonically_increasing_id).partitionBy(lit(0))
-			codebook.withColumn(entryColName, row_number.over(window).cast("long"))
+			codebook.withColumn(entryColName, row_number.over(window).cast("long") - 1)
 		}
 		NearestNeighbor.join(spark, indexedCodebook, data, Seq(entryColName))
 			.select(entryCol, neighborCol.getField(entryColName).alias(neighborColName))
 	}
 
+	private def computeBOFS(spark : SparkSession, data : DataFrame, codebookSize : Int) : DataFrame = {
+		import org.apache.spark.sql.functions.{collect_list, udf}
+		import image_classifier.utils.Histogram
+		val vectorizeUdf = udf((neighbors : Array[Long]) => Histogram.compute(neighbors, codebookSize))
+		data.groupBy(entryCol)
+			.agg(collect_list(neighborCol).alias(neighborColName))
+			.withColumn(neighborColName, vectorizeUdf(neighborCol))
+	}
 
-	def run(spark : SparkSession,input : Input) {
+	def run(spark : SparkSession, input : Input) {
 		val (legend, matches) = {
 			val indexedInput = {
 				import org.apache.spark.sql.functions.monotonically_increasing_id
@@ -64,14 +72,14 @@ object Pipeline {
 			} 
 			val features = describe(spark, indexedInput, input.options.localFeaturesCount, input.options.maxImageSize).cache
 			val codebook = createCodebook(spark, input.options.codebookSize, features.filter(!isTestCol), input.options.codebookAssignNearest).cache
-			val matches = matchFeatures(spark, features, codebook).cache
+			val matches = matchFeatures(spark, features, codebook)
 			codebook.unpersist
 			val legend = features.select(entryCol, isTestCol, classCol).cache
 			features.unpersist
 			(legend, matches)
 		} 
-		legend.print("Legend")
-		matches.print("Matches")
+		val bofs = computeBOFS(spark, matches, input.options.codebookSize).cache
+		bofs.print("BOFS")
 	}
 
 }
