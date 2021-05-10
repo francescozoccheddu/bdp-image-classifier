@@ -35,6 +35,7 @@ object Pipeline {
 		val trainSet = data.filter(!isTestCol)
 		val model = new KMeans().setK(size).setMaxIter(200).setFeaturesCol(dataColName).fit(trainSet)
 		val centers = model.clusterCenters.toSeq.map(Tuple1(_)).toDF(dataColName)
+		centers.show()
 		if (assignNearest) 
 			NearestNeighbor.join(spark, trainSet, centers).select(NearestNeighbor.neighborCol.alias(dataColName))
 		else 

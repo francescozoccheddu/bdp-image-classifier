@@ -1,5 +1,6 @@
 package image_classifier.utils
 
+import image_classifier.Pipeline
 import org.apache.spark.sql.{SparkSession, DataFrame}
 import org.apache.spark.sql.functions.col
 
@@ -9,16 +10,19 @@ object NearestNeighbor {
 	val neighborCol = col(neighborColName)
 	
 	def join(spark : SparkSession, test : DataFrame, key : DataFrame) : DataFrame = 
-	join(spark, test, key, test.schema.fieldNames.toSeq)
+		join(spark, test, key, Pipeline.dataColName)
+
+	def join(spark : SparkSession, test : DataFrame, key : DataFrame, dataColName : String) : DataFrame = 
+		join(spark, test, key, test.schema.fieldNames.intersect(key.schema.fieldNames), dataColName)
 	
-	def join(spark : SparkSession, test : DataFrame, key : DataFrame, auxCols : Seq[String]) : DataFrame = {
+	def join(spark : SparkSession, test : DataFrame, key : DataFrame, auxCols : Seq[String], dataColName : String = Pipeline.dataColName) : DataFrame = {
 		
-		import image_classifier.Pipeline.dataColName
 		import org.apache.spark.sql.functions.explode
 		import org.apache.spark.ml.knn.KNN
 		import spark.implicits._
 
-		val topTreeSize = math.max((test.count() / 500).toInt, 2)
+		val testSize = test.count()
+		val topTreeSize = math.min(math.max(testSize / 200, 2), testSize).toInt
 
 		val model = new KNN()
 			.setFeaturesCol(dataColName)
