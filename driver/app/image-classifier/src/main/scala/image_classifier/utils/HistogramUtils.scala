@@ -2,7 +2,7 @@ package image_classifier.utils
 
 import org.apache.spark.ml.linalg.{Vector => MLVector}
 
-object Histogram {
+object HistogramUtils {
 
 	def computeSparse(data : Seq[Long], codebookSize : Int) : MLVector = {
 		import org.apache.spark.ml.linalg.Vectors

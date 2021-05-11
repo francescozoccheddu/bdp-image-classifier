@@ -27,7 +27,7 @@ import org.apache.spark.mllib.util.MLUtils
   * 
   * @author saurfang <https://github.com/saurfang>
   */
-object KNNUtils {
+private[spark] object KNNUtils {
 
   import oldlinalg.VectorImplicits._
 

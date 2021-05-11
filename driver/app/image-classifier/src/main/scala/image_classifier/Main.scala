@@ -1,10 +1,6 @@
 package image_classifier
 
 import org.apache.spark.sql.SparkSession
-import input.Input
-
-
-// TODO Use ml.Pipeline?
 
 object Main {
 	
@@ -19,9 +15,6 @@ object Main {
 			.getOrCreate()
 		try {
 			spark.sparkContext.setLogLevel("WARN")
-			// TODO Use S3 or HAR or sequence files on HDFS
-			val input = Input.loadFromConfigFile(spark, configFile)
-			Pipeline.run(spark, input)
 		}
 		finally
 		spark.close

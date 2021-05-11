@@ -4,10 +4,11 @@ import org.apache.spark.ml.UnaryTransformer
 import org.apache.spark.ml.util.{ DefaultParamsReadable, DefaultParamsWritable, Identifiable }
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{DataType, StructType, IntegerType, BinaryType, StructField}
+import com.fasterxml.jackson.module.scala.deser.overrides
 
 class ImageDecoder(override val uid: String) 
-extends UnaryTransformer[Array[Byte], Row, ImageDecoder] 
-with DefaultParamsWritable 
+	extends UnaryTransformer[Array[Byte], Row, ImageDecoder] 
+	with DefaultParamsWritable 
 	with HasImageWidthCol with HasImageHeightCol with HasImageTypeCol with HasImageDataCol {
 
 	override protected def createTransformFunc : Array[Byte] => Row = {
@@ -26,6 +27,11 @@ with DefaultParamsWritable
 			StructField($(imageTypeCol), IntegerType, false) ::
 			StructField($(imageDataCol), BinaryType, false) :: 
 			Nil)
+
+	override protected def validateInputType(inputType: DataType) = {
+		import image_classifier.utils.StructTypeImplicits._
+		inputType.requireField($(inputCol), BinaryType)
+	}
 
 	def this() = this(Identifiable.randomUID(ImageDecoder.getClass.getName))
 

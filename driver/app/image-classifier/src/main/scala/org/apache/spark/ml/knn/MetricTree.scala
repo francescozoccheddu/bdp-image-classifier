@@ -177,6 +177,7 @@ case class MetricTree(leftChild: Tree,
   }
 }
 
+private[knn]
 object MetricTree {
   /**
    * Build a (metric)[[Tree]] that facilitate k-NN query
@@ -271,6 +272,7 @@ case class SpillTree(leftChild: Tree,
 }
 
 
+private[knn]
 object SpillTree {
   /**
    * Build a (spill)[[Tree]] that facilitate k-NN query
@@ -318,6 +320,7 @@ object SpillTree {
   }
 }
 
+private[knn]
 object HybridTree {
   /**
    * Build a (hybrid-spill) `Tree` that facilitate k-NN query
