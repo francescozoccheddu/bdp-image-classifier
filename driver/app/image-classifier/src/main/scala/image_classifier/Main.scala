@@ -3,6 +3,9 @@ package image_classifier
 import org.apache.spark.sql.SparkSession
 import input.Input
 
+
+// TODO Use ml.Pipeline?
+
 object Main {
 	
 	def main(args: Array[String]): Unit = {
