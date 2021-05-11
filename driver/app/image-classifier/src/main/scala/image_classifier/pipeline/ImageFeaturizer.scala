@@ -3,8 +3,7 @@ package image_classifier.pipeline
 import org.apache.spark.ml.UnaryTransformer
 import org.apache.spark.ml.util.{ DefaultParamsReadable, DefaultParamsWritable, Identifiable }
 import org.apache.spark.sql.Row
-import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
-import org.apache.spark.sql.types.{DataType, ArrayType}
+import org.apache.spark.sql.types.DataType
 import org.apache.spark.ml.linalg.{Vector => MLVector}
 
 class ImageFeaturizer(override val uid: String) 
@@ -21,9 +20,14 @@ class ImageFeaturizer(override val uid: String)
 		}
 	}
 
-	override protected def outputDataType : DataType = ArrayType(VectorType)
-
+	override protected def outputDataType : DataType = {
+		import org.apache.spark.sql.types.ArrayType
+		import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+		ArrayType(VectorType)
+	}
+	
 	override protected def validateInputType(inputType: DataType) = {
+		import org.apache.spark.sql.types.{IntegerType, BinaryType}
 		import image_classifier.utils.StructTypeImplicits._
 		inputType.requireField($(imageWidthCol), IntegerType)
 		inputType.requireField($(imageHeightCol), IntegerType)

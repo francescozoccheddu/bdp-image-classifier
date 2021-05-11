@@ -2,7 +2,7 @@ package image_classifier.pipeline
 
 import org.apache.spark.ml.param.{Param, Params, IntParam}
 
-trait HasImageWidthCol extends Params {
+private[pipeline] trait HasImageWidthCol extends Params {
 
 	final val imageWidthCol: Param[String] = new Param[String](this, "imageWidthCol", "image width column name")
 
@@ -14,7 +14,7 @@ trait HasImageWidthCol extends Params {
 	
 }
 
-trait HasImageHeightCol extends Params {
+private[pipeline] trait HasImageHeightCol extends Params {
 	
 	final val imageHeightCol: Param[String] = new Param[String](this, "imageHeightCol", "image height column name")
 	
@@ -26,7 +26,7 @@ trait HasImageHeightCol extends Params {
 	
 }
 
-trait HasImageTypeCol extends Params {
+private[pipeline] trait HasImageTypeCol extends Params {
 	
 	final val imageTypeCol: Param[String] = new Param[String](this, "imageTypeCol", "image OpenCV type column name")
 	
@@ -38,7 +38,7 @@ trait HasImageTypeCol extends Params {
 	
 }
 
-trait HasImageDataCol extends Params {
+private[pipeline] trait HasImageDataCol extends Params {
 	
 	final val imageDataCol: Param[String] = new Param[String](this, "imageDataCol", "image data column name")
 	
@@ -50,7 +50,7 @@ trait HasImageDataCol extends Params {
 
 }
 
-trait HasFeaturesCount extends Params {
+private[pipeline] trait HasFeaturesCount extends Params {
 	
 	final val featuresCount: IntParam = new IntParam(this, "featuresCount", "features count", _ > 0)
 	
@@ -59,5 +59,17 @@ trait HasFeaturesCount extends Params {
 	final def getFeaturesCount : Int = $(featuresCount)
 	
 	final def setFeaturesCount(value: Int): this.type = set(featuresCount, value).asInstanceOf[this.type]
+
+}
+
+private[pipeline] trait HasFeaturesCol extends Params {
+	
+	final val featuresCol: Param[String] = new Param[String](this, "featuresCol", "features column name")
+	
+	setDefault(featuresCol, "features")
+	
+	final def getFeaturesCol : String = $(featuresCol)
+	
+	final def setFeaturesCol(value: String): this.type = set(featuresCol, value).asInstanceOf[this.type]
 
 }
