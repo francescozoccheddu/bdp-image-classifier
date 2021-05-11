@@ -1,16 +1,13 @@
 package image_classifier.pipeline
 
 import org.apache.spark.ml.UnaryTransformer
-import org.apache.spark.ml.param.{ Param, ParamMap }
 import org.apache.spark.ml.util.{ DefaultParamsReadable, DefaultParamsWritable, Identifiable }
-import org.apache.spark.sql.{ DataFrame, Dataset, Row }
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{DataType, StructType, IntegerType, BinaryType, StructField}
-import org.apache.spark.ml.param.shared.{HasInputCol, HasOutputCol}
-import org.bytedeco.javacpp.opencv_core.Mat
 
 class ImageDecoder(override val uid: String) 
-	extends UnaryTransformer[Array[Byte], Row, ImageDecoder] 
-	with DefaultParamsWritable 
+extends UnaryTransformer[Array[Byte], Row, ImageDecoder] 
+with DefaultParamsWritable 
 	with HasImageWidthCol with HasImageHeightCol with HasImageTypeCol with HasImageDataCol {
 
 	override protected def createTransformFunc : Array[Byte] => Row = {
