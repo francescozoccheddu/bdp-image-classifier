@@ -23,6 +23,14 @@ class ImageFeaturizer(override val uid: String)
 
 	override protected def outputDataType : DataType = ArrayType(VectorType)
 
+	override protected def validateInputType(inputType: DataType) = {
+		import image_classifier.utils.StructTypeImplicits._
+		inputType.requireField($(imageWidthCol), IntegerType)
+		inputType.requireField($(imageHeightCol), IntegerType)
+		inputType.requireField($(imageTypeCol), IntegerType)
+		inputType.requireField($(imageDataCol), BinaryType)
+	}
+
 	def this() = this(Identifiable.randomUID(ImageFeaturizer.getClass.getName))
 
 }
