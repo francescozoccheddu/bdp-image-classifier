@@ -2,7 +2,10 @@ package image_classifier.utils
 
 import org.bytedeco.javacpp.opencv_core.Mat
 
-case class Image private (width : Int, height : Int, mode : Int, data : Array[Byte]) {
+case class Image (width : Int, height : Int, mode : Int, data : Array[Byte]) {
+
+	require(width > 4)
+	require(height > 4)
 
 	def toMat : Mat = Image.toMat(width, height, mode, data)
 
