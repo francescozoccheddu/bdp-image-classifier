@@ -2,6 +2,7 @@
 .metals
 .bloop
 .scalafmt.conf
+.idea
 /driver/app/image-classifier/.bsp
 /driver/app/image-classifier/target
 /driver/app/image-classifier/project/*
