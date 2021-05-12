@@ -6,7 +6,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.DataType
 import org.apache.spark.ml.linalg.{Vector => MLVector}
 
-class ImageFeaturizer(override val uid: String) 
+final class ImageFeaturizer(override val uid: String) 
 	extends UnaryTransformer[Row, Array[MLVector], ImageFeaturizer] 
 	with DefaultParamsWritable 
 	with HasFeaturesCount with HasImageWidthCol with HasImageHeightCol with HasImageTypeCol with HasImageDataCol {

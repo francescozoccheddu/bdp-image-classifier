@@ -4,7 +4,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, SparkSession, Row}
 import org.apache.spark.sql.types.{DataType, StructType, StructField}
 import org.apache.spark.ml.linalg.{Vector => MLVector}
 
-object BOFsUtils {
+final object BOFsUtils {
 	
 	val defaultOutputDataColName = "data"
 	val defaultOutputIdColName = "id"

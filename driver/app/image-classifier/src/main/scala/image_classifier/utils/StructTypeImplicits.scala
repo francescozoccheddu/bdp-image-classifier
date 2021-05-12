@@ -4,7 +4,7 @@ import org.apache.spark.sql.types.{DataType, StructType, StructField}
 
 object StructTypeImplicits {
 
-	implicit class StructTypeExtension(dataType : DataType) {
+	implicit final class StructTypeExtension(dataType : DataType) {
 
 		def getField(name : String) : Option[StructField] =
 			try {

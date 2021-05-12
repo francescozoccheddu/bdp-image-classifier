@@ -3,7 +3,7 @@ package image_classifier.features
 import DescriptorFactory.{defaultFeaturesCount, defaultMaxImageSize}
 import org.apache.spark.ml.linalg.{Vector => MLVector}
 
-case class DescriptorFactory (featuresCount : Int = defaultFeaturesCount, maxImageSize : Int = defaultMaxImageSize) {
+final case class DescriptorFactory (featuresCount : Int = defaultFeaturesCount, maxImageSize : Int = defaultMaxImageSize) {
 
 	private def this() = {
 		this(defaultFeaturesCount, defaultMaxImageSize)
