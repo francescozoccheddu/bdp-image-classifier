@@ -3,14 +3,19 @@ package image_classifier.utils
 import org.bytedeco.javacpp.opencv_features2d.Feature2D
 import org.bytedeco.javacpp.opencv_core.Mat
 import org.apache.spark.ml.linalg.{Vector => MLVector}
+import image_classifier.utils.ImageFeaturizer.{defaultFeatureCount, defaultAlgorithm}
+import image_classifier.configuration.ImageFeatureAlgorithm
+import image_classifier.configuration.ImageFeatureAlgorithm._
 
-case class ImageFeaturizer (featureCount : Int) {
+final case class ImageFeaturizer (featureCount : Int = defaultFeatureCount, algorithm : ImageFeatureAlgorithm = defaultAlgorithm) {
 	
 	require(featureCount > 0)
 	
 	lazy val detector : Feature2D = {
-		import org.bytedeco.javacpp.opencv_xfeatures2d.SIFT
-		SIFT.create(featureCount, 3, 0.04, 10, 1.6)
+		import org.bytedeco.javacpp.opencv_xfeatures2d.{SIFT, SURF}
+		algorithm match {
+			case ImageFeatureAlgorithm.SIFT => SIFT.create(featureCount, 3, 0.04, 10, 1.6)
+		}
 	}
 	
 	def apply(image : Mat): Array[MLVector] = {
@@ -41,5 +46,10 @@ case class ImageFeaturizer (featureCount : Int) {
 		}
 		desArr
 	}
+	
+}
 
+object ImageFeaturizer {
+	val defaultFeatureCount : Int = 10
+	val defaultAlgorithm : ImageFeatureAlgorithm = ImageFeatureAlgorithm.SIFT
 }

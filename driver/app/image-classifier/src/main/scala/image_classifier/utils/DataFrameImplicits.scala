@@ -4,7 +4,7 @@ import org.apache.spark.sql.DataFrame
 
 object DataFrameImplicits {
 
-	implicit class DataFrameExtension(df : DataFrame) {
+	implicit final class DataFrameExtension(df : DataFrame) {
 
 		def print(name : String = "DataFrame") = {
 			println()

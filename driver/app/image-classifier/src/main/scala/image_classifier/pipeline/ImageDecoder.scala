@@ -6,7 +6,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{DataType, StructType, IntegerType, BinaryType, StructField}
 import com.fasterxml.jackson.module.scala.deser.overrides
 
-class ImageDecoder(override val uid: String) 
+final class ImageDecoder(override val uid: String) 
 	extends UnaryTransformer[Array[Byte], Row, ImageDecoder] 
 	with DefaultParamsWritable 
 	with HasImageWidthCol with HasImageHeightCol with HasImageTypeCol with HasImageDataCol {

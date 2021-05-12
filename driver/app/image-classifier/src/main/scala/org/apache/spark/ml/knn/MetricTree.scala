@@ -74,7 +74,7 @@ private[ml] abstract class Tree extends Serializable {
 }
 
 private[knn]
-case object Empty extends Tree {
+object Empty extends Tree {
   override val leftChild = this
   override val rightChild = this
   override val size = 0
