@@ -13,17 +13,18 @@ private[configuration] sealed trait HdfsLoadableConfig extends LoadableConfig
 
 sealed trait DataConfig {
 
-	def tempFile: String
+	def tempDir: String
 	private[configuration] def hasTrainingSet: Boolean
 	private[configuration] def hasTestSet: Boolean
 
-	require(isValidHdfsFilePath(tempFile), s"${nameOf(tempFile)} is not a valid hdfs file path")
+	// TODO Uncomment when Hadoop is working
+	//require(isValidHdfsFilePath(tempFile), s"${nameOf(tempFile)} is not a valid hdfs file path")
 
 }
 
 object DataConfig {
 
-	val defaultTempFile = "hdfs://._image_classifier_temp"
+	val defaultTempDir = "hdfs://._image_classifier_temp"
 
 }
 
@@ -32,7 +33,7 @@ final case class DataSetConfig(
 ) extends HdfsLoadableConfig
 
 final case class SplitDataConfig(
-	override val tempFile: String = DataConfig.defaultTempFile,
+	override val tempDir: String = DataConfig.defaultTempDir,
 	trainingSet: OL[DataSetConfig] = None,
 	testSet: OL[DataSetConfig] = None
 ) extends DataConfig {
@@ -46,7 +47,7 @@ final case class SplitDataConfig(
 }
 
 final case class JointDataConfig(
-	override val tempFile: String = DataConfig.defaultTempFile,
+	override val tempDir: String = DataConfig.defaultTempDir,
 	dataSet: L[DataSetConfig],
 	testFraction: Double = JointDataConfig.defaultTestFraction,
 	splitSeed: Int = JointDataConfig.defaultSplitSeed,
