@@ -14,7 +14,7 @@ final case class ImageFeaturizer (featureCount : Int = defaultFeatureCount, algo
 	lazy val detector : Feature2D = {
 		import org.bytedeco.javacpp.opencv_xfeatures2d.{SIFT, SURF}
 		algorithm match {
-			case ImageFeatureAlgorithm.SIFT => SIFT.create(featureCount, 3, 0.04, 10, 1.6)
+			case ImageFeatureAlgorithm.Sift => SIFT.create(featureCount, 3, 0.04, 10, 1.6)
 		}
 	}
 	
@@ -51,5 +51,5 @@ final case class ImageFeaturizer (featureCount : Int = defaultFeatureCount, algo
 
 object ImageFeaturizer {
 	val defaultFeatureCount : Int = 10
-	val defaultAlgorithm : ImageFeatureAlgorithm = ImageFeatureAlgorithm.SIFT
+	val defaultAlgorithm : ImageFeatureAlgorithm = ImageFeatureAlgorithm.Sift
 }

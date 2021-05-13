@@ -7,78 +7,46 @@ import image_classifier.configuration.TrainingAlgorithm.TrainingAlgorithm
 import image_classifier.configuration.Utils._
 import scala.reflect.runtime.universe._
 
-final case class Loader[Type <: LoadableConfig](
-	load: Option[String],
-	save: Option[String],
-	make: Option[Type]
-) {
+private[configuration] sealed trait LoadableConfig
 
-	require(save.isEmpty || make.isDefined, s"${nameOf(save)} requires ${nameOf(make)}")
-	require(load.isDefined || make.isDefined, s"Either ${nameOf(load)} or ${nameOf(make)} must be defined")
-
-	private def requireValidPaths(validator: String => Boolean, errorFormat: String): Unit = {
-		require(save.forall(validator), errorFormat.format(nameOf(save)))
-		require(load.forall(validator), errorFormat.format(nameOf(load)))
-	}
-
-	private[configuration] def requireValidPaths(implicit tag: TypeTag[Type]) = {
-		if (classOf[HdfsLoadableConfig].isAssignableFrom(tag.mirror.runtimeClass(tag.tpe)))
-			requireValidHdfsPaths()
-		else
-			requireValidFsPaths()
-	}
-
-	private def requireValidFsPaths(): Unit = requireValidPaths(isValidFilePath, "%s is not a valid file path")
-	private def requireValidHdfsPaths(): Unit = requireValidPaths(isValidHdfsFilePath, "%s is not a valid hdfs file path")
-
-}
-
-object Loader {
-
-	def loadOrMakeAndSave[Type <: LoadableConfig](file: String, config: Type): Loader[Type] =
-		Loader(Some(file), Some(file), Some(config))
-
-	def makeAndSave[Type <: LoadableConfig](file: String, config: Type): Loader[Type] =
-		Loader(None, Some(file), Some(config))
-
-	def load[Type <: LoadableConfig](file: String): Loader[Type] =
-		Loader(Some(file), None, None)
-
-	def loadOrMake[Type <: LoadableConfig](file: String, config: Type): Loader[Type] =
-		Loader(Some(file), None, Some(config))
-
-	def make[Type <: LoadableConfig](config: Type): Loader[Type] =
-		Loader(None, None, Some(config))
-
-}
-
-sealed trait LoadableConfig
-
-sealed trait HdfsLoadableConfig extends LoadableConfig
+private[configuration] sealed trait HdfsLoadableConfig extends LoadableConfig
 
 sealed trait DataConfig {
 
-	def tempFile: P[String]
-	def classFiles: Seq[Seq[String]]
-
-	require(tempFile.forall(isValidHdfsFilePath), s"${nameOf(tempFile)} is not a valid hdfs file path")
+	private[configuration] def hasTrainingSet: Boolean
+	private[configuration] def hasTestSet: Boolean
 
 }
 
-final case class SplitDataSetConfig(
-	override val tempFile: P[String] = None,
-	override val classFiles: Seq[Seq[String]]
-) extends HdfsLoadableConfig with DataConfig
+final case class DataSetConfig(
+	classFiles: Seq[Seq[String]]
+) extends HdfsLoadableConfig
+
+final case class SplitDataConfig(
+	trainingSet: OL[DataSetConfig] = None,
+	testSet: OL[DataSetConfig] = None
+) extends DataConfig {
+
+	trainingSet.foreach(_.requireValidPaths)
+	testSet.foreach(_.requireValidPaths)
+
+	private[configuration] override def hasTrainingSet = trainingSet.isDefined
+	private[configuration] override def hasTestSet = testSet.isDefined
+
+}
 
 final case class JointDataConfig(
-	override val tempFile: P[String] = None,
-	override val classFiles: Seq[Seq[String]],
+	dataSet: L[DataSetConfig],
 	testFraction: Double = JointDataConfig.defaultTestFraction,
 	splitSeed: Int = JointDataConfig.defaultSplitSeed,
 	stratified: Boolean = JointDataConfig.defaultStratified
-) extends HdfsLoadableConfig with DataConfig {
+) extends DataConfig {
 
 	require(testFraction >= 0 && testFraction <= 1, s"${nameOf(testFraction)} must fall in range [0, 1]")
+	dataSet.requireValidPaths
+
+	private[configuration] override def hasTrainingSet = testFraction < 1
+	private[configuration] override def hasTestSet = testFraction > 0
 
 }
 
@@ -104,7 +72,7 @@ final case class FeaturizationConfig(
 object FeaturizationConfig {
 
 	val defaultCodebookSize = 500
-	val defaultAlgorithm = ImageFeatureAlgorithm.SIFT
+	val defaultAlgorithm = ImageFeatureAlgorithm.Sift
 	val defaultFeatureCount = 10
 
 }
@@ -115,13 +83,13 @@ final case class TrainingConfig(
 
 object TrainingConfig {
 
-	val defaultAlgorithm = TrainingAlgorithm.NN
+	val defaultAlgorithm = TrainingAlgorithm.NearestNeighbor
 
 }
 
 final case class TestingConfig(
-	writeSummary: P[String] = None,
-	classNames: P[Seq[String]] = None
+	writeSummary: O[String] = None,
+	classNames: O[Seq[String]] = None
 ) {
 
 	require(writeSummary.forall(isValidFilePath), s"${nameOf(writeSummary)} is not a valid file path")
@@ -131,24 +99,18 @@ final case class TestingConfig(
 final case class Config(
 	logLevel: LogLevel = Config.defaultLogLevel,
 	sparkLogLevel: LogLevel = Config.defaultSparkLogLevel,
-	jointData: PL[JointDataConfig] = None,
-	testData: PL[SplitDataSetConfig] = None,
-	trainingData: PL[SplitDataSetConfig] = None,
-	featurization: PL[FeaturizationConfig] = None,
-	training: PL[TrainingConfig] = None,
-	testing: P[TestingConfig] = None
+	tempFile: String = Config.defaultTempFile,
+	data: DataConfig,
+	featurization: OL[FeaturizationConfig] = None,
+	training: OL[TrainingConfig] = None,
+	testing: O[TestingConfig] = None
 ) {
 
-	private def hasTrainingSet = trainingData.isDefined || jointData.forall(_.make.forall(_.testFraction < 1))
-	private def hasTestSet = testData.isDefined || jointData.forall(_.make.forall(_.testFraction > 0))
-
-	require(featurization.forall(_.make.isEmpty) || hasTrainingSet, s"${nameOf(featurization)} requires a training set")
-	require(training.forall(_.make.isEmpty) || featurization.isDefined, s"${nameOf(training)} requires ${nameOf(featurization)}")
-	require(testing.isEmpty || hasTestSet, s"${nameOf(testing)} requires a test set")
+	require(isValidHdfsFilePath(tempFile), s"${nameOf(tempFile)} is not a valid hdfs file path")
+	require(featurization.forall(_.config.isEmpty) || data.hasTrainingSet, s"${nameOf(featurization)} requires a training set")
+	require(training.forall(_.config.isEmpty) || featurization.isDefined, s"${nameOf(training)} requires ${nameOf(featurization)}")
+	require(testing.isEmpty || data.hasTestSet, s"${nameOf(testing)} requires a test set")
 	require(testing.isEmpty || training.isDefined, s"${nameOf(testing)} requires ${nameOf(featurization)}")
-	jointData.foreach(_.requireValidPaths)
-	testData.foreach(_.requireValidPaths)
-	trainingData.foreach(_.requireValidPaths)
 	featurization.foreach(_.requireValidPaths)
 	training.foreach(_.requireValidPaths)
 
@@ -159,8 +121,9 @@ final case class Config(
 
 object Config {
 
-	val defaultLogLevel = LogLevel.INFO
-	val defaultSparkLogLevel = LogLevel.ERROR
+	val defaultLogLevel = LogLevel.Info
+	val defaultSparkLogLevel = LogLevel.Error
+	val defaultTempFile = "hdfs://._image_classifier_temp"
 
 	def fromFile(file: String) = configFromFile(file)
 	def fromJson(json: String) = configFromJson(json)

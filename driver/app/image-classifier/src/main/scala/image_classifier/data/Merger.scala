@@ -2,7 +2,7 @@ package image_classifier.data
 
 import org.apache.spark.sql.{SparkSession, DataFrame}
 
-object Merger {
+private[data] object Merger {
 
 	private def readFile(file: String): Array[Byte] = {
 		import java.nio.file.{Files, Paths}
@@ -40,9 +40,9 @@ object Merger {
 		}
 	}
 
-	def load(spark: SparkSession, file: String, keyColumn: String, valueColumn: String): DataFrame = {
+	def load(file: String, classCol: String, imageCol: String)(implicit spark: SparkSession): DataFrame = {
 		import spark.implicits._
-		spark.sparkContext.sequenceFile[Int, Array[Byte]](file).toDF(keyColumn, valueColumn)
+		spark.sparkContext.sequenceFile[Int, Array[Byte]](file).toDF(classCol, imageCol)
 	}
 
 }
