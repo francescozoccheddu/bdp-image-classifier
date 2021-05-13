@@ -1,12 +1,14 @@
 package image_classifier.data
 
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import image_classifier.data.DataLoader.{Data, defaultClassCol, defaultImageCol}
+import image_classifier.data.DataLoader.{defaultClassCol, defaultImageCol}
 
-final case class DataLoader(classCol: String, imageCol: String)(implicit spark: SparkSession) {
+final class DataLoader(workingDir: String, classCol: String, imageCol: String)(implicit spark: SparkSession) {
 
 	import image_classifier.configuration.{DataConfig, DataSetConfig, JointDataConfig, Loader, SplitDataConfig}
-	def this()(implicit spark: SparkSession) = this(defaultClassCol, defaultImageCol)(spark)
+
+	import java.nio.file.Paths
+	def this(workingDir: String)(implicit spark: SparkSession) = this(workingDir, defaultClassCol, defaultImageCol)(spark)
 
 	private def apply(config: DataConfig): Data = config match {
 		case config: JointDataConfig => apply(config)
@@ -14,7 +16,7 @@ final case class DataLoader(classCol: String, imageCol: String)(implicit spark: 
 	}
 
 	private def apply(config: JointDataConfig): Data = {
-		val data = apply(config.dataSet, config.tempFile)
+		val data = apply(config.dataSet, config.tempDir)
 		if (config.stratified) {
 			val Array(training, test) = data.randomSplit(Array(1 - config.testFraction, config.testFraction), config.splitSeed)
 			Data(training, test)
@@ -22,14 +24,11 @@ final case class DataLoader(classCol: String, imageCol: String)(implicit spark: 
 			???
 	}
 
-	private def apply(config: SplitDataConfig): Data = Data(apply(config.trainingSet, config.tempFile), apply(config.testSet, config.tempFile))
+	private def apply(config: SplitDataConfig): Data = Data(apply(config.trainingSet, config.tempDir), apply(config.testSet, config.tempDir))
 
-	private def apply(config: Option[Loader[DataSetConfig]], tempFile: String): DataFrame = config match {
-		case Some(config) => apply(config, tempFile)
-		case None => spark.emptyDataFrame
-	}
+	private def apply(config: Option[Loader[DataSetConfig]], tempDir: String): DataFrame = config.map(apply(_, tempDir)).orNull
 
-	private def apply(config: Loader[DataSetConfig], tempFile: String): DataFrame = {
+	private def apply(config: Loader[DataSetConfig], tempDir: String): DataFrame = {
 		import image_classifier.configuration.LoadMode._
 		val file = config.file.orNull
 		var data = config.mode match {
@@ -38,15 +37,13 @@ final case class DataLoader(classCol: String, imageCol: String)(implicit spark: 
 			case _ => None
 		}
 		if (data.isEmpty) {
-			val target = config.mode match {
-				case MakeAndSave | LoadOrMakeAndSave => Some(file)
-				case _ => None
+			import image_classifier.utils.FileUtils
+			val targetFile = config.mode match {
+				case MakeAndSave | LoadOrMakeAndSave => file
+				case _ => FileUtils.getTempHdfsFile(tempDir)
 			}
-			val targetFile = target.getOrElse(tempFile)
-			DataLoader.merge(config.config.get.classFiles, targetFile)
+			merge(config.config.get.classFiles, targetFile)
 			data = Some(load(targetFile))
-			if (target.isEmpty)
-				DataLoader.delete(targetFile)
 		}
 		data.get
 	}
@@ -59,6 +56,15 @@ final case class DataLoader(classCol: String, imageCol: String)(implicit spark: 
 			case _: Exception => None
 		}
 
+	private def merge(classFiles: Seq[Seq[String]], file: String): Unit = {
+		import image_classifier.utils.FileUtils
+		val explodedClassFiles = classFiles
+			.map(_.flatMap(FileUtils.listFiles(workingDir, _)))
+			.zipWithIndex
+			.flatMap(zip => zip._1.map((zip._2, _)))
+		Merger.mergeFiles(explodedClassFiles, file)
+	}
+
 }
 
 object DataLoader {
@@ -68,23 +74,10 @@ object DataLoader {
 	val defaultClassCol = "class"
 	val defaultImageCol = "image"
 
-	case class Data(training: DataFrame, test: DataFrame)
+	def apply(workingDir: String, config: DataConfig)(implicit spark: SparkSession): Data =
+		apply(workingDir, config, defaultClassCol, defaultImageCol)(spark)
 
-	private def merge(classFiles: Seq[Seq[String]], file: String): Unit = {
-		val tuples = classFiles.zipWithIndex.flatMap { case (f, c) => f.map((c, _)) }
-		Merger.mergeFiles(tuples, file)
-	}
-
-	private def delete(file: String) = {
-		import org.apache.hadoop.fs.{FileSystem, Path}
-		import org.apache.hadoop.conf.Configuration
-		FileSystem.get(new Configuration).delete(new Path(file), false)
-	}
-
-	def apply(config: DataConfig)(implicit spark: SparkSession): Data =
-		apply(config, defaultClassCol, defaultImageCol)(spark)
-
-	def apply(config: DataConfig, classCol: String, imageCol: String)(implicit spark: SparkSession): Data =
-		new DataLoader(classCol, imageCol)(spark)(config)
+	def apply(workingDir: String, config: DataConfig, classCol: String, imageCol: String)(implicit spark: SparkSession): Data =
+		new DataLoader(workingDir, classCol, imageCol)(spark)(config)
 
 }
