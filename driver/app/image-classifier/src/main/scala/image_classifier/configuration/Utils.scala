@@ -51,9 +51,9 @@ private[configuration] object Utils {
 		}
 	}
 
-	type P[Type] = Option[Type]
+	type O[Type] = Option[Type]
 	type L[Type <: LoadableConfig] = Loader[Type]
-	type PL[Type <: LoadableConfig] = P[L[Type]]
+	type OL[Type <: LoadableConfig] = O[L[Type]]
 
 }
 
