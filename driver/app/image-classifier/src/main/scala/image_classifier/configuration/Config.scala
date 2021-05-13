@@ -82,10 +82,11 @@ final case class FeaturizationConfig(
 }
 
 object FeaturizationConfig {
+	import image_classifier.utils.ImageFeaturizer
 
 	val defaultCodebookSize = 500
-	val defaultAlgorithm = ImageFeatureAlgorithm.Sift
-	val defaultFeatureCount = 10
+	val defaultAlgorithm = ImageFeaturizer.defaultAlgorithm
+	val defaultFeatureCount = ImageFeaturizer.defaultFeatureCount
 
 }
 
