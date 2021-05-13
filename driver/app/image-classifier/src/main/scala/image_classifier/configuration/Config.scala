@@ -13,8 +13,17 @@ private[configuration] sealed trait HdfsLoadableConfig extends LoadableConfig
 
 sealed trait DataConfig {
 
+	def tempFile: String
 	private[configuration] def hasTrainingSet: Boolean
 	private[configuration] def hasTestSet: Boolean
+
+	require(isValidHdfsFilePath(tempFile), s"${nameOf(tempFile)} is not a valid hdfs file path")
+
+}
+
+object DataConfig {
+
+	val defaultTempFile = "hdfs://._image_classifier_temp"
 
 }
 
@@ -23,6 +32,7 @@ final case class DataSetConfig(
 ) extends HdfsLoadableConfig
 
 final case class SplitDataConfig(
+	override val tempFile: String = DataConfig.defaultTempFile,
 	trainingSet: OL[DataSetConfig] = None,
 	testSet: OL[DataSetConfig] = None
 ) extends DataConfig {
@@ -36,6 +46,7 @@ final case class SplitDataConfig(
 }
 
 final case class JointDataConfig(
+	override val tempFile: String = DataConfig.defaultTempFile,
 	dataSet: L[DataSetConfig],
 	testFraction: Double = JointDataConfig.defaultTestFraction,
 	splitSeed: Int = JointDataConfig.defaultSplitSeed,
@@ -99,14 +110,12 @@ final case class TestingConfig(
 final case class Config(
 	logLevel: LogLevel = Config.defaultLogLevel,
 	sparkLogLevel: LogLevel = Config.defaultSparkLogLevel,
-	tempFile: String = Config.defaultTempFile,
 	data: DataConfig,
 	featurization: OL[FeaturizationConfig] = None,
 	training: OL[TrainingConfig] = None,
 	testing: O[TestingConfig] = None
 ) {
 
-	require(isValidHdfsFilePath(tempFile), s"${nameOf(tempFile)} is not a valid hdfs file path")
 	require(featurization.forall(_.config.isEmpty) || data.hasTrainingSet, s"${nameOf(featurization)} requires a training set")
 	require(training.forall(_.config.isEmpty) || featurization.isDefined, s"${nameOf(training)} requires ${nameOf(featurization)}")
 	require(testing.isEmpty || data.hasTestSet, s"${nameOf(testing)} requires a test set")
@@ -123,7 +132,6 @@ object Config {
 
 	val defaultLogLevel = LogLevel.Info
 	val defaultSparkLogLevel = LogLevel.Error
-	val defaultTempFile = "hdfs://._image_classifier_temp"
 
 	def fromFile(file: String) = configFromFile(file)
 	def fromJson(json: String) = configFromJson(json)

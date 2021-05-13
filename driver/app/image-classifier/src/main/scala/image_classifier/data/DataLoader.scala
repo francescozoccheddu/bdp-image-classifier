@@ -1,49 +1,49 @@
 package image_classifier.data
 
-import image_classifier.data.DataLoader.defaultTempFile
 import org.apache.spark.sql.{DataFrame, SparkSession}
-/*
+import image_classifier.data.DataLoader.{Data, defaultClassCol, defaultImageCol}
 
-final case class DataLoader(classCol: String, imageCol: String, tempFile: String = defaultTempFile)(implicit spark: SparkSession) {
+final case class DataLoader(classCol: String, imageCol: String)(implicit spark: SparkSession) {
 
-	import image_classifier.configuration.LoadMode.LoadMode
-	import image_classifier.data.DataLoader.{Data, defaultClassCol, defaultImageCol}
-	import image_classifier.configuration.{DataSetConfig, JointDataConfig, Loader, SplitDataConfig}
+	import image_classifier.configuration.{DataConfig, DataSetConfig, JointDataConfig, Loader, SplitDataConfig}
+	def this()(implicit spark: SparkSession) = this(defaultClassCol, defaultImageCol)(spark)
 
-	def this(tempFile: String = defaultTempFile) = this(defaultClassCol, defaultImageCol, tempFile)
-
-	def apply(config: Loader[DataSetConfig]) = apply(config, defaultClassCol, defaultImageCol)
-
-	def apply(config: Loader[DataSetConfig], classCol: String, imageCol: String): Data = {
-		import image_classifier.configuration.{JointDataConfig, SplitDataConfig}
-		val (training, test) = config match {
-			case Loader(_, _, data: Option[JointDataConfig]) => null
-			case Loader(_, _, data: Option[SplitDataConfig]) => null
-		}
+	private def apply(config: DataConfig): Data = config match {
+		case config: JointDataConfig => apply(config)
+		case config: SplitDataConfig => apply(config)
 	}
 
 	private def apply(config: JointDataConfig): Data = {
-		val data = resolve(config.dataSet)
-
+		val data = apply(config.dataSet, config.tempFile)
+		if (config.stratified) {
+			val Array(training, test) = data.randomSplit(Array(1 - config.testFraction, config.testFraction), config.splitSeed)
+			Data(training, test)
+		} else
+			???
 	}
 
-	private def resolve(config: Loader[DataSetConfig]): DataFrame =
-		resolve(config.mode, config.file.orNull, config.config.map(_.classFiles).orNull)
+	private def apply(config: SplitDataConfig): Data = Data(apply(config.trainingSet, config.tempFile), apply(config.testSet, config.tempFile))
 
-	private def resolve(mode: LoadMode, file: String, classFiles: Seq[Seq[String]]): DataFrame = {
+	private def apply(config: Option[Loader[DataSetConfig]], tempFile: String): DataFrame = config match {
+		case Some(config) => apply(config, tempFile)
+		case None => spark.emptyDataFrame
+	}
+
+	private def apply(config: Loader[DataSetConfig], tempFile: String): DataFrame = {
 		import image_classifier.configuration.LoadMode._
-		var data = mode match {
+		val file = config.file.orNull
+		var data = config.mode match {
 			case Load => Some(load(file))
 			case LoadOrMake | LoadOrMakeAndSave => tryLoad(file)
 			case _ => None
 		}
 		if (data.isEmpty) {
-			val target = mode match {
+			val target = config.mode match {
 				case MakeAndSave | LoadOrMakeAndSave => Some(file)
 				case _ => None
 			}
-			val targetFile = target.getOrElse(defaultTempFile)
-			DataLoader.merge(classFiles, targetFile)
+			val targetFile = target.getOrElse(tempFile)
+			DataLoader.merge(config.config.get.classFiles, targetFile)
 			data = Some(load(targetFile))
 			if (target.isEmpty)
 				DataLoader.delete(targetFile)
@@ -60,14 +60,13 @@ final case class DataLoader(classCol: String, imageCol: String, tempFile: String
 		}
 
 }
-*/
 
 object DataLoader {
-	import org.apache.spark.sql.{DataFrame, SparkSession}
+	import image_classifier.configuration.{Config, DataConfig}
+	import org.apache.spark.sql.DataFrame
 
 	val defaultClassCol = "class"
 	val defaultImageCol = "image"
-	val defaultTempFile = "hdfs://._image_classifier_temp"
 
 	case class Data(training: DataFrame, test: DataFrame)
 
@@ -81,5 +80,11 @@ object DataLoader {
 		import org.apache.hadoop.conf.Configuration
 		FileSystem.get(new Configuration).delete(new Path(file), false)
 	}
+
+	def apply(config: DataConfig)(implicit spark: SparkSession): Data =
+		apply(config, defaultClassCol, defaultImageCol)(spark)
+
+	def apply(config: DataConfig, classCol: String, imageCol: String)(implicit spark: SparkSession): Data =
+		new DataLoader(classCol, imageCol)(spark)(config)
 
 }
