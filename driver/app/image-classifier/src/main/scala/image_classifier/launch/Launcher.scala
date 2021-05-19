@@ -2,7 +2,10 @@ package image_classifier.launch
 
 object Launcher {
 	import image_classifier.configuration.Config
+	import org.apache.log4j.Logger
 	import org.apache.spark.sql.SparkSession
+
+	private val logger = Logger.getLogger(Launcher.getClass)
 
 	def run(configFile: String): Unit = {
 		import java.nio.file.Paths

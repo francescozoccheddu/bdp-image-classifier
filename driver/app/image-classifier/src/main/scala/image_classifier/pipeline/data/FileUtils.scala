@@ -2,12 +2,14 @@ package image_classifier.pipeline.data
 
 private[data] object FileUtils {
 	import org.apache.hadoop.fs.Path
+	import org.apache.log4j.Logger
 
 	import java.time.format.DateTimeFormatter
 	import scala.collection.mutable
 
 	private val tempFiles: mutable.MutableList[Path] = mutable.MutableList()
 	private val dateFormat = DateTimeFormatter.ofPattern("yy-MM-dd-HH-mm-ss-SSS")
+	private val logger = Logger.getLogger(FileUtils.getClass)
 
 	def listFiles(workingDir: String, glob: String): Seq[String] = {
 		import java.io.File
@@ -43,6 +45,7 @@ private[data] object FileUtils {
 				fs.mkdirs(dirPath)
 				val filePath = new Path(dirPath, makeTempFilePath)
 				tempFiles += filePath
+				logger.info(s"Created new temp file '$filePath'")
 				filePath.toString
 			} finally fs.close()
 		}
@@ -51,6 +54,7 @@ private[data] object FileUtils {
 	def clearTempFiles(): Unit = {
 		import org.apache.hadoop.conf.Configuration
 		import org.apache.hadoop.fs.FileSystem
+		logger.info("Clearing temp files")
 		try {
 			val fs = FileSystem.get(new Configuration)
 			import scala.util.Try
