@@ -5,7 +5,6 @@ import image_classifier.configuration.ImageFeatureAlgorithm.ImageFeatureAlgorith
 import image_classifier.configuration.LogLevel.LogLevel
 import image_classifier.configuration.TrainingAlgorithm.TrainingAlgorithm
 import image_classifier.configuration.Utils._
-import scala.reflect.runtime.universe._
 
 private[configuration] sealed trait LoadableConfig
 
@@ -82,11 +81,10 @@ final case class FeaturizationConfig(
 }
 
 object FeaturizationConfig {
-	import image_classifier.utils.ImageFeaturizer
 
 	val defaultCodebookSize = 500
-	val defaultAlgorithm = ImageFeaturizer.defaultAlgorithm
-	val defaultFeatureCount = ImageFeaturizer.defaultFeatureCount
+	val defaultAlgorithm = ImageFeatureAlgorithm.Sift
+	val defaultFeatureCount = 10
 
 }
 

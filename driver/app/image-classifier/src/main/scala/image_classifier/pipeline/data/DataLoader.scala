@@ -1,14 +1,18 @@
-package image_classifier.data
+package image_classifier.pipeline.data
 
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import image_classifier.data.DataLoader.{defaultClassCol, defaultImageCol}
+import image_classifier.pipeline.data.DataLoader.{defaultClassCol, defaultImageCol}
 
-final class DataLoader(workingDir: String, classCol: String, imageCol: String)(implicit spark: SparkSession) {
+private[pipeline] final class DataLoader(workingDir: String, classCol: String, imageCol: String)(implicit spark: SparkSession) {
 
 	import image_classifier.configuration.{DataConfig, DataSetConfig, JointDataConfig, Loader, SplitDataConfig}
+	import image_classifier.pipeline.data.DataLoader.sparkListener
 
 	import java.nio.file.Paths
 	def this(workingDir: String)(implicit spark: SparkSession) = this(workingDir, defaultClassCol, defaultImageCol)(spark)
+
+	spark.sparkContext.removeSparkListener(sparkListener)
+	spark.sparkContext.addSparkListener(sparkListener)
 
 	private def apply(config: DataConfig): Data = config match {
 		case config: JointDataConfig => apply(config)
@@ -21,7 +25,7 @@ final class DataLoader(workingDir: String, classCol: String, imageCol: String)(i
 			val Array(training, test) = data.randomSplit(Array(1 - config.testFraction, config.testFraction), config.splitSeed)
 			Data(training, test)
 		} else
-			???
+			??? // TODO Implement
 	}
 
 	private def apply(config: SplitDataConfig): Data = Data(apply(config.trainingSet, config.tempDir), apply(config.testSet, config.tempDir))
@@ -37,7 +41,6 @@ final class DataLoader(workingDir: String, classCol: String, imageCol: String)(i
 			case _ => None
 		}
 		if (data.isEmpty) {
-			import image_classifier.utils.FileUtils
 			val targetFile = config.mode match {
 				case MakeAndSave | LoadOrMakeAndSave => file
 				case _ => FileUtils.getTempHdfsFile(tempDir)
@@ -57,7 +60,6 @@ final class DataLoader(workingDir: String, classCol: String, imageCol: String)(i
 		}
 
 	private def merge(classFiles: Seq[Seq[String]], file: String): Unit = {
-		import image_classifier.utils.FileUtils
 		val explodedClassFiles = classFiles
 			.map(_.flatMap(FileUtils.listFiles(workingDir, _)))
 			.zipWithIndex
@@ -67,8 +69,9 @@ final class DataLoader(workingDir: String, classCol: String, imageCol: String)(i
 
 }
 
-object DataLoader {
+private[pipeline] object DataLoader {
 	import image_classifier.configuration.{Config, DataConfig}
+	import org.apache.spark.scheduler.SparkListener
 	import org.apache.spark.sql.DataFrame
 
 	val defaultClassCol = "class"
@@ -79,5 +82,13 @@ object DataLoader {
 
 	def apply(workingDir: String, config: DataConfig, classCol: String, imageCol: String)(implicit spark: SparkSession): Data =
 		new DataLoader(workingDir, classCol, imageCol)(spark)(config)
+
+	private val sparkListener = new SparkListener {
+		import org.apache.spark.scheduler.SparkListenerApplicationEnd
+
+		override def onApplicationEnd(applicationEnd: SparkListenerApplicationEnd): Unit =
+			FileUtils.clearTempFiles()
+
+	}
 
 }

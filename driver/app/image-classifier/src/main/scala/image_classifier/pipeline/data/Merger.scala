@@ -1,4 +1,4 @@
-package image_classifier.data
+package image_classifier.pipeline.data
 
 import org.apache.spark.sql.{SparkSession, DataFrame}
 

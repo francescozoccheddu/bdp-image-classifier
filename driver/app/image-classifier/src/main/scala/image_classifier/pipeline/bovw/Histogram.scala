@@ -1,43 +1,42 @@
-package image_classifier.utils
+package image_classifier.pipeline.bovw
 
 import org.apache.spark.ml.linalg.{Vector => MLVector}
 
-object HistogramUtils {
+private[pipeline] object Histogram {
 
-	def computeSparse(data : Seq[Long], codebookSize : Int) : MLVector = {
+	def computeSparse(data: Seq[Long], codebookSize: Int): MLVector = {
 		import org.apache.spark.ml.linalg.Vectors
 		val map = scala.collection.mutable.Map[Int, Double]().withDefaultValue(0)
-		for (n <- data) 
+		for (n <- data)
 			map(n.toInt) += 1
 		val entries = map
 			.toSeq
 			.sortBy(_._1)
-			.map { case (i,v)  => (i,v / data.length.toDouble) }
+			.map { case (i, v) => (i, v / data.length.toDouble) }
 		Vectors.sparse(codebookSize, entries)
 	}
 
-	def computeDense(data : TraversableOnce[Long], codebookSize : Int) : MLVector = {
+	def computeDense(data: TraversableOnce[Long], codebookSize: Int): MLVector = {
 		import org.apache.spark.ml.linalg.Vectors
 		val bins = Array.ofDim[Double](codebookSize)
-		var sum : Long = 0
+		var sum: Long = 0
 		for (n <- data) {
 			sum += 1
 			bins(n.toInt) += 1
 		}
-		val dsum = sum.toDouble
 		for (i <- 0 until codebookSize) {
-			bins(i) /= dsum
+			bins(i) /= sum.toDouble
 		}
 		Vectors.dense(bins)
 	}
 
-	def compute(data : Seq[Long], codebookSize : Int) : MLVector = {
+	def compute(data: Seq[Long], codebookSize: Int): MLVector = {
 		val sparseFraction = 0.1
 		val minSparseSize = 100
 		if (data.length > minSparseSize && data.length < codebookSize.toDouble * sparseFraction)
-		computeSparse(data, codebookSize)
+			computeSparse(data, codebookSize)
 		else
-		computeDense(data, codebookSize)
+			computeDense(data, codebookSize)
 	}
 
 }

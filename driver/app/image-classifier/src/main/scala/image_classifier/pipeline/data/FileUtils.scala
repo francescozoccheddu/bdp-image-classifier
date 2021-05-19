@@ -1,7 +1,8 @@
-package image_classifier.utils
+package image_classifier.pipeline.data
 
-object FileUtils {
+private[data] object FileUtils {
 	import org.apache.hadoop.fs.Path
+
 	import java.time.format.DateTimeFormatter
 	import scala.collection.mutable
 
@@ -9,13 +10,14 @@ object FileUtils {
 	private val dateFormat = DateTimeFormatter.ofPattern("yy-MM-dd-HH-mm-ss-SSS")
 
 	def listFiles(workingDir: String, glob: String): Seq[String] = {
+		import java.io.File
 		import java.net.URI
 		val (globHead, globTail) = {
-			val index = glob.lastIndexWhere(c => c == '\\' || c == '/')
+			val index = glob.lastIndexWhere(c => c == '\\' || c == '/' || c == File.separatorChar)
 			if (index > 0) (glob.substring(0, index + 1), glob.substring(index + 1))
 			else (".", glob)
 		}
-		val head = if (URI.create(globHead).isAbsolute) globHead else workingDir + '/' + globHead
+		val head = if (URI.create(globHead).isAbsolute) globHead else workingDir + File.separator + globHead
 		import java.nio.file.{Files, Paths}
 		try {
 			import scala.jdk.CollectionConverters.iterableAsScalaIterableConverter
@@ -28,18 +30,18 @@ object FileUtils {
 	private def makeTempFilePath = {
 		import java.time.LocalDateTime
 		import java.util.UUID.randomUUID
-		new Path(s"/tmp_${LocalDateTime.now.format(dateFormat)}_${randomUUID}")
+		new Path(s"tmp_${LocalDateTime.now.format(dateFormat)}_${randomUUID}")
 	}
 
 	def getTempHdfsFile(dir: String): String = {
-		import org.apache.hadoop.fs.{FileSystem, Path}
 		import org.apache.hadoop.conf.Configuration
+		import org.apache.hadoop.fs.{FileSystem, Path}
 		try {
 			val fs = FileSystem.get(new Configuration)
 			try {
 				val dirPath = new Path(dir)
 				fs.mkdirs(dirPath)
-				val filePath = Path.mergePaths(dirPath, makeTempFilePath)
+				val filePath = new Path(dirPath, makeTempFilePath)
 				tempFiles += filePath
 				filePath.toString
 			} finally fs.close()
@@ -47,8 +49,8 @@ object FileUtils {
 	}
 
 	def clearTempFiles(): Unit = {
-		import org.apache.hadoop.fs.{FileSystem, Path}
 		import org.apache.hadoop.conf.Configuration
+		import org.apache.hadoop.fs.FileSystem
 		try {
 			val fs = FileSystem.get(new Configuration)
 			import scala.util.Try

@@ -1,10 +1,8 @@
-package image_classifier.utils
+package image_classifier.pipeline.bovw
 
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession, Row}
-import org.apache.spark.sql.types.{DataType, StructType, StructField}
-import org.apache.spark.ml.linalg.{Vector => MLVector}
+import org.apache.spark.sql.DataFrame
 
-final object BOFsUtils {
+private[pipeline] object BOWV {
 
 	val defaultOutputDataColName = "data"
 	val defaultOutputIdColName = "id"
@@ -18,13 +16,13 @@ final object BOFsUtils {
 
 	def createCodebook(data: DataFrame, size: Int, inputDataCol: String, outputDataCol: String, outputIdCol: String, assignNearest: Boolean = true): DataFrame = {
 		{
-			import image_classifier.utils.StructTypeImplicits._
-			import image_classifier.pipeline.ImageFeaturizer.{outputDataType => featureColType}
-			data.schema.requireField(inputDataCol, featureColType)
+			import image_classifier.utils.DataTypeImplicits._
+			import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+			data.schema.requireField(inputDataCol, VectorType)
 		}
-		import org.apache.spark.ml.clustering.KMeans
-		import org.apache.spark.sql.functions.{explode, col}
 		import data.sparkSession.implicits._
+		import org.apache.spark.ml.clustering.KMeans
+		import org.apache.spark.sql.functions.col
 		val model = new KMeans().setK(size).setMaxIter(200).setFeaturesCol(inputDataCol).fit(data)
 		val centers = model.clusterCenters.toSeq.zipWithIndex.toDF(outputDataCol, outputIdCol)
 		if (assignNearest) {
@@ -46,15 +44,15 @@ final object BOFsUtils {
 			centers
 	}
 
-	def computeBOFs(data: DataFrame, codebook: DataFrame, codebookSize: Int, inputDataCol: String): DataFrame =
-		computeBOFs(data, codebook, codebookSize, inputDataCol, defaultOutputDataColName, defaultOutputIdColName, defaultOutputDataColName)
+	def compute(data: DataFrame, codebook: DataFrame, codebookSize: Int, inputDataCol: String): DataFrame =
+		compute(data, codebook, codebookSize, inputDataCol, defaultOutputDataColName, defaultOutputIdColName, defaultOutputDataColName)
 
-	def computeBOFs(data: DataFrame, codebook: DataFrame, codebookSize: Int, inputDataCol: String, codebookDataCol: String, codebookIdCol: String, outputDataCol: String): DataFrame = {
+	def compute(data: DataFrame, codebook: DataFrame, codebookSize: Int, inputDataCol: String, codebookDataCol: String, codebookIdCol: String, outputDataCol: String): DataFrame = {
 		import org.apache.spark.sql.types.IntegerType
 		{
-			import image_classifier.utils.StructTypeImplicits._
-			import org.apache.spark.sql.types.ArrayType
+			import image_classifier.utils.DataTypeImplicits._
 			import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+			import org.apache.spark.sql.types.ArrayType
 			val dataSchema = data.schema
 			dataSchema.requireField(inputDataCol, ArrayType(VectorType))
 			dataSchema.requireNoField(temporaryColName)
@@ -70,15 +68,14 @@ final object BOFsUtils {
 			data.withColumn(temporaryColName, monotonically_increasing_id.cast(IntegerType)).cache
 		}
 		val indexedOut = {
-			import org.apache.spark.sql.functions.{explode, col, collect_list, udf}
-			import image_classifier.utils.HistogramUtils
+			import org.apache.spark.sql.functions.{col, collect_list, explode, udf}
 			val explodedData = indexedIn.select(
 				col(temporaryColName),
 				explode(col(inputDataCol)).alias(codebookDataCol))
 			val projCodebook = codebook.select(
 				col(codebookIdCol).alias(temporaryColName),
 				col(codebookDataCol))
-			val vectorizeUdf = udf((matches: Array[Long]) => HistogramUtils.compute(matches, codebookSize))
+			val vectorizeUdf = udf((matches: Array[Long]) => Histogram.compute(matches, codebookSize))
 			NearestNeighbor.join(projCodebook, explodedData, Seq(temporaryColName), codebookDataCol, codebookIdCol)
 				.select(col(temporaryColName), col(codebookIdCol).getField(temporaryColName).alias(codebookIdCol))
 				.groupBy(col(temporaryColName))
