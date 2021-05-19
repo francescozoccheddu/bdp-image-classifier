@@ -3,6 +3,9 @@ package image_classifier.pipeline.data
 import org.apache.spark.sql.{SparkSession, DataFrame}
 
 private[data] object Merger {
+	import org.apache.log4j.Logger
+
+	private val logger = Logger.getLogger(Merger.getClass)
 
 	private def readFile(file: String): Array[Byte] = {
 		import java.nio.file.{Files, Paths}
@@ -16,7 +19,7 @@ private[data] object Merger {
 		import org.apache.hadoop.io.{SequenceFile, BytesWritable, IntWritable, IOUtils}
 		import org.apache.hadoop.fs.Path
 		import org.apache.hadoop.conf.Configuration
-
+		logger.info(s"Merging ${bytes.length} files into '$outputFile'")
 		var writer: SequenceFile.Writer = null
 		try {
 			val config = new Configuration
@@ -40,9 +43,10 @@ private[data] object Merger {
 		}
 	}
 
-	def load(file: String, classCol: String, imageCol: String)(implicit spark: SparkSession): DataFrame = {
+	def load(file: String, labelCol: String, imageCol: String)(implicit spark: SparkSession): DataFrame = {
 		import spark.implicits._
-		spark.sparkContext.sequenceFile[Int, Array[Byte]](file).toDF(classCol, imageCol)
+		logger.info(s"Loading merged files from '$file'")
+		spark.sparkContext.sequenceFile[Int, Array[Byte]](file).toDF(labelCol, imageCol)
 	}
 
 }

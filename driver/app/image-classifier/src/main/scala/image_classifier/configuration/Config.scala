@@ -2,7 +2,6 @@ package image_classifier.configuration
 
 import com.github.dwickern.macros.NameOf._
 import image_classifier.configuration.ImageFeatureAlgorithm.ImageFeatureAlgorithm
-import image_classifier.configuration.LogLevel.LogLevel
 import image_classifier.configuration.TrainingAlgorithm.TrainingAlgorithm
 import image_classifier.configuration.Utils._
 
@@ -108,9 +107,7 @@ final case class TestingConfig(
 }
 
 final case class Config(
-	logLevel: LogLevel = Config.defaultLogLevel,
-	sparkLogLevel: LogLevel = Config.defaultSparkLogLevel,
-	data: DataConfig,
+	data: O[DataConfig],
 	featurization: OL[FeaturizationConfig] = None,
 	training: OL[TrainingConfig] = None,
 	testing: O[TestingConfig] = None
@@ -129,12 +126,19 @@ final case class Config(
 }
 
 object Config {
+	import org.apache.log4j.Logger
 
-	val defaultLogLevel = LogLevel.Info
-	val defaultSparkLogLevel = LogLevel.Error
+	private val logger = Logger.getLogger(Config.getClass)
 
-	def fromFile(file: String) = configFromFile(file)
-	def fromJson(json: String) = configFromJson(json)
+	def fromFile(file: String) = {
+		logger.info("Loading config file '$file'")
+		configFromFile(file)
+	}
+
+	def fromJson(json: String) = {
+		logger.info("Writing config file '$file'")
+		configFromJson(json)
+	}
 
 }
 

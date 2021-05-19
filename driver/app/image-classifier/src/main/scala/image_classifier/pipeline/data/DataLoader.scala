@@ -1,15 +1,16 @@
 package image_classifier.pipeline.data
 
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import image_classifier.pipeline.data.DataLoader.{defaultClassCol, defaultImageCol}
+import image_classifier.pipeline.data.DataLoader.{defaultLabelCol, defaultImageCol}
+import image_classifier.pipeline.data.DataLoader.logger
 
-private[pipeline] final class DataLoader(workingDir: String, classCol: String, imageCol: String)(implicit spark: SparkSession) {
+private[pipeline] final class DataLoader(workingDir: String, labelCol: String, imageCol: String)(implicit spark: SparkSession) {
 
 	import image_classifier.configuration.{DataConfig, DataSetConfig, JointDataConfig, Loader, SplitDataConfig}
 	import image_classifier.pipeline.data.DataLoader.sparkListener
 
 	import java.nio.file.Paths
-	def this(workingDir: String)(implicit spark: SparkSession) = this(workingDir, defaultClassCol, defaultImageCol)(spark)
+	def this(workingDir: String)(implicit spark: SparkSession) = this(workingDir, defaultLabelCol, defaultImageCol)(spark)
 
 	spark.sparkContext.removeSparkListener(sparkListener)
 	spark.sparkContext.addSparkListener(sparkListener)
@@ -24,8 +25,10 @@ private[pipeline] final class DataLoader(workingDir: String, classCol: String, i
 		if (config.stratified) {
 			val Array(training, test) = data.randomSplit(Array(1 - config.testFraction, config.testFraction), config.splitSeed)
 			Data(training, test)
-		} else
+		} else {
+			logger.error("Stratified sampling is not implemented yet")
 			??? // TODO Implement
+		}
 	}
 
 	private def apply(config: SplitDataConfig): Data = Data(apply(config.trainingSet, config.tempDir), apply(config.testSet, config.tempDir))
@@ -51,12 +54,15 @@ private[pipeline] final class DataLoader(workingDir: String, classCol: String, i
 		data.get
 	}
 
-	private def load(file: String): DataFrame = Merger.load(file, classCol, imageCol)
+	private def load(file: String): DataFrame = Merger.load(file, labelCol, imageCol)
 
 	private def tryLoad(file: String): Option[DataFrame] =
 		try Some(load(file))
 		catch {
-			case _: Exception => None
+			case _: Exception => {
+				logger.info(s"Failed to load '$file'")
+				None
+			}
 		}
 
 	private def merge(classFiles: Seq[Seq[String]], file: String): Unit = {
@@ -71,17 +77,20 @@ private[pipeline] final class DataLoader(workingDir: String, classCol: String, i
 
 private[pipeline] object DataLoader {
 	import image_classifier.configuration.{Config, DataConfig}
+	import org.apache.log4j.Logger
 	import org.apache.spark.scheduler.SparkListener
 	import org.apache.spark.sql.DataFrame
 
-	val defaultClassCol = "class"
+	val defaultLabelCol = "label"
 	val defaultImageCol = "image"
 
-	def apply(workingDir: String, config: DataConfig)(implicit spark: SparkSession): Data =
-		apply(workingDir, config, defaultClassCol, defaultImageCol)(spark)
+	private val logger = Logger.getLogger(DataLoader.getClass)
 
-	def apply(workingDir: String, config: DataConfig, classCol: String, imageCol: String)(implicit spark: SparkSession): Data =
-		new DataLoader(workingDir, classCol, imageCol)(spark)(config)
+	def apply(workingDir: String, config: DataConfig)(implicit spark: SparkSession): Data =
+		apply(workingDir, config, defaultLabelCol, defaultImageCol)(spark)
+
+	def apply(workingDir: String, config: DataConfig, labelCol: String, imageCol: String)(implicit spark: SparkSession): Data =
+		new DataLoader(workingDir, labelCol, imageCol)(spark)(config)
 
 	private val sparkListener = new SparkListener {
 		import org.apache.spark.scheduler.SparkListenerApplicationEnd

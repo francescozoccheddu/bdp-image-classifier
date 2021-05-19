@@ -7,16 +7,6 @@ object ImageFeatureAlgorithm extends Enumeration {
 
 }
 
-object LogLevel extends Enumeration {
-
-	type LogLevel = Value
-	val Info = Value("info")
-	val Warn = Value("warn")
-	val Error = Value("error")
-	val Off = Value("off")
-
-}
-
 object TrainingAlgorithm extends Enumeration {
 
 	type TrainingAlgorithm = Value
