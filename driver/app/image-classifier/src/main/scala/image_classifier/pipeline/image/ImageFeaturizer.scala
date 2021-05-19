@@ -1,28 +1,27 @@
-package image_classifier.utils
+package image_classifier.pipeline.image
 
-import org.bytedeco.javacpp.opencv_features2d.Feature2D
-import org.bytedeco.javacpp.opencv_core.Mat
-import org.apache.spark.ml.linalg.{Vector => MLVector}
-import image_classifier.utils.ImageFeaturizer.{defaultFeatureCount, defaultAlgorithm}
 import image_classifier.configuration.ImageFeatureAlgorithm
 import image_classifier.configuration.ImageFeatureAlgorithm._
+import org.apache.spark.ml.linalg.{Vector => MLVector}
+import org.bytedeco.javacpp.opencv_core.Mat
+import org.bytedeco.javacpp.opencv_features2d.Feature2D
 
-final case class ImageFeaturizer (featureCount : Int = defaultFeatureCount, algorithm : ImageFeatureAlgorithm = defaultAlgorithm) {
-	
+private[pipeline] final case class ImageFeaturizer(featureCount: Int, algorithm: ImageFeatureAlgorithm) {
+
 	require(featureCount > 0)
-	
-	lazy val detector : Feature2D = {
-		import org.bytedeco.javacpp.opencv_xfeatures2d.{SIFT, SURF}
+
+	lazy val detector: Feature2D = {
+		import org.bytedeco.javacpp.opencv_xfeatures2d.SIFT
 		algorithm match {
 			case ImageFeatureAlgorithm.Sift => SIFT.create(featureCount, 3, 0.04, 10, 1.6)
 		}
 	}
-	
-	def apply(image : Mat): Array[MLVector] = {
-		import java.nio.DoubleBuffer
-		import org.bytedeco.javacpp.opencv_core.{CvType, KeyPointVector, Mat, CV_64F, CV_64FC1}
-		import org.bytedeco.javacpp.opencv_imgcodecs.imread
+
+	def apply(image: Mat): Array[MLVector] = {
 		import org.apache.spark.ml.linalg.Vectors
+		import org.bytedeco.javacpp.opencv_core.{CV_64F, CV_64FC1, KeyPointVector, Mat}
+
+		import java.nio.DoubleBuffer
 		val size = detector.descriptorSize
 		val kpv = new KeyPointVector
 		val rawDesMat = new Mat
@@ -46,10 +45,6 @@ final case class ImageFeaturizer (featureCount : Int = defaultFeatureCount, algo
 		}
 		desArr
 	}
-	
+
 }
 
-object ImageFeaturizer {
-	val defaultFeatureCount : Int = 10
-	val defaultAlgorithm : ImageFeatureAlgorithm = ImageFeatureAlgorithm.Sift
-}

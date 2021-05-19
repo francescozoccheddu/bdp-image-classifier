@@ -1,8 +1,8 @@
-package image_classifier.utils
+package image_classifier.pipeline.image
 
 import org.bytedeco.javacpp.opencv_core.Mat
 
-final case class Image(width: Int, height: Int, mode: Int, data: Array[Byte]) {
+private[pipeline] final case class Image(width: Int, height: Int, mode: Int, data: Array[Byte]) {
 
 	require(width > 4)
 	require(height > 4)
@@ -11,10 +11,10 @@ final case class Image(width: Int, height: Int, mode: Int, data: Array[Byte]) {
 
 }
 
-object Image {
+private[pipeline] object Image {
 
 	def decode(data: Array[Byte]): Mat = {
-		import org.bytedeco.javacpp.opencv_imgcodecs.{imdecode, IMREAD_GRAYSCALE}
+		import org.bytedeco.javacpp.opencv_imgcodecs.{IMREAD_GRAYSCALE, imdecode}
 		imdecode(new Mat(data, false), IMREAD_GRAYSCALE)
 	}
 
@@ -34,8 +34,8 @@ object Image {
 		require(maxSize >= 4 && maxSize <= 8192)
 		val size = math.max(mat.rows, mat.cols)
 		if (size > maxSize) {
-			import org.bytedeco.javacpp.opencv_imgproc.{resize, INTER_AREA}
 			import org.bytedeco.javacpp.opencv_core.Size
+			import org.bytedeco.javacpp.opencv_imgproc.{INTER_AREA, resize}
 			val scale = maxSize.toDouble / size.toDouble
 			val dest = new Mat
 			resize(mat, dest, new Size(), scale, scale, INTER_AREA)
