@@ -71,7 +71,7 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], work
 }
 
 private[pipeline] object DataStage {
-	import image_classifier.pipeline.Columns.{colName, resColName}
+	import image_classifier.pipeline.utils.Columns.{colName, resColName}
 	import org.apache.spark.scheduler.SparkListener
 
 	val defaultLabelCol = colName("label")

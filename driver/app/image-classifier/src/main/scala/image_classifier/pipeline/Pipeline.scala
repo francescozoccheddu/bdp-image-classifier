@@ -2,7 +2,7 @@ package image_classifier.pipeline
 
 object Pipeline {
 	import image_classifier.configuration.Config
-	import image_classifier.pipeline.Columns.colName
+	import image_classifier.pipeline.utils.Columns.colName
 	import org.apache.spark.sql.SparkSession
 	import org.apache.log4j.Logger
 
@@ -19,8 +19,7 @@ object Pipeline {
 		logger.info("Pipeline started")
 		val data = new DataStage(config.data, workingDir, labelCol, isTestCol, dataCol)
 		val featurization = new FeaturizationStage(config.featurization, data, dataCol)
-		val stages = Seq(data, featurization)
-		stages.reverse.takeWhile(!_.hasResult)
+		Seq(featurization, data).takeWhile(!_.hasResult)
 		logger.info("Pipeline ended")
 	}
 
