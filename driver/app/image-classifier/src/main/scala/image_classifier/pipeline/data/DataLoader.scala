@@ -15,10 +15,10 @@ private[pipeline] final class DataLoader(workingDir: String, labelCol: String, i
 		logger.info(s"Running $loader")
 		loader.mode match {
 			case LoadMode.Load => load(loader.file.get)
-			case LoadMode.LoadOrMake => tryLoad(loader.file.get).getOr(() => make(loader.config.get, None))
+			case LoadMode.LoadOrMake => loadIfExists(loader.file.get).getOr(() => make(loader.config.get, None))
 			case LoadMode.Make => make(loader.config.get, None)
 			case LoadMode.MakeAndSave => make(loader.config.get, loader.file)
-			case LoadMode.LoadOrMakeAndSave => tryLoad(loader.file.get).getOr(() => make(loader.config.get, loader.file))
+			case LoadMode.LoadOrMakeAndSave => loadIfExists(loader.file.get).getOr(() => make(loader.config.get, loader.file))
 		}
 	}
 
@@ -46,12 +46,12 @@ private[pipeline] final class DataLoader(workingDir: String, labelCol: String, i
 				(abs(col(keyCol)) - 1).alias(labelCol))
 	}
 
-	private def tryLoad(file: String): Option[DataFrame] =
-		try Some(load(file))
-		catch {
-			case _: Exception =>
-				logger.info(s"Failed to load '$file'")
-				None
+	private def loadIfExists(file: String): Option[DataFrame] =
+		if (FileUtils.exists(file))
+			Some(load(file))
+		else {
+			logger.info("File '$file' does not exist")
+			None
 		}
 
 	private def resolveFiles(classFiles: Seq[Seq[String]]) =
