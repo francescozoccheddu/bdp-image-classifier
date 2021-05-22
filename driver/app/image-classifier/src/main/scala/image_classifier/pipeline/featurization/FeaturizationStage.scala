@@ -6,7 +6,7 @@ import image_classifier.pipeline.featurization.FeaturizationStage.defaultOutputC
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.data.DataStage
 
-private[pipeline] final class FeaturizationStage(loader: Option[Loader[FeaturizationConfig]], dataStage: DataStage, outputCol: String = defaultOutputCol)(implicit spark: SparkSession) extends LoaderStage[DataFrame, FeaturizationConfig]("Featurization", loader) {
+private[pipeline] final class FeaturizationStage(loader: Option[Loader[FeaturizationConfig]], val dataStage: DataStage, val outputCol: String = defaultOutputCol)(implicit spark: SparkSession) extends LoaderStage[DataFrame, FeaturizationConfig]("Featurization", loader) {
 	import org.apache.spark.sql.types.DataType
 
 	private def validate(schema: DataType) = {
@@ -46,7 +46,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 }
 
 private[pipeline] object FeaturizationStage {
-	import image_classifier.pipeline.Columns.colName
+	import image_classifier.pipeline.utils.Columns.colName
 
 	val defaultOutputCol = colName("features")
 

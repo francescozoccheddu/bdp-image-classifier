@@ -44,7 +44,7 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
 	}
 
 	private def loadIfExists(file: String): Option[Result] = {
-		import image_classifier.utils.Files
+		import image_classifier.pipeline.utils.Files
 		if (Files.exists(file))
 			Some(load(file))
 		else {
