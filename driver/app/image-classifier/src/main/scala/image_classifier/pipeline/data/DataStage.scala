@@ -2,30 +2,19 @@ package image_classifier.pipeline.data
 
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import image_classifier.configuration.{DataConfig, Loader}
-import image_classifier.pipeline.data.DataStage.{defaultLabelCol, defaultIsTestCol, defaultImageCol}
+import image_classifier.pipeline.LoaderStage
+import image_classifier.pipeline.data.DataStage.{defaultImageCol, defaultIsTestCol, defaultLabelCol}
 
-private[pipeline] final class DataStage(workingDir: String, labelCol: String, isTestCol: String, imageCol: String)(implicit spark: SparkSession) {
-	import image_classifier.pipeline.data.DataStage.{encode, logger}
-	import image_classifier.utils.Files
+private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], workingDir: String, val labelCol: String, val isTestCol: String, val imageCol: String)(implicit spark: SparkSession) extends LoaderStage[DataFrame, DataConfig]("Data", loader) {
+	import image_classifier.pipeline.data.DataStage.encode
 
-	def this(workingDir: String)(implicit spark: SparkSession) = this(workingDir, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark)
+	def this(loader: Option[Loader[DataConfig]], workingDir: String)(implicit spark: SparkSession) = this(loader, workingDir, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark)
 
-	def apply(loader: Loader[DataConfig]): DataFrame = {
-		import image_classifier.utils.OptionImplicits._
-		import image_classifier.configuration.LoadMode
-		logger.info(s"Running $loader")
-		loader.mode match {
-			case LoadMode.Load => load(loader.file.get)
-			case LoadMode.LoadOrMake => loadIfExists(loader.file.get).getOr(() => make(loader.config.get, None))
-			case LoadMode.Make => make(loader.config.get, None)
-			case LoadMode.MakeAndSave => make(loader.config.get, loader.file)
-			case LoadMode.LoadOrMakeAndSave => loadIfExists(loader.file.get).getOr(() => make(loader.config.get, loader.file))
-		}
-	}
+	override protected def save(result: DataFrame, file: String): Unit = {}
 
-	private def make(config: DataConfig, save: Option[String]) = {
+	override protected def make(config: DataConfig) = {
+		val save = specs.get.file
 		val file = save.getOrElse(config.tempFile)
-		logger.info(s"Making config into '$file'")
 		val sources = Array.ofDim[Option[Seq[(Int, String)]]](3)
 		sources(0) = config.dataSet.map(encodeFiles(_, config.testFraction, config.splitSeed, config.stratified))
 		sources(1) = config.trainingSet.map(encodeFiles(_, false))
@@ -36,24 +25,15 @@ private[pipeline] final class DataStage(workingDir: String, labelCol: String, is
 		load(file)
 	}
 
-	private def load(file: String): DataFrame = {
+	protected override def load(file: String): DataFrame = {
 		import image_classifier.pipeline.data.DataStage.{keyCol, dataCol}
 		import org.apache.spark.sql.functions.{col, abs}
-		logger.info(s"Loading '$file'")
 		Merger.load(file, keyCol, dataCol)
 			.select(
 				col(dataCol).alias(imageCol),
 				(col(keyCol) < 0).alias(isTestCol),
 				(abs(col(keyCol)) - 1).alias(labelCol))
 	}
-
-	private def loadIfExists(file: String): Option[DataFrame] =
-		if (Files.exists(file))
-			Some(load(file))
-		else {
-			logger.info("File '$file' does not exist")
-			None
-		}
 
 	private def resolveFiles(classFiles: Seq[Seq[String]]) =
 		classFiles
@@ -92,7 +72,6 @@ private[pipeline] final class DataStage(workingDir: String, labelCol: String, is
 
 private[pipeline] object DataStage {
 	import image_classifier.pipeline.Columns.{colName, resColName}
-	import org.apache.log4j.Logger
 	import org.apache.spark.scheduler.SparkListener
 
 	val defaultLabelCol = colName("label")
@@ -101,8 +80,6 @@ private[pipeline] object DataStage {
 
 	private val keyCol = resColName("key")
 	private val dataCol = resColName("data")
-
-	private val logger = Logger.getLogger(DataStage.getClass)
 
 	private def encode(file: (Int, String), isTest: Boolean): (Int, String) = {
 		val (label, path) = file
@@ -120,12 +97,6 @@ private[pipeline] object DataStage {
 			.zipWithIndex
 			.map(p => encode(p._1, p._2 < count))
 	}
-
-	def apply(workingDir: String, loader: Loader[DataConfig])(implicit spark: SparkSession): DataFrame =
-		apply(workingDir, loader, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark)
-
-	def apply(workingDir: String, loader: Loader[DataConfig], labelCol: String, isTestCol: String, imageCol: String)(implicit spark: SparkSession): DataFrame =
-		new DataStage(workingDir, labelCol, isTestCol, imageCol)(spark)(loader)
 
 	private val sparkListener = new SparkListener {
 		import org.apache.spark.scheduler.SparkListenerApplicationEnd
