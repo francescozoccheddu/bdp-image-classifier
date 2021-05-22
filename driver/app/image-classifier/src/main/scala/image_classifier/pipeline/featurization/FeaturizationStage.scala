@@ -33,7 +33,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 		validate(dataStage.result.schema)
 		val describedData = describe(config, dataStage.result).cache
 		val codebook = createCodebook(config, describedData)
-		val bowv = BOWV.compute(describedData, codebook, config.codebookSize, outputCol)
+		val bowv = BOWV.compute(describedData, codebook, outputCol)
 		describedData.unpersist
 		bowv
 	}

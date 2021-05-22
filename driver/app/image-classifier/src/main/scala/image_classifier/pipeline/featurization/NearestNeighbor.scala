@@ -20,13 +20,10 @@ private[featurization] object NearestNeighbor {
 			.setFeaturesCol(dataColName)
 			.setAuxCols(cols.toArray)
 			.setTopTreeSize(topTreeSize)
-			.setK(1)
 			.fit(test)
-			.setNeighborsCol(neighborColName)
+			.setNeighborCol(neighborColName)
 
-		model
-			.transform(key)
-			.withColumn(neighborColName, explode(col(neighborColName)))
+		model.transform(key)
 
 	}
 

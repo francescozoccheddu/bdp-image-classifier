@@ -35,22 +35,27 @@ private[featurization] object BOWV {
 		import org.apache.spark.ml.clustering.KMeans
 		import org.apache.spark.sql.functions.col
 		val model = new KMeans().setK(size).setMaxIter(200).setFeaturesCol(inputCol).fit(data)
-		val centers = model.clusterCenters.toSeq.zipWithIndex.toDF(codebookDataCol, codebookIdCol)
-		if (assignNearest) {
+		val centers = model
+			.clusterCenters
+			.toSeq
+			.zipWithIndex
+			.toDF(codebookDataCol, codebookIdCol)
+		(if (assignNearest) {
 			val dataWithId = projectForCodebookJoin(data, inputCol)
 			NearestNeighbor.join(dataWithId, centers, Seq(codebookIdCol, codebookDataCol), codebookDataCol, neighborCol)
 				.select(col(codebookIdCol), col(neighborCol).getField(codebookDataCol).alias(codebookDataCol))
 		}
 		else
-			centers
+			centers)
+			.dropDuplicates(codebookDataCol)
 	}
 
-	def compute(data: DataFrame, codebook: DataFrame, codebookSize: Int, inputCol: String, outputCol: String = defaultOutputCol): DataFrame = {
+	def compute(data: DataFrame, codebook: DataFrame, inputCol: String, outputCol: String = defaultOutputCol): DataFrame = {
 		import org.apache.spark.sql.types.IntegerType
 		{
 			import image_classifier.utils.DataTypeImplicits._
 			import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
-			import org.apache.spark.sql.types.ArrayType
+			import org.apache.spark.sql.types.{ArrayType, LongType}
 			val dataSchema = data.schema
 			dataSchema.requireField(inputCol, ArrayType(VectorType))
 			val codebookSchema = codebook.schema
@@ -59,22 +64,26 @@ private[featurization] object BOWV {
 		}
 		val indexedIn = {
 			import org.apache.spark.sql.functions.monotonically_increasing_id
-			data.withColumn(idCol, monotonically_increasing_id.cast(IntegerType)).cache
+			data.withColumn(idCol, monotonically_increasing_id).cache
 		}
 		val indexedOut = {
 			import org.apache.spark.sql.functions.{col, collect_list, explode, udf}
+			import org.apache.spark.sql.types.LongType
 			val explodedData = indexedIn.select(
 				col(idCol),
 				explode(col(inputCol)).alias(codebookDataCol))
 			val projCodebook = codebook.select(
-				col(codebookIdCol).alias(idCol),
-				col(codebookDataCol))
+				col(codebookIdCol).alias(idCol).cast(LongType),
+				col(codebookDataCol)).cache
+			val codebookSize = projCodebook.count.toInt
 			val vectorizeUdf = udf((matches: Array[Long]) => Histogram.compute(matches, codebookSize))
-			NearestNeighbor.join(projCodebook, explodedData, Seq(idCol), codebookDataCol, neighborCol)
+			val result = NearestNeighbor.join(projCodebook, explodedData, Seq(idCol), codebookDataCol, neighborCol)
 				.select(col(idCol), col(neighborCol).getField(idCol).alias(outputCol))
 				.groupBy(col(idCol))
 				.agg(collect_list(outputCol).alias(outputCol))
 				.withColumn(outputCol, vectorizeUdf(col(outputCol)))
+			projCodebook.unpersist
+			result
 		}
 		val joint = indexedIn.drop(outputCol).join(indexedOut, idCol).drop(idCol)
 		indexedIn.unpersist
