@@ -91,15 +91,16 @@ private[pipeline] final class DataStage(workingDir: String, labelCol: String, is
 }
 
 private[pipeline] object DataStage {
+	import image_classifier.pipeline.Columns.{colName, resColName}
 	import org.apache.log4j.Logger
 	import org.apache.spark.scheduler.SparkListener
 
-	val defaultLabelCol = "label"
-	val defaultIsTestCol = "isTest"
-	val defaultImageCol = "image"
+	val defaultLabelCol = colName("label")
+	val defaultIsTestCol = colName("isTest")
+	val defaultImageCol = colName("image")
 
-	private val keyCol = "key"
-	private val dataCol = "data"
+	private val keyCol = resColName("key")
+	private val dataCol = resColName("data")
 
 	private val logger = Logger.getLogger(DataStage.getClass)
 
