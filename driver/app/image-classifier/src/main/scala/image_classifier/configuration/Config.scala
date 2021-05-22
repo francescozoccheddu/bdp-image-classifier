@@ -5,9 +5,9 @@ import image_classifier.configuration.ImageFeatureAlgorithm.ImageFeatureAlgorith
 import image_classifier.configuration.TrainingAlgorithm.TrainingAlgorithm
 import image_classifier.configuration.Utils._
 
-private[configuration] sealed trait LoadableConfig
+private[image_classifier] sealed trait LoadableConfig
 
-private[configuration] sealed trait HdfsLoadableConfig extends LoadableConfig
+private[image_classifier] sealed trait HdfsLoadableConfig extends LoadableConfig
 
 final case class DataConfig private[configuration](
 	tempFile: String = DataConfig.defaultTempFile,
