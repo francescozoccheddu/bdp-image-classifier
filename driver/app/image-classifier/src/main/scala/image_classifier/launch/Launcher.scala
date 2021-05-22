@@ -17,6 +17,8 @@ object Launcher {
 	def run(config: Config, workingDir: String): Unit = {
 		import image_classifier.pipeline.Pipeline
 		import image_classifier.utils.SparkInstance
+		import org.apache.log4j.Level
+		Logger.getLogger("org").setLevel(Level.ERROR)
 		SparkInstance.execute(Pipeline.run(config, workingDir)(_))
 	}
 

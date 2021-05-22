@@ -35,13 +35,24 @@ final case class Loader[Type <: LoadableConfig] private[configuration](
 
 	private[configuration] def requireValidPaths(implicit tag: TypeTag[Type]) = {
 		if (classOf[HdfsLoadableConfig].isAssignableFrom(tag.mirror.runtimeClass(tag.tpe)))
-			requireValidHdfsPaths()
+		//requireValidHdfsPaths()
+			requireValidFsPaths() // TODO Fix when HDFS is working
 		else
 			requireValidFsPaths()
 	}
 
 	private def requireValidFsPaths(): Unit = requireValidPaths(isValidFilePath, "%s is not a valid file path")
 	private def requireValidHdfsPaths(): Unit = requireValidPaths(isValidHdfsFilePath, "%s is not a valid hdfs file path")
+
+	private def hrMode = mode match {
+		case LoadMode.Load => s"Load '${file.get}'"
+		case LoadMode.LoadOrMake => s"Load '${file.get}' or make"
+		case LoadMode.Make => s"Make"
+		case LoadMode.MakeAndSave => s"Make and save '${file.get}'"
+		case LoadMode.LoadOrMakeAndSave => s"Load or make and save '${file.get}'"
+	}
+
+	override def toString: String = s"<$hrMode>"
 
 }
 

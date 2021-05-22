@@ -10,9 +10,12 @@ object Pipeline {
 	def run(config: Config, workingDir: String)(implicit spark: SparkSession): Unit = {
 		import image_classifier.pipeline.data.DataLoader
 		logger.info("Pipeline started")
-		logger.info("Retrieving data")
-		val data = DataLoader(workingDir, config.data)
-		
+		logger.info("Data stage")
+		val data = config.data.map(DataLoader(workingDir, _))
+		logger.info("Featurization stage")
+		logger.info("Training stage")
+		logger.info("Testing stage")
+		logger.info("Pipeline ended")
 	}
 
 }

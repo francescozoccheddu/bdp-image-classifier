@@ -7,7 +7,7 @@ private[data] object FileUtils {
 	import java.time.format.DateTimeFormatter
 	import scala.collection.mutable
 
-	private val tempFiles: mutable.MutableList[Path] = mutable.MutableList()
+	private val tempFiles: mutable.MutableList[String] = mutable.MutableList()
 	private val dateFormat = DateTimeFormatter.ofPattern("yy-MM-dd-HH-mm-ss-SSS")
 	private val logger = Logger.getLogger(FileUtils.getClass)
 
@@ -21,12 +21,10 @@ private[data] object FileUtils {
 		}
 		val head = if (URI.create(globHead).isAbsolute) globHead else workingDir + File.separator + globHead
 		import java.nio.file.{Files, Paths}
-		try {
-			import scala.jdk.CollectionConverters.iterableAsScalaIterableConverter
-			val stream = Files.newDirectoryStream(Paths.get(head), globTail)
-			try stream.asScala.map(_.normalize().toString).toSeq.sorted
-			finally if (stream != null) stream.close()
-		}
+		import scala.jdk.CollectionConverters.iterableAsScalaIterableConverter
+		val stream = Files.newDirectoryStream(Paths.get(head), globTail)
+		try stream.asScala.map(_.normalize().toString).toSeq.sorted
+		finally if (stream != null) stream.close()
 	}
 
 	private def makeTempFilePath = {
@@ -38,34 +36,34 @@ private[data] object FileUtils {
 	def getTempHdfsFile(dir: String): String = {
 		import org.apache.hadoop.conf.Configuration
 		import org.apache.hadoop.fs.{FileSystem, Path}
+		val fs = FileSystem.get(new Configuration)
 		try {
-			val fs = FileSystem.get(new Configuration)
-			try {
-				val dirPath = new Path(dir)
-				fs.mkdirs(dirPath)
-				val filePath = new Path(dirPath, makeTempFilePath)
-				tempFiles += filePath
-				logger.info(s"Created new temp file '$filePath'")
-				filePath.toString
-			} finally fs.close()
-		}
+			val dirPath = new Path(dir)
+			fs.mkdirs(dirPath)
+			val filePath = new Path(dirPath, makeTempFilePath)
+			addTempFile(filePath.toString)
+			filePath.toString
+		} finally fs.close()
+	}
+
+	def addTempFile(file: String): Unit = {
+		logger.info(s"Adding temp file '$file'")
+		tempFiles += file
 	}
 
 	def clearTempFiles(): Unit = {
 		import org.apache.hadoop.conf.Configuration
 		import org.apache.hadoop.fs.FileSystem
 		logger.info("Clearing temp files")
-		try {
-			val fs = FileSystem.get(new Configuration)
-			import scala.util.Try
-			for (path <- tempFiles) {
-				Try {
-					fs.delete(path, false)
-				}
+		val fs = FileSystem.get(new Configuration)
+		import scala.util.Try
+		for (file <- tempFiles) {
+			Try {
+				fs.delete(new Path(file), false)
 			}
-			tempFiles.clear()
-			fs.close()
 		}
+		tempFiles.clear()
+		fs.close()
 	}
 
 }
