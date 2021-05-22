@@ -43,10 +43,10 @@ private[data] object Merger {
 		}
 	}
 
-	def load(file: String, labelCol: String, imageCol: String)(implicit spark: SparkSession): DataFrame = {
+	def load(file: String, keyCol: String, dataCol: String)(implicit spark: SparkSession): DataFrame = {
 		import spark.implicits._
 		logger.info(s"Loading merged files from '$file'")
-		spark.sparkContext.sequenceFile[Int, Array[Byte]](file).toDF(labelCol, imageCol)
+		spark.sparkContext.sequenceFile[Int, Array[Byte]](file).toDF(keyCol, dataCol)
 	}
 
 }

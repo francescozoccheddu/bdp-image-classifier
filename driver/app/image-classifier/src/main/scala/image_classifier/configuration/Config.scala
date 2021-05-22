@@ -9,54 +9,23 @@ private[configuration] sealed trait LoadableConfig
 
 private[configuration] sealed trait HdfsLoadableConfig extends LoadableConfig
 
-sealed trait DataConfig {
+final case class DataConfig private[configuration](
+	tempFile: String = DataConfig.defaultTempFile,
+	dataSet: O[Seq[Seq[String]]] = None,
+	trainingSet: O[Seq[Seq[String]]] = None,
+	testSet: O[Seq[Seq[String]]] = None,
+	testFraction: Double = JointDataConfig.defaultTestFraction,
+	splitSeed: Int = JointDataConfig.defaultSplitSeed,
+	stratified: Boolean = JointDataConfig.defaultStratified
+) extends HdfsLoadableConfig {
 
-	def tempDir: String
-	private[configuration] def hasTrainingSet: Boolean
-	private[configuration] def hasTestSet: Boolean
-
-	// TODO Uncomment when Hadoop is working
-	//require(isValidHdfsFilePath(tempFile), s"${nameOf(tempFile)} is not a valid hdfs file path")
+	require(testFraction >= 0 && testFraction <= 1, s"${nameOf(testFraction)} must fall in range [0, 1]")
 
 }
 
 object DataConfig {
 
-	val defaultTempDir = "hdfs://._image_classifier_temp"
-
-}
-
-final case class DataSetConfig(
-	classFiles: Seq[Seq[String]]
-) extends HdfsLoadableConfig
-
-final case class SplitDataConfig(
-	override val tempDir: String = DataConfig.defaultTempDir,
-	trainingSet: OL[DataSetConfig] = None,
-	testSet: OL[DataSetConfig] = None
-) extends DataConfig {
-
-	trainingSet.foreach(_.requireValidPaths)
-	testSet.foreach(_.requireValidPaths)
-
-	private[configuration] override def hasTrainingSet = trainingSet.isDefined
-	private[configuration] override def hasTestSet = testSet.isDefined
-
-}
-
-final case class JointDataConfig(
-	override val tempDir: String = DataConfig.defaultTempDir,
-	dataSet: L[DataSetConfig],
-	testFraction: Double = JointDataConfig.defaultTestFraction,
-	splitSeed: Int = JointDataConfig.defaultSplitSeed,
-	stratified: Boolean = JointDataConfig.defaultStratified
-) extends DataConfig {
-
-	require(testFraction >= 0 && testFraction <= 1, s"${nameOf(testFraction)} must fall in range [0, 1]")
-	dataSet.requireValidPaths
-
-	private[configuration] override def hasTrainingSet = testFraction < 1
-	private[configuration] override def hasTestSet = testFraction > 0
+	val defaultTempFile = "hdfs://._image_classifier_temp"
 
 }
 
@@ -107,16 +76,17 @@ final case class TestingConfig(
 }
 
 final case class Config(
-	data: O[DataConfig],
+	data: OL[DataConfig],
 	featurization: OL[FeaturizationConfig] = None,
 	training: OL[TrainingConfig] = None,
 	testing: O[TestingConfig] = None
 ) {
 
-	require(featurization.forall(_.config.isEmpty) || data.hasTrainingSet, s"${nameOf(featurization)} requires a training set")
+	require(featurization.forall(_.config.isEmpty) || data.isDefined, s"${nameOf(featurization)} requires ${nameOf(data)}")
 	require(training.forall(_.config.isEmpty) || featurization.isDefined, s"${nameOf(training)} requires ${nameOf(featurization)}")
-	require(testing.isEmpty || data.hasTestSet, s"${nameOf(testing)} requires a test set")
-	require(testing.isEmpty || training.isDefined, s"${nameOf(testing)} requires ${nameOf(featurization)}")
+	require(testing.isEmpty || training.isDefined, s"${nameOf(testing)} requires ${nameOf(training)}")
+	require(testing.isEmpty || featurization.isDefined, s"${nameOf(testing)} requires ${nameOf(featurization)}")
+	data.foreach(_.requireValidPaths)
 	featurization.foreach(_.requireValidPaths)
 	training.foreach(_.requireValidPaths)
 

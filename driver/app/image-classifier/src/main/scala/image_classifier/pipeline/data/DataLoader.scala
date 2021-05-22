@@ -1,96 +1,129 @@
 package image_classifier.pipeline.data
 
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import image_classifier.pipeline.data.DataLoader.{defaultLabelCol, defaultImageCol}
-import image_classifier.pipeline.data.DataLoader.logger
+import image_classifier.configuration.{DataConfig, Loader}
+import image_classifier.pipeline.data.DataLoader.{defaultLabelCol, defaultIsTestCol, defaultImageCol}
 
-private[pipeline] final class DataLoader(workingDir: String, labelCol: String, imageCol: String)(implicit spark: SparkSession) {
+private[pipeline] final class DataLoader(workingDir: String, labelCol: String, isTestCol: String, imageCol: String)(implicit spark: SparkSession) {
+	import image_classifier.pipeline.data.DataLoader.{logger, encode}
 
-	import image_classifier.configuration.{DataConfig, DataSetConfig, JointDataConfig, Loader, SplitDataConfig}
-	import image_classifier.pipeline.data.DataLoader.sparkListener
+	def this(workingDir: String)(implicit spark: SparkSession) = this(workingDir, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark)
 
-	import java.nio.file.Paths
-	def this(workingDir: String)(implicit spark: SparkSession) = this(workingDir, defaultLabelCol, defaultImageCol)(spark)
-
-	spark.sparkContext.removeSparkListener(sparkListener)
-	spark.sparkContext.addSparkListener(sparkListener)
-
-	private def apply(config: DataConfig): Data = config match {
-		case config: JointDataConfig => apply(config)
-		case config: SplitDataConfig => apply(config)
-	}
-
-	private def apply(config: JointDataConfig): Data = {
-		val data = apply(config.dataSet, config.tempDir)
-		if (config.stratified) {
-			val Array(training, test) = data.randomSplit(Array(1 - config.testFraction, config.testFraction), config.splitSeed)
-			Data(training, test)
-		} else {
-			logger.error("Stratified sampling is not implemented yet")
-			??? // TODO Implement
+	def apply(loader: Loader[DataConfig]): DataFrame = {
+		import image_classifier.utils.OptionImplicits._
+		import image_classifier.configuration.LoadMode
+		logger.info(s"Running $loader")
+		loader.mode match {
+			case LoadMode.Load => load(loader.file.get)
+			case LoadMode.LoadOrMake => tryLoad(loader.file.get).getOr(() => make(loader.config.get, None))
+			case LoadMode.Make => make(loader.config.get, None)
+			case LoadMode.MakeAndSave => make(loader.config.get, loader.file)
+			case LoadMode.LoadOrMakeAndSave => tryLoad(loader.file.get).getOr(() => make(loader.config.get, loader.file))
 		}
 	}
 
-	private def apply(config: SplitDataConfig): Data = Data(apply(config.trainingSet, config.tempDir), apply(config.testSet, config.tempDir))
-
-	private def apply(config: Option[Loader[DataSetConfig]], tempDir: String): DataFrame = config.map(apply(_, tempDir)).orNull
-
-	private def apply(config: Loader[DataSetConfig], tempDir: String): DataFrame = {
-		import image_classifier.configuration.LoadMode._
-		val file = config.file.orNull
-		var data = config.mode match {
-			case Load => Some(load(file))
-			case LoadOrMake | LoadOrMakeAndSave => tryLoad(file)
-			case _ => None
-		}
-		if (data.isEmpty) {
-			val targetFile = config.mode match {
-				case MakeAndSave | LoadOrMakeAndSave => file
-				case _ => FileUtils.getTempHdfsFile(tempDir)
-			}
-			merge(config.config.get.classFiles, targetFile)
-			data = Some(load(targetFile))
-		}
-		data.get
+	private def make(config: DataConfig, save: Option[String]) = {
+		val file = save.getOrElse(config.tempFile)
+		logger.info(s"Making config into '$file'")
+		val sources = Array.ofDim[Option[Seq[(Int, String)]]](3)
+		sources(0) = config.dataSet.map(encodeFiles(_, config.testFraction, config.splitSeed, config.stratified))
+		sources(1) = config.trainingSet.map(encodeFiles(_, false))
+		sources(2) = config.testSet.map(encodeFiles(_, true))
+		if (save.isEmpty)
+			addTempFile(file)
+		Merger.mergeFiles(sources.flatten.flatten.toSeq, file)
+		load(file)
 	}
 
-	private def load(file: String): DataFrame = Merger.load(file, labelCol, imageCol)
+	private def load(file: String): DataFrame = {
+		import image_classifier.pipeline.data.DataLoader.{keyCol, dataCol}
+		import org.apache.spark.sql.functions.{col, abs}
+		logger.info(s"Loading '$file'")
+		Merger.load(file, keyCol, dataCol)
+			.select(
+				col(dataCol).alias(imageCol),
+				(col(keyCol) < 0).alias(isTestCol),
+				(abs(col(keyCol)) - 1).alias(labelCol))
+	}
 
 	private def tryLoad(file: String): Option[DataFrame] =
 		try Some(load(file))
 		catch {
-			case _: Exception => {
+			case _: Exception =>
 				logger.info(s"Failed to load '$file'")
 				None
-			}
 		}
 
-	private def merge(classFiles: Seq[Seq[String]], file: String): Unit = {
-		val explodedClassFiles = classFiles
+	private def resolveFiles(classFiles: Seq[Seq[String]]) =
+		classFiles
 			.map(_.flatMap(FileUtils.listFiles(workingDir, _)))
 			.zipWithIndex
+
+	private def explodeFiles(classFiles: Seq[Seq[String]]): Seq[(Int, String)] =
+		resolveFiles(classFiles)
 			.flatMap(zip => zip._1.map((zip._2, _)))
-		Merger.mergeFiles(explodedClassFiles, file)
+
+	private def encodeFiles(classFiles: Seq[Seq[String]], isTest: Boolean): Seq[(Int, String)] =
+		explodeFiles(classFiles)
+			.map(p => encode(p, isTest))
+
+	private def encodeFiles(classFiles: Seq[Seq[String]], testFraction: Double, testSeed: Int): Seq[(Int, String)] =
+		encode(explodeFiles(classFiles), testFraction, testSeed)
+
+	private def encodeFiles(classFiles: Seq[Seq[String]], testFraction: Double, testSeed: Int, stratified: Boolean): Seq[(Int, String)] =
+		if (stratified)
+			encodeFilesStratified(classFiles, testFraction, testSeed)
+		else
+			encodeFiles(classFiles, testFraction, testSeed)
+
+	private def encodeFilesStratified(classFiles: Seq[Seq[String]], testFraction: Double, testSeed: Int): Seq[(Int, String)] =
+		resolveFiles(classFiles)
+			.flatMap(zip => encode(zip._1.map((zip._2, _)), testFraction, testSeed))
+
+	private def addTempFile(file: String) = {
+		import image_classifier.pipeline.data.DataLoader.sparkListener
+		spark.sparkContext.removeSparkListener(sparkListener)
+		spark.sparkContext.addSparkListener(sparkListener)
+		FileUtils.addTempFile(file)
 	}
 
 }
 
 private[pipeline] object DataLoader {
-	import image_classifier.configuration.{Config, DataConfig}
 	import org.apache.log4j.Logger
 	import org.apache.spark.scheduler.SparkListener
-	import org.apache.spark.sql.DataFrame
 
 	val defaultLabelCol = "label"
+	val defaultIsTestCol = "isTest"
 	val defaultImageCol = "image"
+
+	private val keyCol = "key"
+	private val dataCol = "data"
 
 	private val logger = Logger.getLogger(DataLoader.getClass)
 
-	def apply(workingDir: String, config: DataConfig)(implicit spark: SparkSession): Data =
-		apply(workingDir, config, defaultLabelCol, defaultImageCol)(spark)
+	private def encode(file: (Int, String), isTest: Boolean): (Int, String) = {
+		val (label, path) = file
+		if (isTest)
+			(-label - 1, path)
+		else
+			(label + 1, path)
+	}
 
-	def apply(workingDir: String, config: DataConfig, labelCol: String, imageCol: String)(implicit spark: SparkSession): Data =
-		new DataLoader(workingDir, labelCol, imageCol)(spark)(config)
+	private def encode(files: Seq[(Int, String)], testFraction: Double, testSeed: Int): Seq[(Int, String)] = {
+		import scala.util.Random
+		val count = files.length * testFraction
+		new Random(testSeed)
+			.shuffle(files)
+			.zipWithIndex
+			.map(p => encode(p._1, p._2 < count))
+	}
+
+	def apply(workingDir: String, loader: Loader[DataConfig])(implicit spark: SparkSession): DataFrame =
+		apply(workingDir, loader, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark)
+
+	def apply(workingDir: String, loader: Loader[DataConfig], labelCol: String, isTestCol: String, imageCol: String)(implicit spark: SparkSession): DataFrame =
+		new DataLoader(workingDir, labelCol, isTestCol, imageCol)(spark)(loader)
 
 	private val sparkListener = new SparkListener {
 		import org.apache.spark.scheduler.SparkListenerApplicationEnd
