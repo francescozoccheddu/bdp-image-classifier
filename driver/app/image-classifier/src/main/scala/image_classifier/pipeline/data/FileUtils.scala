@@ -27,6 +27,12 @@ private[data] object FileUtils {
 		finally if (stream != null) stream.close()
 	}
 
+	def exists(file: String) = {
+		import org.apache.hadoop.conf.Configuration
+		import org.apache.hadoop.fs.{FileSystem, Path}
+		FileSystem.get(new Configuration).exists(new Path(file))
+	}
+
 	private def makeTempFilePath = {
 		import java.time.LocalDateTime
 		import java.util.UUID.randomUUID
@@ -36,14 +42,11 @@ private[data] object FileUtils {
 	def getTempHdfsFile(dir: String): String = {
 		import org.apache.hadoop.conf.Configuration
 		import org.apache.hadoop.fs.{FileSystem, Path}
-		val fs = FileSystem.get(new Configuration)
-		try {
-			val dirPath = new Path(dir)
-			fs.mkdirs(dirPath)
-			val filePath = new Path(dirPath, makeTempFilePath)
-			addTempFile(filePath.toString)
-			filePath.toString
-		} finally fs.close()
+		val dirPath = new Path(dir)
+		FileSystem.get(new Configuration).mkdirs(dirPath)
+		val filePath = new Path(dirPath, makeTempFilePath)
+		addTempFile(filePath.toString)
+		filePath.toString
 	}
 
 	def addTempFile(file: String): Unit = {
@@ -54,7 +57,7 @@ private[data] object FileUtils {
 	def clearTempFiles(): Unit = {
 		import org.apache.hadoop.conf.Configuration
 		import org.apache.hadoop.fs.FileSystem
-		logger.info("Clearing temp files")
+		logger.info(s"Clearing ${tempFiles.length} temp files")
 		val fs = FileSystem.get(new Configuration)
 		import scala.util.Try
 		for (file <- tempFiles) {
@@ -63,7 +66,6 @@ private[data] object FileUtils {
 			}
 		}
 		tempFiles.clear()
-		fs.close()
 	}
 
 }
