@@ -27,12 +27,6 @@ private[data] object FileUtils {
 		finally if (stream != null) stream.close()
 	}
 
-	def exists(file: String) = {
-		import org.apache.hadoop.conf.Configuration
-		import org.apache.hadoop.fs.{FileSystem, Path}
-		FileSystem.get(new Configuration).exists(new Path(file))
-	}
-
 	private def makeTempFilePath = {
 		import java.time.LocalDateTime
 		import java.util.UUID.randomUUID

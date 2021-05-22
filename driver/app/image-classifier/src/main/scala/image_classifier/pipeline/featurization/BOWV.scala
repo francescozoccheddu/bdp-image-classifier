@@ -1,18 +1,18 @@
-package image_classifier.pipeline.bovw
+package image_classifier.pipeline.featurization
 
 import org.apache.spark.sql.DataFrame
 
-private[pipeline] object BOWV {
+private[featurization] object BOWV {
 
-	val defaultOutputDataColName = "data"
-	val defaultOutputIdColName = "id"
-	val temporaryColName = "BOFsUtils_internal_id"
+	val defaultOutputDataCol = "data"
+	val defaultOutputIdCol = "id"
+	val defaultTempCol = "BOFsUtils_internal_id"
 
 	def createCodebook(data: DataFrame, size: Int, inputDataCol: String): DataFrame =
 		createCodebook(data, size, inputDataCol, true)
 
 	def createCodebook(data: DataFrame, size: Int, inputDataCol: String, assignNearest: Boolean): DataFrame =
-		createCodebook(data, size, inputDataCol, defaultOutputDataColName, defaultOutputIdColName, assignNearest)
+		createCodebook(data, size, inputDataCol, defaultOutputDataCol, defaultOutputIdCol, assignNearest)
 
 	def createCodebook(data: DataFrame, size: Int, inputDataCol: String, outputDataCol: String, outputIdCol: String, assignNearest: Boolean = true): DataFrame = {
 		{
@@ -45,9 +45,9 @@ private[pipeline] object BOWV {
 	}
 
 	def compute(data: DataFrame, codebook: DataFrame, codebookSize: Int, inputDataCol: String): DataFrame =
-		compute(data, codebook, codebookSize, inputDataCol, defaultOutputDataColName, defaultOutputIdColName, defaultOutputDataColName)
+		compute(data, codebook, codebookSize, inputDataCol, defaultOutputDataCol, defaultOutputIdCol, defaultOutputDataCol, defaultTempCol)
 
-	def compute(data: DataFrame, codebook: DataFrame, codebookSize: Int, inputDataCol: String, codebookDataCol: String, codebookIdCol: String, outputDataCol: String): DataFrame = {
+	def compute(data: DataFrame, codebook: DataFrame, codebookSize: Int, inputDataCol: String, codebookDataCol: String, codebookIdCol: String, outputDataCol: String, tempCol: String): DataFrame = {
 		import org.apache.spark.sql.types.IntegerType
 		{
 			import image_classifier.utils.DataTypeImplicits._
@@ -55,34 +55,34 @@ private[pipeline] object BOWV {
 			import org.apache.spark.sql.types.ArrayType
 			val dataSchema = data.schema
 			dataSchema.requireField(inputDataCol, ArrayType(VectorType))
-			dataSchema.requireNoField(temporaryColName)
+			dataSchema.requireNoField(tempCol)
 			val codebookSchema = codebook.schema
 			codebookSchema.requireField(codebookDataCol, VectorType)
 			codebookSchema.requireField(codebookIdCol, IntegerType)
-			require(outputDataCol != temporaryColName)
-			require(codebookIdCol != temporaryColName)
-			require(codebookDataCol != temporaryColName)
+			require(outputDataCol != tempCol)
+			require(codebookIdCol != tempCol)
+			require(codebookDataCol != tempCol)
 		}
 		val indexedIn = {
 			import org.apache.spark.sql.functions.monotonically_increasing_id
-			data.withColumn(temporaryColName, monotonically_increasing_id.cast(IntegerType)).cache
+			data.withColumn(tempCol, monotonically_increasing_id.cast(IntegerType)).cache
 		}
 		val indexedOut = {
 			import org.apache.spark.sql.functions.{col, collect_list, explode, udf}
 			val explodedData = indexedIn.select(
-				col(temporaryColName),
+				col(tempCol),
 				explode(col(inputDataCol)).alias(codebookDataCol))
 			val projCodebook = codebook.select(
-				col(codebookIdCol).alias(temporaryColName),
+				col(codebookIdCol).alias(tempCol),
 				col(codebookDataCol))
 			val vectorizeUdf = udf((matches: Array[Long]) => Histogram.compute(matches, codebookSize))
-			NearestNeighbor.join(projCodebook, explodedData, Seq(temporaryColName), codebookDataCol, codebookIdCol)
-				.select(col(temporaryColName), col(codebookIdCol).getField(temporaryColName).alias(codebookIdCol))
-				.groupBy(col(temporaryColName))
+			NearestNeighbor.join(projCodebook, explodedData, Seq(tempCol), codebookDataCol, codebookIdCol)
+				.select(col(tempCol), col(codebookIdCol).getField(tempCol).alias(codebookIdCol))
+				.groupBy(col(tempCol))
 				.agg(collect_list(codebookIdCol).alias(outputDataCol))
 				.withColumn(outputDataCol, vectorizeUdf(col(outputDataCol)))
 		}
-		val joint = indexedIn.join(indexedOut, temporaryColName).drop(temporaryColName)
+		val joint = indexedIn.join(indexedOut, tempCol).drop(tempCol)
 		indexedIn.unpersist
 		joint
 	}

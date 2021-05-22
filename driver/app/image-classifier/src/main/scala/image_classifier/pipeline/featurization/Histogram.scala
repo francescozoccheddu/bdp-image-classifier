@@ -1,8 +1,8 @@
-package image_classifier.pipeline.bovw
+package image_classifier.pipeline.featurization
 
 import org.apache.spark.ml.linalg.{Vector => MLVector}
 
-private[pipeline] object Histogram {
+private[featurization] object Histogram {
 
 	def computeSparse(data: Seq[Long], codebookSize: Int): MLVector = {
 		import org.apache.spark.ml.linalg.Vectors

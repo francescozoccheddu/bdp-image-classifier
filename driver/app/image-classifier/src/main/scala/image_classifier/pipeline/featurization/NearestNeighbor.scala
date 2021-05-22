@@ -1,9 +1,9 @@
-package image_classifier.pipeline.bovw
+package image_classifier.pipeline.featurization
 
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.col
 
-private[pipeline] object NearestNeighbor {
+private[featurization] object NearestNeighbor {
 
 	def join(test: DataFrame, key: DataFrame, dataColName: String, neighborColName: String): DataFrame =
 		join(test, key, test.schema.fieldNames intersect key.schema.fieldNames, dataColName, neighborColName)
