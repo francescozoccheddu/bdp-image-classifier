@@ -1,22 +1,14 @@
 package image_classifier.pipeline.featurization
 
 import org.apache.spark.sql.{SparkSession, DataFrame}
-import image_classifier.pipeline.featurization.FeaturizationStage.{defaultOutputCol, defaultTempCol, defaultTempCol2}
+import image_classifier.pipeline.featurization.FeaturizationStage.defaultOutputCol
 
-private[pipeline] final class FeaturizationStage(inputCol: String, isTestCol: String, outputCol: String, tempCol: String, tempCol2: String)(implicit spark: SparkSession) {
+private[pipeline] final class FeaturizationStage(inputCol: String, isTestCol: String, outputCol: String)(implicit spark: SparkSession) {
 	import image_classifier.configuration.{FeaturizationConfig, Loader}
 	import image_classifier.pipeline.featurization.FeaturizationStage.logger
 	import image_classifier.utils.Files
 
-	require(tempCol != tempCol2)
-	require(tempCol != inputCol)
-	require(tempCol2 != inputCol)
-	require(tempCol != isTestCol)
-	require(tempCol2 != isTestCol)
-	require(tempCol != outputCol)
-	require(tempCol2 != outputCol)
-
-	def this(inputCol: String, isTestCol: String)(implicit spark: SparkSession) = this(inputCol, isTestCol, defaultOutputCol, defaultTempCol, defaultTempCol2)(spark)
+	def this(inputCol: String, isTestCol: String)(implicit spark: SparkSession) = this(inputCol, isTestCol, defaultOutputCol)(spark)
 
 	def apply(loader: Loader[FeaturizationConfig], data: DataFrame): DataFrame = {
 		import image_classifier.utils.OptionImplicits._
@@ -52,7 +44,7 @@ private[pipeline] final class FeaturizationStage(inputCol: String, isTestCol: St
 	private def createCodebook(config: FeaturizationConfig, data: DataFrame) = {
 		import org.apache.spark.sql.functions.{col, explode}
 		val training = data.filter(!col(isTestCol)).withColumn(outputCol, explode(col(outputCol)))
-		BOWV.createCodebook(training, config.codebookSize, outputCol, outputCol, tempCol, config.assignNearest)
+		BOWV.createCodebook(training, config.codebookSize, outputCol, config.assignNearest)
 	}
 
 	private def makeAndSave(config: FeaturizationConfig, data: DataFrame, file: String) = {
@@ -65,7 +57,9 @@ private[pipeline] final class FeaturizationStage(inputCol: String, isTestCol: St
 		logger.info(s"Making config")
 		val describedData = describe(config, data).cache
 		val codebook = createCodebook(config, describedData)
-		val bowv = BOWV.compute(describedData, codebook, config.codebookSize, outputCol, outputCol, tempCol, outputCol, tempCol2)
+		val bowv = BOWV.compute(describedData, codebook, config.codebookSize, outputCol)
+		import image_classifier.utils.DataFrameImplicits._
+		bowv.print()
 		describedData.unpersist
 		bowv
 	}
@@ -87,20 +81,19 @@ private[pipeline] final class FeaturizationStage(inputCol: String, isTestCol: St
 
 private[pipeline] object FeaturizationStage {
 	import image_classifier.configuration.{FeaturizationConfig, Loader}
+	import image_classifier.pipeline.Columns.colName
 	import org.apache.log4j.Logger
 
-	val defaultTempCol = "temp"
-	val defaultTempCol2 = "temp2"
-	val defaultOutputCol = "features"
+	val defaultOutputCol = colName("features")
 
 	private val logger = Logger.getLogger(FeaturizationStage.getClass)
 
 	private def save(data: DataFrame, file: String) = data.write.format("parquet").save(file)
 
-	def apply(loader: Loader[FeaturizationConfig], data: DataFrame, inputCol: String, isTestCol: String)(implicit spark: SparkSession): DataFrame
-	= apply(loader, data, inputCol, isTestCol, defaultOutputCol, defaultTempCol, defaultTempCol2)(spark)
+	def apply(loader: Loader[FeaturizationConfig], data: DataFrame, inputCol: String, isTestCol: String)(implicit spark: SparkSession): DataFrame =
+		apply(loader, data, inputCol, isTestCol, defaultOutputCol)(spark)
 
-	def apply(loader: Loader[FeaturizationConfig], data: DataFrame, inputCol: String, isTestCol: String, outputCol: String, tempCol: String, tempCol2: String)(implicit spark: SparkSession): DataFrame
-	= new FeaturizationStage(inputCol, isTestCol, outputCol, tempCol, tempCol2)(spark)(loader, data)
+	def apply(loader: Loader[FeaturizationConfig], data: DataFrame, inputCol: String, isTestCol: String, outputCol: String)(implicit spark: SparkSession): DataFrame =
+		new FeaturizationStage(inputCol, isTestCol, outputCol)(spark)(loader, data)
 
 }

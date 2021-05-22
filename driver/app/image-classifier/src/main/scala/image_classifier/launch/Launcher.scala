@@ -1,9 +1,11 @@
 package image_classifier.launch
 
 object Launcher {
+	import org.apache.log4j.{BasicConfigurator, Logger}
+
+	BasicConfigurator.configure()
+
 	import image_classifier.configuration.Config
-	import org.apache.log4j.Logger
-	import org.apache.spark.sql.SparkSession
 
 	private val logger = Logger.getLogger(Launcher.getClass)
 
@@ -18,6 +20,7 @@ object Launcher {
 		import image_classifier.pipeline.Pipeline
 		import image_classifier.utils.SparkInstance
 		import org.apache.log4j.Level
+		Logger.getRootLogger.setLevel(Level.INFO)
 		Logger.getLogger("org").setLevel(Level.ERROR)
 		SparkInstance.execute(Pipeline.run(config, workingDir)(_))
 	}
