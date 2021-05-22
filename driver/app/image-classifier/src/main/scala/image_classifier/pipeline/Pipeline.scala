@@ -11,15 +11,20 @@ object Pipeline {
 	private val isTestCol = colName("isTest")
 	private val dataCol = colName("data")
 	private val labelCol = colName("label")
+	private val predictionCol = colName("prediction")
 
 	def run(config: Config, workingDir: String)(implicit spark: SparkSession): Unit = {
 		import image_classifier.pipeline.data.DataStage
 		import image_classifier.pipeline.featurization.FeaturizationStage
+		import image_classifier.pipeline.testing.TestingStage
+		import image_classifier.pipeline.training.TrainingStage
 		import image_classifier.utils.DataFrameImplicits._
 		logger.info("Pipeline started")
 		val data = new DataStage(config.data, workingDir, labelCol, isTestCol, dataCol)
 		val featurization = new FeaturizationStage(config.featurization, data, dataCol)
-		Seq(featurization, data).takeWhile(!_.hasResult)
+		val training = new TrainingStage(config.training, featurization, predictionCol)
+		val testing = new TestingStage(config.testing, training)
+		Seq(testing, training, featurization, data).takeWhile(!_.hasResult)
 		logger.info("Pipeline ended")
 	}
 
