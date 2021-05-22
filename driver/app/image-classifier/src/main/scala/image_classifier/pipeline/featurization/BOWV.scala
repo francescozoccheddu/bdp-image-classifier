@@ -34,7 +34,7 @@ private[featurization] object BOWV {
 		import data.sparkSession.implicits._
 		import org.apache.spark.ml.clustering.KMeans
 		import org.apache.spark.sql.functions.col
-		val model = new KMeans().setK(size).setMaxIter(200).setFeaturesCol(inputCol).fit(data)
+		val model = new KMeans().setK(size).setMaxIter(10).setFeaturesCol(inputCol).fit(data)
 		val centers = model
 			.clusterCenters
 			.toSeq
@@ -50,7 +50,7 @@ private[featurization] object BOWV {
 			.dropDuplicates(codebookDataCol)
 	}
 
-	def compute(data: DataFrame, codebook: DataFrame, inputCol: String, outputCol: String = defaultOutputCol): DataFrame = {
+	def compute(data: DataFrame, codebook: DataFrame, codebookSize: Int, inputCol: String, outputCol: String = defaultOutputCol): DataFrame = {
 		import org.apache.spark.sql.types.IntegerType
 		{
 			import image_classifier.utils.DataTypeImplicits._
@@ -74,16 +74,13 @@ private[featurization] object BOWV {
 				explode(col(inputCol)).alias(codebookDataCol))
 			val projCodebook = codebook.select(
 				col(codebookIdCol).alias(idCol).cast(LongType),
-				col(codebookDataCol)).cache
-			val codebookSize = projCodebook.count.toInt
+				col(codebookDataCol))
 			val vectorizeUdf = udf((matches: Array[Long]) => Histogram.compute(matches, codebookSize))
-			val result = NearestNeighbor.join(projCodebook, explodedData, Seq(idCol), codebookDataCol, neighborCol)
+			NearestNeighbor.join(projCodebook, explodedData, Seq(idCol), codebookDataCol, neighborCol)
 				.select(col(idCol), col(neighborCol).getField(idCol).alias(outputCol))
 				.groupBy(col(idCol))
 				.agg(collect_list(outputCol).alias(outputCol))
 				.withColumn(outputCol, vectorizeUdf(col(outputCol)))
-			projCodebook.unpersist
-			result
 		}
 		val joint = indexedIn.drop(outputCol).join(indexedOut, idCol).drop(idCol)
 		indexedIn.unpersist

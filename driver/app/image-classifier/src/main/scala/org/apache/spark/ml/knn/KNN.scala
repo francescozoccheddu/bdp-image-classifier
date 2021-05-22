@@ -319,6 +319,7 @@ class KNN(override val uid: String) extends Estimator[KNNModel] with KNNParams {
 	/** @group setParam */
 	def setTopTreeSize(value: Int): this.type = set(topTreeSize, value)
 
+	def setTopTreeSizeHint(testCount: Long) = setTopTreeSize(math.min(math.max(testCount / 200, 2), testCount).toInt)
 	/** @group setParam */
 	def setTopTreeLeafSize(value: Int): this.type = set(topTreeLeafSize, value)
 

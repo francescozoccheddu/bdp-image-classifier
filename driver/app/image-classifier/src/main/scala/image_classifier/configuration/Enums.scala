@@ -10,7 +10,9 @@ object ImageFeatureAlgorithm extends Enumeration {
 object TrainingAlgorithm extends Enumeration {
 
 	type TrainingAlgorithm = Value
-	val NearestNeighbor = Value("nn")
+	val NaiveBayes = Value("naive_bayes")
+	val LogisticRegression = Value("logistic_regression")
+	val DecisionTree = Value("decision_tree")
 
 }
 

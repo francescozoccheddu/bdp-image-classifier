@@ -67,7 +67,7 @@ final case class TrainingConfig(
 
 object TrainingConfig {
 
-	val defaultAlgorithm = TrainingAlgorithm.NearestNeighbor
+	val defaultAlgorithm = TrainingAlgorithm.NaiveBayes
 
 }
 

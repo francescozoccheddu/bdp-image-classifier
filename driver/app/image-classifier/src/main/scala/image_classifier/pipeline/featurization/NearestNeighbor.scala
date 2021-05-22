@@ -13,13 +13,10 @@ private[featurization] object NearestNeighbor {
 		import org.apache.spark.ml.knn.KNN
 		import org.apache.spark.sql.functions.explode
 
-		val testSize = test.count()
-		val topTreeSize = math.min(math.max(testSize / 200, 2), testSize).toInt
-
 		val model = new KNN()
 			.setFeaturesCol(dataColName)
 			.setAuxCols(cols.toArray)
-			.setTopTreeSize(topTreeSize)
+			.setTopTreeSizeHint(test.count)
 			.fit(test)
 			.setNeighborCol(neighborColName)
 

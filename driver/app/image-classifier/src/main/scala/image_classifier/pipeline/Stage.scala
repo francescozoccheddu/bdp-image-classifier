@@ -3,7 +3,7 @@ package image_classifier.pipeline
 import image_classifier.configuration.{LoadableConfig, Loader}
 import org.apache.spark.sql.SparkSession
 
-private[pipeline] abstract class Stage[Result, Specs](val name: String, val specs: Option[Specs])(implicit protected val spark: SparkSession) {
+private[pipeline] abstract class Stage[Result, Specs](val name: String, val specs: Option[Specs]) {
 	import image_classifier.pipeline.Stage.logger
 
 	protected def run(specs: Specs): Result
@@ -27,7 +27,7 @@ private[pipeline] abstract class Stage[Result, Specs](val name: String, val spec
 
 }
 
-private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](name: String, loader: Option[Loader[Config]])(implicit spark: SparkSession) extends Stage[Result, Loader[Config]](name, loader)(spark) {
+private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](name: String, loader: Option[Loader[Config]]) extends Stage[Result, Loader[Config]](name, loader) {
 	import image_classifier.configuration.LoadMode
 	import image_classifier.utils.OptionImplicits._
 	import image_classifier.pipeline.LoaderStage.logger
