@@ -106,14 +106,13 @@ object Config {
 	private val logger = Logger.getLogger(Config.getClass)
 
 	def fromFile(file: String) = {
-		logger.info("Loading config file '$file'")
+		logger.info(s"Loading config file '$file'")
 		configFromFile(file)
 	}
 
-	def fromJson(json: String) = {
-		logger.info("Writing config file '$file'")
+	def fromJson(json: String) =
 		configFromJson(json)
-	}
 
 }
+
 
