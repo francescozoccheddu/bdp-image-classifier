@@ -40,11 +40,14 @@ object JointDataConfig {
 final case class FeaturizationConfig(
 	codebookSize: Int = FeaturizationConfig.defaultCodebookSize,
 	featureCount: Int = FeaturizationConfig.defaultFeatureCount,
-	algorithm: ImageFeatureAlgorithm = FeaturizationConfig.defaultAlgorithm
+	algorithm: ImageFeatureAlgorithm = FeaturizationConfig.defaultAlgorithm,
+	maxSize: Int = FeaturizationConfig.defaultMaxSize,
+	assignNearest: Boolean = FeaturizationConfig.defaultAssignNearest
 ) extends LoadableConfig {
 
 	require(codebookSize >= 1 && codebookSize <= 10000, s"${nameOf(codebookSize)} must fall in range [1, 10000]")
 	require(featureCount >= 1 && featureCount <= 1000, s"${nameOf(featureCount)} must fall in range [1, 1000]")
+	require(maxSize >= 4 && maxSize <= 8192, s"${nameOf(maxSize)} must fall in range [4, 8192]")
 
 }
 
@@ -53,6 +56,8 @@ object FeaturizationConfig {
 	val defaultCodebookSize = 500
 	val defaultAlgorithm = ImageFeatureAlgorithm.Sift
 	val defaultFeatureCount = 10
+	val defaultMaxSize = 512
+	val defaultAssignNearest = true
 
 }
 

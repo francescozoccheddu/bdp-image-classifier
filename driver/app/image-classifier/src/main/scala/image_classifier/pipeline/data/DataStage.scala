@@ -2,10 +2,11 @@ package image_classifier.pipeline.data
 
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import image_classifier.configuration.{DataConfig, Loader}
-import image_classifier.pipeline.data.DataLoader.{defaultLabelCol, defaultIsTestCol, defaultImageCol}
+import image_classifier.pipeline.data.DataStage.{defaultLabelCol, defaultIsTestCol, defaultImageCol}
 
-private[pipeline] final class DataLoader(workingDir: String, labelCol: String, isTestCol: String, imageCol: String)(implicit spark: SparkSession) {
-	import image_classifier.pipeline.data.DataLoader.{logger, encode}
+private[pipeline] final class DataStage(workingDir: String, labelCol: String, isTestCol: String, imageCol: String)(implicit spark: SparkSession) {
+	import image_classifier.pipeline.data.DataStage.{encode, logger}
+	import image_classifier.utils.Files
 
 	def this(workingDir: String)(implicit spark: SparkSession) = this(workingDir, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark)
 
@@ -36,7 +37,7 @@ private[pipeline] final class DataLoader(workingDir: String, labelCol: String, i
 	}
 
 	private def load(file: String): DataFrame = {
-		import image_classifier.pipeline.data.DataLoader.{keyCol, dataCol}
+		import image_classifier.pipeline.data.DataStage.{keyCol, dataCol}
 		import org.apache.spark.sql.functions.{col, abs}
 		logger.info(s"Loading '$file'")
 		Merger.load(file, keyCol, dataCol)
@@ -47,7 +48,7 @@ private[pipeline] final class DataLoader(workingDir: String, labelCol: String, i
 	}
 
 	private def loadIfExists(file: String): Option[DataFrame] =
-		if (FileUtils.exists(file))
+		if (Files.exists(file))
 			Some(load(file))
 		else {
 			logger.info("File '$file' does not exist")
@@ -81,7 +82,7 @@ private[pipeline] final class DataLoader(workingDir: String, labelCol: String, i
 			.flatMap(zip => encode(zip._1.map((zip._2, _)), testFraction, testSeed))
 
 	private def addTempFile(file: String) = {
-		import image_classifier.pipeline.data.DataLoader.sparkListener
+		import image_classifier.pipeline.data.DataStage.sparkListener
 		spark.sparkContext.removeSparkListener(sparkListener)
 		spark.sparkContext.addSparkListener(sparkListener)
 		FileUtils.addTempFile(file)
@@ -89,7 +90,7 @@ private[pipeline] final class DataLoader(workingDir: String, labelCol: String, i
 
 }
 
-private[pipeline] object DataLoader {
+private[pipeline] object DataStage {
 	import org.apache.log4j.Logger
 	import org.apache.spark.scheduler.SparkListener
 
@@ -100,7 +101,7 @@ private[pipeline] object DataLoader {
 	private val keyCol = "key"
 	private val dataCol = "data"
 
-	private val logger = Logger.getLogger(DataLoader.getClass)
+	private val logger = Logger.getLogger(DataStage.getClass)
 
 	private def encode(file: (Int, String), isTest: Boolean): (Int, String) = {
 		val (label, path) = file
@@ -123,7 +124,7 @@ private[pipeline] object DataLoader {
 		apply(workingDir, loader, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark)
 
 	def apply(workingDir: String, loader: Loader[DataConfig], labelCol: String, isTestCol: String, imageCol: String)(implicit spark: SparkSession): DataFrame =
-		new DataLoader(workingDir, labelCol, isTestCol, imageCol)(spark)(loader)
+		new DataStage(workingDir, labelCol, isTestCol, imageCol)(spark)(loader)
 
 	private val sparkListener = new SparkListener {
 		import org.apache.spark.scheduler.SparkListenerApplicationEnd

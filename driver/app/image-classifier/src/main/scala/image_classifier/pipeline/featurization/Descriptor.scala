@@ -1,4 +1,4 @@
-package image_classifier.pipeline.image
+package image_classifier.pipeline.featurization
 
 import image_classifier.configuration.ImageFeatureAlgorithm
 import image_classifier.configuration.ImageFeatureAlgorithm._
@@ -6,7 +6,7 @@ import org.apache.spark.ml.linalg.{Vector => MLVector}
 import org.bytedeco.javacpp.opencv_core.Mat
 import org.bytedeco.javacpp.opencv_features2d.Feature2D
 
-private[pipeline] final case class ImageFeaturizer(featureCount: Int, algorithm: ImageFeatureAlgorithm) {
+private[featurization] final case class Descriptor(featureCount: Int, algorithm: ImageFeatureAlgorithm) {
 
 	require(featureCount > 0)
 
