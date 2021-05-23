@@ -1,7 +1,6 @@
 package image_classifier.pipeline
 
 import image_classifier.configuration.{LoadableConfig, Loader}
-import org.apache.spark.sql.SparkSession
 
 private[pipeline] abstract class Stage[Result, Specs](val name: String, val specs: Option[Specs]) {
 	import image_classifier.pipeline.Stage.logger
