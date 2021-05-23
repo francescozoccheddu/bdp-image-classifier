@@ -10,7 +10,28 @@ import org.apache.spark.sql.SparkSession
 
 private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig]], val featurizationStage: FeaturizationStage, val predictionCol: String = defaultPredictionCol)(implicit spark: SparkSession) extends LoaderStage[ModelType, TrainingConfig]("Training", loader) {
 
-	override protected def load(file: String): ModelType = ???
+	override protected def load(file: String): ModelType = {
+		import image_classifier.configuration.TrainingAlgorithm
+		import image_classifier.pipeline.training.TrainingStage.{algorithmPath, dataPath}
+		import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, FMClassificationModel, GBTClassificationModel, LinearSVCModel, LogisticRegressionModel, MultilayerPerceptronClassificationModel, NaiveBayesModel, RandomForestClassificationModel}
+		import org.apache.spark.ml.util.MLReadable
+
+		import java.nio.file.{Files, Paths}
+		val dir = Paths.get(file)
+		val bytes = Files.readAllBytes(dir.resolve(algorithmPath))
+		require(bytes.length == 1)
+		val model: MLReadable[_] = TrainingAlgorithm(bytes(0)) match {
+			case TrainingAlgorithm.MultilayerPerceptron => MultilayerPerceptronClassificationModel
+			case TrainingAlgorithm.RandomForest => RandomForestClassificationModel
+			case TrainingAlgorithm.LinearSupportVector => LinearSVCModel
+			case TrainingAlgorithm.GradientBoosted => GBTClassificationModel
+			case TrainingAlgorithm.FactorizationMachines => FMClassificationModel
+			case TrainingAlgorithm.DecisionTree => DecisionTreeClassificationModel
+			case TrainingAlgorithm.LogisticRegression => LogisticRegressionModel
+			case TrainingAlgorithm.NaiveBayes => NaiveBayesModel
+		}
+		model.read.load(dir.resolve(dataPath).toString).asInstanceOf[ModelType]
+	}
 
 	override protected def make(config: TrainingConfig): ModelType = {
 		import image_classifier.configuration.TrainingAlgorithm
@@ -69,7 +90,14 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 		classifier.fit(training).asInstanceOf[ModelType]
 	}
 
-	override protected def save(result: ModelType, file: String): Unit = ???
+	override protected def save(result: ModelType, file: String): Unit = {
+		import image_classifier.pipeline.training.TrainingStage.{algorithmPath, dataPath}
+		import java.nio.file.{Files, Paths}
+		val dir = Paths.get(file)
+		Files.createDirectories(dir)
+		Files.write(dir.resolve(algorithmPath), Array[Byte](specs.get.config.get.algorithm.id.toByte))
+		result.write.save(dir.resolve(dataPath).toString)
+	}
 
 }
 
@@ -85,6 +113,6 @@ private[pipeline] object TrainingStage {
 	val defaultPredictionCol = colName("prediction")
 
 	private val algorithmPath = "algorithm"
-	private val dataPath = "algorithm"
+	private val dataPath = "data"
 
 }
