@@ -8,6 +8,7 @@ object Launcher {
 		Logger.getRootLogger.setLevel(Level.INFO)
 		Logger.getLogger("org").setLevel(Level.ERROR)
 		Logger.getLogger("com").setLevel(Level.ERROR)
+		Logger.getLogger("breeze").setLevel(Level.ERROR)
 	}
 
 	import image_classifier.configuration.Config
