@@ -9,6 +9,7 @@ private[pipeline] final class TestingStage(config: Option[TestingConfig], val tr
 
 	override protected def run(specs: TestingConfig): Unit = {
 		import org.apache.spark.mllib.evaluation.MulticlassMetrics
+		import image_classifier.pipeline.testing.TestingStage.logger
 		import org.apache.spark.sql.functions.col
 		import org.apache.spark.sql.types.DoubleType
 		import image_classifier.utils.OptionImplicits._
@@ -25,13 +26,17 @@ private[pipeline] final class TestingStage(config: Option[TestingConfig], val tr
 		val labels = specs.labels.getOr(() => metrics.labels.map(_.toInt.toString))
 		require(labels.length == metrics.labels.length)
 		if (specs.save.isDefined) {
-			import image_classifier.pipeline.testing.TestingStage.logger
 			import java.io.{FileOutputStream, PrintStream}
 			logger.info(s"Writing metrics to '${specs.save.get}'")
 			val out = new PrintStream(new FileOutputStream(specs.save.get))
 			try TestingStage.print(metrics, labels, out)
 			finally out.close()
-		} else TestingStage.print(metrics, labels, System.out)
+		} else {
+			logger.info(s"Writing metrics to stdout")
+			println()
+			TestingStage.print(metrics, labels, System.out)
+			println()
+		}
 	}
 
 }
@@ -98,7 +103,7 @@ private[testing] object TestingStage {
 		printer.addPercent("False positives", metrics.weightedFalsePositiveRate)
 		printer.add("Confusion matrix", metrics.confusionMatrix.toString)
 		for ((l, i) <- labels.zipWithIndex) {
-			printer.addSection(s"Label '$l'")
+			printer.addSection(s"Class '$l'")
 			printer.addPercent("F-Measure", metrics.fMeasure(i))
 			printer.addPercent("Precision", metrics.precision(i))
 			printer.addPercent("Recall", metrics.recall(i))
