@@ -5,7 +5,7 @@ import org.apache.spark.sql.{SparkSession, DataFrame}
 private[data] object Merger {
 	import org.apache.log4j.Logger
 
-	private val logger = Logger.getLogger(Merger.getClass)
+	private val logger = Logger.getLogger(getClass)
 
 	private def readFile(file: String): Array[Byte] = {
 		import java.nio.file.{Files, Paths}

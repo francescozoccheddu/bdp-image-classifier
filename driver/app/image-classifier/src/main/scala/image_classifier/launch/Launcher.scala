@@ -14,7 +14,7 @@ object Launcher {
 	import image_classifier.configuration.Config
 	import org.apache.log4j.Logger
 
-	private val logger = Logger.getLogger(Launcher.getClass)
+	private val logger = Logger.getLogger(getClass)
 
 	def run(configFile: String): Unit = {
 		import java.nio.file.Paths

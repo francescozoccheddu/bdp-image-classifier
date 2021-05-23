@@ -54,6 +54,7 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
 
 	private def makeAndSave(config: Config, file: String) = {
 		val result = make(config)
+		logger.info(s"Saving to '$file'")
 		save(result, file)
 		result
 	}
@@ -68,13 +69,13 @@ private[pipeline] object Stage {
 
 	import org.apache.log4j.Logger
 
-	private val logger = Logger.getLogger(Stage.getClass)
+	private val logger = Logger.getLogger(getClass)
 
 }
 
 private[pipeline] object LoaderStage {
 	import org.apache.log4j.Logger
 
-	private val logger = Logger.getLogger(LoaderStage.getClass)
+	private val logger = Logger.getLogger(getClass)
 
 }

@@ -2,7 +2,6 @@ package image_classifier.pipeline.testing
 
 import image_classifier.configuration.TestingConfig
 import image_classifier.pipeline.Stage
-import image_classifier.pipeline.featurization.FeaturizationStage
 import image_classifier.pipeline.training.TrainingStage
 import org.apache.spark.sql.SparkSession
 
@@ -10,7 +9,7 @@ private[pipeline] final class TestingStage(config: Option[TestingConfig], val tr
 
 	override protected def run(specs: TestingConfig): Unit = {
 		import org.apache.spark.mllib.evaluation.MulticlassMetrics
-		import org.apache.spark.sql.functions.{col, round}
+		import org.apache.spark.sql.functions.col
 		import org.apache.spark.sql.types.DoubleType
 		import image_classifier.utils.OptionImplicits._
 		val model = trainingStage.result
@@ -26,7 +25,9 @@ private[pipeline] final class TestingStage(config: Option[TestingConfig], val tr
 		val labels = specs.labels.getOr(() => metrics.labels.map(_.toInt.toString))
 		require(labels.length == metrics.labels.length)
 		if (specs.save.isDefined) {
+			import image_classifier.pipeline.testing.TestingStage.logger
 			import java.io.{FileOutputStream, PrintStream}
+			logger.info(s"Writing metrics to '${specs.save.get}'")
 			val out = new PrintStream(new FileOutputStream(specs.save.get))
 			try TestingStage.print(metrics, labels, out)
 			finally out.close()
@@ -36,6 +37,7 @@ private[pipeline] final class TestingStage(config: Option[TestingConfig], val tr
 }
 
 private[testing] object TestingStage {
+	import org.apache.log4j.Logger
 	import org.apache.spark.mllib.evaluation.MulticlassMetrics
 
 	import java.io.PrintStream
@@ -81,6 +83,8 @@ private[testing] object TestingStage {
 		}
 
 	}
+
+	private val logger = Logger.getLogger(getClass)
 
 	private def print(metrics: MulticlassMetrics, labels: Seq[String], out: PrintStream) = {
 		val printer = new Printer(out)

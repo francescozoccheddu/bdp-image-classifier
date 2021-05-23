@@ -9,7 +9,7 @@ private[data] object FileUtils {
 
 	private val tempFiles: mutable.MutableList[String] = mutable.MutableList()
 	private val dateFormat = DateTimeFormatter.ofPattern("yy-MM-dd-HH-mm-ss-SSS")
-	private val logger = Logger.getLogger(FileUtils.getClass)
+	private val logger = Logger.getLogger(getClass)
 
 	def listFiles(workingDir: String, glob: String): Seq[String] = {
 		import java.io.File

@@ -30,11 +30,14 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 	}
 
 	override protected def make(config: FeaturizationConfig) = {
+		import image_classifier.pipeline.featurization.FeaturizationStage.logger
 		validate(dataStage.result.schema)
+		logger.info("Extracting features")
 		val describedData = describe(config, dataStage.result).cache
+		logger.info("Creating codebook")
 		val codebook = createCodebook(config, describedData)
+		logger.info("Computing BOVW")
 		val bowv = BOWV.compute(describedData, codebook, config.codebookSize, outputCol)
-		describedData.unpersist
 		bowv
 	}
 
@@ -47,7 +50,10 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 
 private[pipeline] object FeaturizationStage {
 	import image_classifier.pipeline.utils.Columns.colName
+	import org.apache.log4j.Logger
 
 	val defaultOutputCol = colName("features")
+
+	private val logger = Logger.getLogger(getClass)
 
 }

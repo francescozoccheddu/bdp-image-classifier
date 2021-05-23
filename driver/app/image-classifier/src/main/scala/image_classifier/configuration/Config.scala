@@ -130,7 +130,7 @@ final case class Config(
 object Config {
 	import org.apache.log4j.Logger
 
-	private val logger = Logger.getLogger(Config.getClass)
+	private val logger = Logger.getLogger(getClass)
 
 	def fromFile(file: String) = {
 		logger.info(s"Loading config file '$file'")
