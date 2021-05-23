@@ -9,18 +9,98 @@ import org.apache.spark.sql.SparkSession
 private[pipeline] final class TestingStage(config: Option[TestingConfig], val trainingStage: TrainingStage)(implicit spark: SparkSession) extends Stage[Unit, TestingConfig]("Testing", config) {
 
 	override protected def run(specs: TestingConfig): Unit = {
-		import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-		import org.apache.spark.sql.functions.col
+		import org.apache.spark.mllib.evaluation.MulticlassMetrics
+		import org.apache.spark.sql.functions.{col, round}
+		import org.apache.spark.sql.types.DoubleType
+		import image_classifier.utils.OptionImplicits._
 		val model = trainingStage.result
 		val featurizationStage = trainingStage.featurizationStage
 		val dataStage = featurizationStage.dataStage
 		val test = featurizationStage.result.filter(col(dataStage.isTestCol))
-		val data = model.transform(test)
-		val evaluator = new MulticlassClassificationEvaluator()
-			.setLabelCol(dataStage.labelCol)
-			.setPredictionCol(trainingStage.predictionCol)
-			.setMetricName("accuracy")
-		println(s"Accuracy is ${evaluator.evaluate(data) * 100}%")
+		val data = model
+			.transform(test)
+			.select(col(trainingStage.predictionCol), col(dataStage.labelCol).cast(DoubleType))
+			.rdd
+			.map(r => (r.getDouble(0), r.getDouble(1)))
+		val metrics = new MulticlassMetrics(data)
+		val labels = specs.classNames.getOr(() => metrics.labels.map(_.toInt.toString))
+		require(labels.length == metrics.labels.length)
+		if (specs.save.isDefined) {
+			import java.io.{FileOutputStream, PrintStream}
+			val out = new PrintStream(new FileOutputStream(specs.save.get))
+			try TestingStage.print(metrics, labels, out)
+			finally out.close()
+		} else TestingStage.print(metrics, labels, System.out)
+	}
+
+}
+
+private[testing] object TestingStage {
+	import org.apache.spark.mllib.evaluation.MulticlassMetrics
+
+	import java.io.PrintStream
+
+	private final class Printer(out: PrintStream) {
+
+		private val minSpace = 32
+		private var isEmpty = true
+
+		private def truncate(value: Double)
+		= "%.3f".format(value)
+
+		def add(key: String, value: Double): Unit =
+			add(key, truncate(value))
+
+		def addPercent(key: String, value: Double): Unit =
+			add(key, truncate(value * 100) + "%")
+
+		private def addAligned(value: String, column: Int): Unit = {
+			val space = minSpace max column
+			val body = value
+				.lines
+				.map(" " * space + _.trim)
+				.mkString("\n")
+				.substring(column)
+			out.print(body)
+			isEmpty = false
+		}
+
+		def add(key: String, value: String): Unit = {
+			val header = s"$key:  "
+			out.print(header)
+			addAligned(value, header.length)
+			out.println()
+			isEmpty = false
+		}
+
+		def addSection(key: String) = {
+			if (!isEmpty)
+				out.println()
+			out.println(s"--- $key ---")
+			isEmpty = false
+		}
+
+	}
+
+	private def print(metrics: MulticlassMetrics, labels: Seq[String], out: PrintStream) = {
+		val printer = new Printer(out)
+		printer.addSection("Summary")
+		printer.addPercent("Accuracy", metrics.accuracy)
+		printer.addPercent("Hamming loss", metrics.hammingLoss)
+		printer.addPercent("F-Measure", metrics.weightedFMeasure)
+		printer.addPercent("Precision", metrics.weightedPrecision)
+		printer.addPercent("Recall", metrics.weightedRecall)
+		printer.addPercent("True positives", metrics.weightedTruePositiveRate)
+		printer.addPercent("False positives", metrics.weightedFalsePositiveRate)
+		printer.add("Confusion matrix", metrics.confusionMatrix.toString)
+		for ((l, i) <- labels.zipWithIndex) {
+			printer.addSection(s"Label '$l'")
+			printer.addPercent("F-Measure", metrics.fMeasure(i))
+			printer.addPercent("Precision", metrics.precision(i))
+			printer.addPercent("Recall", metrics.recall(i))
+			printer.addPercent("True positives", metrics.truePositiveRate(i))
+			printer.addPercent("False positives", metrics.falsePositiveRate(i))
+		}
 	}
 
 }
