@@ -62,12 +62,39 @@ object FeaturizationConfig {
 }
 
 final case class TrainingConfig(
-	algorithm: TrainingAlgorithm = TrainingConfig.defaultAlgorithm
-) extends LoadableConfig
+	algorithm: TrainingAlgorithm = TrainingConfig.defaultAlgorithm,
+	maxIterations: Int = TrainingConfig.defaultMaxIterations,
+	regParam: Double = TrainingConfig.defaultRegParam,
+	elasticNetParam: Double = TrainingConfig.defaultElasticNetParam,
+	treeCount: Int = TrainingConfig.defaultTreeCount,
+	hiddenLayers: Seq[Int] = TrainingConfig.defaultHiddenLayers,
+	blockSize: Int = TrainingConfig.defaultBlockSize,
+	stepSize: Double = TrainingConfig.defaultStepSize,
+	seed: Int = TrainingConfig.defaultSeed,
+) extends LoadableConfig {
+
+	require(maxIterations > 0, s"${nameOf(maxIterations)} must be positive")
+	require(blockSize >= 4, s"${nameOf(blockSize)} must be at least 4")
+	require(elasticNetParam >= 0 && elasticNetParam <= 1, s"${nameOf(elasticNetParam)} must fall in range [0,1]")
+	require(stepSize > 0, s"${nameOf(stepSize)} must be positive")
+	require(regParam >= 0, s"${nameOf(regParam)} cannot be negative")
+	require(treeCount >= 0, s"${nameOf(treeCount)} cannot be negative")
+	require(hiddenLayers.forall(_ > 0), s"${nameOf(hiddenLayers)} must be positive")
+
+}
 
 object TrainingConfig {
+	import scala.util.Random
 
 	val defaultAlgorithm = TrainingAlgorithm.NaiveBayes
+	val defaultMaxIterations = 10
+	val defaultRegParam = 0.3
+	val defaultElasticNetParam = 0.8
+	val defaultTreeCount = 4
+	val defaultHiddenLayers = Seq.empty[Int]
+	val defaultBlockSize = 128
+	val defaultStepSize = 0.001
+	val defaultSeed = Random.nextInt
 
 }
 
