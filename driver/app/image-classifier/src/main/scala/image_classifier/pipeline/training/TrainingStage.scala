@@ -35,7 +35,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 
 	override protected def make(config: TrainingConfig): ModelType = {
 		import image_classifier.configuration.TrainingAlgorithm
-		import image_classifier.pipeline.training.TrainingStage.ClassifierType
+		import image_classifier.pipeline.training.TrainingStage.{ClassifierType, logger}
 		import org.apache.spark.ml.classification.{DecisionTreeClassifier, FMClassifier, GBTClassifier, LinearSVC, LogisticRegression, MultilayerPerceptronClassifier, NaiveBayes, RandomForestClassifier}
 		import org.apache.spark.sql.functions.col
 		featurizationStage.result.cache
@@ -83,6 +83,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 					.setStepSize(config.stepSize)
 					.setBlockSize(config.blockSize)
 		}
+		logger.info(s"Training with '${classifier.getClass.getSimpleName}'")
 		val training = featurizationStage.result.filter(!col(featurizationStage.dataStage.isTestCol))
 		classifier.setFeaturesCol(featuresCol)
 		classifier.setLabelCol(labelCol)
@@ -103,6 +104,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 
 private[pipeline] object TrainingStage {
 	import image_classifier.pipeline.utils.Columns.colName
+	import org.apache.log4j.Logger
 	import org.apache.spark.ml.classification.Classifier
 	import org.apache.spark.ml.param.shared.{HasFeaturesCol, HasLabelCol, HasPredictionCol}
 	import org.apache.spark.ml.linalg.{Vector => MLVector}
@@ -111,6 +113,8 @@ private[pipeline] object TrainingStage {
 	private type ClassifierType = Classifier[MLVector, _, _ <: MLWritable] with HasLabelCol with HasFeaturesCol with HasPredictionCol
 
 	val defaultPredictionCol = colName("prediction")
+
+	private val logger = Logger.getLogger(getClass)
 
 	private val algorithmPath = "algorithm"
 	private val dataPath = "data"

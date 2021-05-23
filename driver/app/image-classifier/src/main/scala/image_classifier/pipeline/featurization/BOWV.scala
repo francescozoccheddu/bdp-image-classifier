@@ -77,7 +77,6 @@ private[featurization] object BOWV {
 				.withColumn(outputCol, vectorizeUdf(col(outputCol)))
 		}
 		val joint = indexedIn.drop(outputCol).join(indexedOut, idCol).drop(idCol)
-		indexedIn.unpersist
 		joint
 	}
 

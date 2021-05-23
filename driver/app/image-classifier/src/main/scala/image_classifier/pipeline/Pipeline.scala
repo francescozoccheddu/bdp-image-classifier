@@ -6,7 +6,7 @@ object Pipeline {
 	import org.apache.spark.sql.SparkSession
 	import org.apache.log4j.Logger
 
-	private val logger = Logger.getLogger(Pipeline.getClass)
+	private val logger = Logger.getLogger(getClass)
 
 	private val isTestCol = colName("isTest")
 	private val dataCol = colName("data")
@@ -19,13 +19,16 @@ object Pipeline {
 		import image_classifier.pipeline.testing.TestingStage
 		import image_classifier.pipeline.training.TrainingStage
 		import image_classifier.utils.DataFrameImplicits._
+
 		logger.info("Pipeline started")
+		val time = System.nanoTime
 		val data = new DataStage(config.data, workingDir, labelCol, isTestCol, dataCol)
 		val featurization = new FeaturizationStage(config.featurization, data, dataCol)
 		val training = new TrainingStage(config.training, featurization, predictionCol)
 		val testing = new TestingStage(config.testing, training)
 		Seq(testing, training, featurization, data).takeWhile(!_.hasResult)
-		logger.info("Pipeline ended")
+		val elapsed = (System.nanoTime - time) / 1000000000.0
+		logger.info(s"Pipeline ended after ${"%.3f".format(elapsed)}s")
 	}
 
 }
