@@ -99,11 +99,11 @@ object TrainingConfig {
 }
 
 final case class TestingConfig(
-	writeSummary: O[String] = None,
+	save: O[String] = None,
 	classNames: O[Seq[String]] = None
 ) {
 
-	require(writeSummary.forall(isValidFilePath), s"${nameOf(writeSummary)} is not a valid file path")
+	require(save.forall(isValidFilePath), s"${nameOf(save)} is not a valid file path")
 
 }
 
