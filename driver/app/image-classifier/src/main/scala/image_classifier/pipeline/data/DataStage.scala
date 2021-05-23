@@ -13,7 +13,11 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], work
 	override protected def save(result: DataFrame, file: String): Unit = {}
 
 	override protected def make(config: DataConfig) = {
-		val save = specs.get.file
+		import image_classifier.configuration.LoadMode
+		val save = specs.get.mode match {
+			case LoadMode.MakeAndSave | LoadMode.LoadOrMakeAndSave => specs.get.file
+			case _ => None
+		}
 		val file = save.getOrElse(config.tempFile)
 		val sources = Array.ofDim[Option[Seq[(Int, String)]]](3)
 		sources(0) = config.dataSet.map(encodeFiles(_, config.testFraction, config.splitSeed, config.stratified))
