@@ -100,7 +100,7 @@ object TrainingConfig {
 
 final case class TestingConfig(
 	save: O[String] = None,
-	classNames: O[Seq[String]] = None
+	labels: O[Seq[String]] = None
 ) {
 
 	require(save.forall(isValidFilePath), s"${nameOf(save)} is not a valid file path")

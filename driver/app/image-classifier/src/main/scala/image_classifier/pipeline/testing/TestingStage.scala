@@ -23,7 +23,7 @@ private[pipeline] final class TestingStage(config: Option[TestingConfig], val tr
 			.rdd
 			.map(r => (r.getDouble(0), r.getDouble(1)))
 		val metrics = new MulticlassMetrics(data)
-		val labels = specs.classNames.getOr(() => metrics.labels.map(_.toInt.toString))
+		val labels = specs.labels.getOr(() => metrics.labels.map(_.toInt.toString))
 		require(labels.length == metrics.labels.length)
 		if (specs.save.isDefined) {
 			import java.io.{FileOutputStream, PrintStream}
