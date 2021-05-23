@@ -54,7 +54,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 					case LoadMode.Make | LoadMode.MakeAndSave => featurizationStage.specs.get.config.get.codebookSize
 					case _ => featurizationStage.result.first.getAs[MLVector](featuresCol).size
 				}
-				val labelsCount = featurizationStage.result.select(approx_count_distinct(labelCol)).first.getInt(0)
+				val labelsCount = featurizationStage.result.select(approx_count_distinct(labelCol)).first.getLong(0).toInt
 				new MultilayerPerceptronClassifier()
 					.setSeed(config.seed)
 					.setMaxIter(config.maxIterations)
