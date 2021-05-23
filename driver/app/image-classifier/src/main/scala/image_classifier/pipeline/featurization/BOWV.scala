@@ -33,21 +33,17 @@ private[featurization] object BOWV {
 		}
 		import data.sparkSession.implicits._
 		import org.apache.spark.ml.clustering.KMeans
-		import org.apache.spark.sql.functions.col
 		val model = new KMeans().setK(size).setMaxIter(10).setFeaturesCol(inputCol).fit(data)
 		val centers = model
 			.clusterCenters
 			.toSeq
 			.zipWithIndex
 			.toDF(codebookDataCol, codebookIdCol)
-		(if (assignNearest) {
-			val dataWithId = projectForCodebookJoin(data, inputCol)
-			NearestNeighbor.join(dataWithId, centers, Seq(codebookIdCol, codebookDataCol), codebookDataCol, neighborCol)
-				.select(col(codebookIdCol), col(neighborCol).getField(codebookDataCol).alias(codebookDataCol))
-		}
+		val assignedCenters = if (assignNearest)
+			new NearestNeighbor(codebookDataCol, inputCol, codebookDataCol).joinFeatures(centers, data)
 		else
-			centers)
-			.dropDuplicates(codebookDataCol)
+			centers
+		assignedCenters.dropDuplicates(codebookDataCol)
 	}
 
 	def compute(data: DataFrame, codebook: DataFrame, codebookSize: Int, inputCol: String, outputCol: String = defaultOutputCol): DataFrame = {
@@ -71,13 +67,11 @@ private[featurization] object BOWV {
 			import org.apache.spark.sql.types.LongType
 			val explodedData = indexedIn.select(
 				col(idCol),
-				explode(col(inputCol)).alias(codebookDataCol))
-			val projCodebook = codebook.select(
-				col(codebookIdCol).alias(idCol).cast(LongType),
-				col(codebookDataCol))
+				explode(col(inputCol)).alias(inputCol))
 			val vectorizeUdf = udf((matches: Array[Long]) => Histogram.compute(matches, codebookSize))
-			NearestNeighbor.join(projCodebook, explodedData, Seq(idCol), codebookDataCol, neighborCol)
-				.select(col(idCol), col(neighborCol).getField(idCol).alias(outputCol))
+			new NearestNeighbor(inputCol, codebookDataCol, outputCol)
+				.joinColumn[Int](explodedData, codebook, codebookIdCol)
+				.select(col(idCol), col(outputCol))
 				.groupBy(col(idCol))
 				.agg(collect_list(outputCol).alias(outputCol))
 				.withColumn(outputCol, vectorizeUdf(col(outputCol)))
