@@ -20,6 +20,7 @@ final case class DataConfig private[configuration](
 ) extends HdfsLoadableConfig {
 
 	require(testFraction >= 0 && testFraction <= 1, s"${nameOf(testFraction)} must fall in range [0, 1]")
+	require(isValidHdfsFilePath(tempFile), s"${nameOf(tempFile)} is not a valid HDFS file path")
 
 }
 
