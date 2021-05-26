@@ -144,4 +144,4 @@ chmod -R a+rwx "$ICROOT"
 echo "-- Formatting HDFS"
 echo "Y" | hdfs namenode -format >& /dev/null
 
-echo "-- Done."
+echo "-- Done"

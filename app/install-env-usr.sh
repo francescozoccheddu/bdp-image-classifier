@@ -8,7 +8,7 @@ echo "-- Installing environment as user $USR"
 
 if id "$USR" &>/dev/null; then
     echo "User $USR already exists. Run uninstall-env-usr.sh and try again."
-	echo "-- Failed."
+	echo "-- Failed"
 	exit 1
 fi
 
@@ -25,4 +25,4 @@ sudo cp "$SCRIPT_SRC" "$SCRIPT_DST"
 sudo chmod a+rwx "$SCRIPT_DST"
 echo "$PASSWD" | sudo -S -u "$USR" bash -c "\"~/$SCRIPT_DST_NAME\" && rm -f \"~/$SCRIPT_DST_NAME\""
 
-echo "-- Done."
+echo "-- Done"
