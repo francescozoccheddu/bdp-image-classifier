@@ -1,7 +1,7 @@
 package image_classifier.pipeline.data
 
 private[data] object FileUtils {
-	import org.apache.hadoop.fs.Path
+	import org.apache.hadoop.fs.{Path, FileSystem}
 	import org.apache.log4j.Logger
 
 	import java.time.format.DateTimeFormatter
@@ -27,6 +27,18 @@ private[data] object FileUtils {
 		finally if (stream != null) stream.close()
 	}
 
+	private def fileSystem = {
+		import org.apache.hadoop.conf.Configuration
+		FileSystem.get(new Configuration)
+	}
+
+	def parent(path : String) = {
+		val parent = new Path(path).getParent
+		if (parent == null) "/" else parent.toString
+	}
+
+	def makeDirs(dir : String) = fileSystem.mkdirs(new Path(dir))
+
 	private def makeTempFilePath = {
 		import java.time.LocalDateTime
 		import java.util.UUID.randomUUID
@@ -34,10 +46,8 @@ private[data] object FileUtils {
 	}
 
 	def getTempHdfsFile(dir: String): String = {
-		import org.apache.hadoop.conf.Configuration
-		import org.apache.hadoop.fs.{FileSystem, Path}
 		val dirPath = new Path(dir)
-		FileSystem.get(new Configuration).mkdirs(dirPath)
+		fileSystem.mkdirs(dirPath)
 		val filePath = new Path(dirPath, makeTempFilePath)
 		addTempFile(filePath.toString)
 		filePath.toString
@@ -48,11 +58,11 @@ private[data] object FileUtils {
 		tempFiles += file
 	}
 
+	def exists(file :String) = fileSystem.exists(new Path(file))
+
 	def clearTempFiles(): Unit = {
-		import org.apache.hadoop.conf.Configuration
-		import org.apache.hadoop.fs.FileSystem
 		logger.info(s"Clearing ${tempFiles.length} temp files")
-		val fs = FileSystem.get(new Configuration)
+		val fs = fileSystem
 		import scala.util.Try
 		for (file <- tempFiles) {
 			Try {

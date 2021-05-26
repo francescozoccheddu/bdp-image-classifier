@@ -26,7 +26,7 @@ final case class DataConfig private[configuration](
 
 object DataConfig {
 
-	val defaultTempFile = "hdfs://image_classifier_temp"
+	val defaultTempFile = "hdfs://localhost:9000/ic_temp_data"
 
 }
 

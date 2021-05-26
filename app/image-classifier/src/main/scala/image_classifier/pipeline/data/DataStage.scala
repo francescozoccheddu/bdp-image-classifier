@@ -10,6 +10,8 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], work
 
 	def this(loader: Option[Loader[DataConfig]], workingDir: String)(implicit spark: SparkSession) = this(loader, workingDir, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark)
 
+	override protected def exists(file: String): Boolean = FileUtils.exists(file)
+
 	override protected def save(result: DataFrame, file: String): Unit = {}
 
 	override protected def make(config: DataConfig) = {
@@ -25,6 +27,7 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], work
 		sources(2) = config.testSet.map(encodeFiles(_, true))
 		if (save.isEmpty)
 			addTempFile(file)
+		FileUtils.makeDirs(FileUtils.parent(file))
 		Merger.mergeFiles(sources.flatten.flatten.toSeq, file)
 		load(file)
 	}

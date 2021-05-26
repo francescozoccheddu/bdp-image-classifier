@@ -42,15 +42,18 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
 		}
 	}
 
-	private def loadIfExists(file: String): Option[Result] = {
+	protected def exists(file :String) =  {
 		import image_classifier.pipeline.utils.Files
-		if (Files.exists(file))
+		Files.exists(file)
+	}
+
+	private def loadIfExists(file: String): Option[Result] =
+		if (exists(file))
 			Some(load(file))
 		else {
 			logger.info(s"File '$file' does not exist")
 			None
 		}
-	}
 
 	private def makeAndSave(config: Config, file: String) = {
 		val result = make(config)
