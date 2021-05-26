@@ -4,6 +4,8 @@
 
 USR="ic_env"
 PASSWD="$USR"
+IC_REL_HOME=".$USR"
+
 echo "-- Installing environment as user $USR"
 
 if id "$USR" &>/dev/null; then
@@ -16,13 +18,15 @@ echo "-- Creating user $USR"
 sudo adduser --disabled-password --gecos "Environment for image classifier" $USR > /dev/null
 echo "$USR:$PASSWD" | sudo chpasswd >& /dev/null
 
-THIS_FILE=`realpath "$0"`
-ICHOME=`eval echo "~$USR"`
-SCRIPT_SRC=`dirname "$THIS_FILE"`/install-env.sh
-SCRIPT_DST_NAME=".install-env.sh"
-SCRIPT_DST="$ICHOME/$SCRIPT_DST_NAME"
-sudo cp "$SCRIPT_SRC" "$SCRIPT_DST"
-sudo chmod a+rwx "$SCRIPT_DST"
-echo "$PASSWD" | sudo -S -u "$USR" bash -c "\"~/$SCRIPT_DST_NAME\" && rm -f \"~/$SCRIPT_DST_NAME\""
+function send {
+	THIS_FILE=`realpath "$0"`
+	THIS_DIR=`dirname "$THIS_FILE"`
+	USR_IC_HOME=`eval echo "~$USR"`"/$IC_REL_HOME"
+	sudo cp "$THIS_DIR/$0" "$USR_IC_HOME/$0"
+	sudo chmod a+rwx "$USR_IC_HOME/$0"
+}
 
-echo "-- Done"
+send "install-env.sh"
+send "run.sh"
+send "uninstall-env.sh"
+echo "$PASSWD" | sudo -S -u "$USR" bash -c "~/\"$IC_REL_HOME\"/install-env.sh"

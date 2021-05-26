@@ -3,19 +3,19 @@
 # Environment installer
 
 USR=`whoami`
-ICROOT=`realpath ~/.ic_env`
-ADDIT_PROF="$ICROOT/profile"
-HADOOP_HOME="$ICROOT/hadoop"
-SPARK_HOME="$ICROOT/spark"
-JAVA_HOME="$ICROOT/jdk"
-DATA_HOME="$ICROOT/data"
+IC_HOME=`realpath ~/."$USR"`
+ADDIT_PROF="$IC_HOME/profile"
+HADOOP_HOME="$IC_HOME/hadoop"
+SPARK_HOME="$IC_HOME/spark"
+JAVA_HOME="$IC_HOME/jdk"
+DATA_HOME="$IC_HOME/data"
 NAMENODE_DATA_HOME="$DATA_HOME/namenode"
 DATANODE_DATA_HOME="$DATA_HOME/datanode"
-TEMP_HOME="$ICROOT/temp"
+TEMP_HOME="$IC_HOME/temp"
 
-echo "-- Installing environment in $ICROOT"
-mkdir -p "$ICROOT"
-cd "$ICROOT"
+echo "-- Installing environment in $IC_HOME"
+mkdir -p "$IC_HOME"
+cd "$IC_HOME"
 
 function get {
 	if [ -d "$2" ]; then
@@ -139,7 +139,7 @@ mkdir -p "$DATA_HOME"
 mkdir -p "$TEMP_HOME"
 
 echo "-- Updating permissions"
-chmod -R a+rwx "$ICROOT"
+chmod -R a+rwx "$IC_HOME"
 
 echo "-- Formatting HDFS"
 echo "Y" | hdfs namenode -format >& /dev/null
