@@ -12,4 +12,4 @@ rm -rf "$HOME"
 echo "-- Restoring ~/.profile"
 sed -i '/ic_env/d' ~/.profile 
 
-echo "-- Done."
+echo "-- Done"
