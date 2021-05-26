@@ -7,7 +7,6 @@ private[image_classifier] object SparkInstance {
 		val spark = SparkSession
 			.builder()
 			.appName("Image classification with BOVW")
-			.master("local[*]")
 			.getOrCreate()
 		try {
 			func(spark)

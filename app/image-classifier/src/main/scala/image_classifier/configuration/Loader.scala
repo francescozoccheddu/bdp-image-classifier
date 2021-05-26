@@ -28,6 +28,7 @@ final case class Loader[Type <: LoadableConfig] private[configuration](
 		case (Some(make), None, None, None) => LoadMode.Make
 		case (Some(make), None, None, Some(loadAndSave)) => LoadMode.LoadOrMakeAndSave
 		case (Some(make), None, Some(save), None) => LoadMode.MakeAndSave
+		case _ => throw new MatchError((make, load, save, loadAndSave))
 	}
 
 	private def requireValidPaths(validator: String => Boolean, errorFormat: String): Unit =
@@ -35,8 +36,7 @@ final case class Loader[Type <: LoadableConfig] private[configuration](
 
 	private[configuration] def requireValidPaths(implicit tag: TypeTag[Type]) = {
 		if (classOf[HdfsLoadableConfig].isAssignableFrom(tag.mirror.runtimeClass(tag.tpe)))
-		//requireValidHdfsPaths()
-			requireValidFsPaths() // TODO Fix when HDFS is working
+			requireValidHdfsPaths()
 		else
 			requireValidFsPaths()
 	}
