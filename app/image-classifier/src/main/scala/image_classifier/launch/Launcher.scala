@@ -12,9 +12,6 @@ object Launcher {
 	}
 
 	import image_classifier.configuration.Config
-	import org.apache.log4j.Logger
-
-	private val logger = Logger.getLogger(getClass)
 
 	def run(configFile: String): Unit = {
 		import java.nio.file.Paths
@@ -24,7 +21,6 @@ object Launcher {
 	}
 
 	def run(config: Config, workingDir: String): Unit = {
-
 		import image_classifier.utils.SparkInstance
 		import image_classifier.pipeline.Pipeline
 		SparkInstance.execute(Pipeline.run(config, workingDir)(_))

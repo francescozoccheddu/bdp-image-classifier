@@ -30,7 +30,7 @@ private[data] object FileUtils {
 	private def makeTempFilePath = {
 		import java.time.LocalDateTime
 		import java.util.UUID.randomUUID
-		new Path(s"tmp_${LocalDateTime.now.format(dateFormat)}_${randomUUID}")
+		new Path(s"tmp_${LocalDateTime.now.format(dateFormat)}_$randomUUID")
 	}
 
 	def getTempHdfsFile(dir: String): String = {

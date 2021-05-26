@@ -4,26 +4,11 @@ import org.apache.spark.sql.DataFrame
 
 private[featurization] object BOWV {
 	import image_classifier.pipeline.utils.Columns.{colName, resColName}
-	import org.apache.spark.sql.functions.col
 
 	private val codebookDataCol = resColName("data")
 	private val codebookIdCol = resColName("id")
 	private val idCol = resColName("id")
-	private val neighborCol = resColName("neighbor")
 	val defaultOutputCol: String = colName("data")
-
-	private def projectForCodebookJoin(data: DataFrame, inputCol: String) = {
-		import org.apache.spark.sql.types.IntegerType
-		val field = data.schema.fields.find(_.dataType == IntegerType)
-		val newData = if (field.isDefined) {
-			data.withColumnRenamed(field.get.name, codebookIdCol)
-		}
-		else {
-			import org.apache.spark.sql.functions.lit
-			data.withColumn(codebookIdCol, lit(0))
-		}
-		newData.select(col(codebookIdCol), col(inputCol).alias(codebookDataCol))
-	}
 
 	def createCodebook(data: DataFrame, size: Int, inputCol: String, assignNearest: Boolean): DataFrame = {
 		{
@@ -47,11 +32,10 @@ private[featurization] object BOWV {
 	}
 
 	def compute(data: DataFrame, codebook: DataFrame, codebookSize: Int, inputCol: String, outputCol: String = defaultOutputCol): DataFrame = {
-		import org.apache.spark.sql.types.IntegerType
 		{
 			import image_classifier.utils.DataTypeImplicits._
 			import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
-			import org.apache.spark.sql.types.{ArrayType, LongType}
+			import org.apache.spark.sql.types.{IntegerType, ArrayType}
 			val dataSchema = data.schema
 			dataSchema.requireField(inputCol, ArrayType(VectorType))
 			val codebookSchema = codebook.schema
@@ -64,7 +48,6 @@ private[featurization] object BOWV {
 		}
 		val indexedOut = {
 			import org.apache.spark.sql.functions.{col, collect_list, explode, udf}
-			import org.apache.spark.sql.types.LongType
 			val explodedData = indexedIn.select(
 				col(idCol),
 				explode(col(inputCol)).alias(inputCol))

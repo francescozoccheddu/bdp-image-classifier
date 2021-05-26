@@ -55,9 +55,6 @@ private[testing] object TestingStage {
 		private def truncate(value: Double)
 		= "%.3f".format(value)
 
-		def add(key: String, value: Double): Unit =
-			add(key, truncate(value))
-
 		def addPercent(key: String, value: Double): Unit =
 			add(key, truncate(value * 100) + "%")
 

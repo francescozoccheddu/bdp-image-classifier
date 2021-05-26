@@ -18,7 +18,6 @@ object Pipeline {
 		import image_classifier.pipeline.featurization.FeaturizationStage
 		import image_classifier.pipeline.testing.TestingStage
 		import image_classifier.pipeline.training.TrainingStage
-		import image_classifier.utils.DataFrameImplicits._
 
 		logger.info("Pipeline started")
 		val time = System.nanoTime
