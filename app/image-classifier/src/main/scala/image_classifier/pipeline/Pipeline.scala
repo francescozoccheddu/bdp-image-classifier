@@ -14,8 +14,8 @@ object Pipeline {
 	private val predictionCol = colName("prediction")
 
 	def run(config: Config, workingDir: String)(implicit spark: SparkSession): Unit = {
-		import java.time.Duration
 		import image_classifier.pipeline.data.DataStage
+		import org.apache.commons.lang.time.DurationFormatUtils
 		import image_classifier.pipeline.featurization.FeaturizationStage
 		import image_classifier.pipeline.testing.TestingStage
 		import image_classifier.pipeline.training.TrainingStage
@@ -26,8 +26,8 @@ object Pipeline {
 		val training = new TrainingStage(config.training, featurization, predictionCol)
 		val testing = new TestingStage(config.testing, training)
 		Seq(testing, training, featurization, data).takeWhile(!_.hasResult)
-		val elapsed = Duration.ofNanos(System.nanoTime - time)
-		logger.info(s"Pipeline ended after ${if (elapsed.toHours > 0) s"${elapsed.toHours}:" else ""}${elapsed.toMinutes}:${elapsed.toMillis}")
+		val elapsed = DurationFormatUtils.formatDurationHMS((System.nanoTime - time) / 1000000L)
+		logger.info(s"Pipeline ended after $elapsed")
 	}
 
 }
