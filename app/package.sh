@@ -1,11 +1,10 @@
 #!/bin/bash
 
 # App packager
-
+set -e
 OUTPUT=`realpath "${1:-assembly.jar}"`
-SCRIPT_FILE=`realpath "$0"`
-SCRIPT_DIR=`dirname "$SCRIPT_FILE"`
-APP_DIR=`dirname "$SCRIPT_DIR"`/image-classifier
+THIS_FILE=`realpath "$0"`
+APP_DIR=`dirname "$THIS_FILE"`/image-classifier
 INTERM="$APP_DIR/.intermediate_assembly.jar"
 
 echo "-- Packaging $OUTPUT"
