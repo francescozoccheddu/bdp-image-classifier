@@ -4,6 +4,7 @@ import com.github.dwickern.macros.NameOf._
 import image_classifier.configuration.ImageFeatureAlgorithm.ImageFeatureAlgorithm
 import image_classifier.configuration.TrainingAlgorithm.TrainingAlgorithm
 import image_classifier.configuration.Utils._
+import image_classifier.pipeline.featurization.DescriptorConfig
 
 private[image_classifier] sealed trait LoadableConfig
 
@@ -40,15 +41,23 @@ object JointDataConfig {
 
 final case class FeaturizationConfig(
 	codebookSize: Int = FeaturizationConfig.defaultCodebookSize,
-	featureCount: Int = FeaturizationConfig.defaultFeatureCount,
-	algorithm: ImageFeatureAlgorithm = FeaturizationConfig.defaultAlgorithm,
+	override val algorithm: ImageFeatureAlgorithm = FeaturizationConfig.defaultAlgorithm,
+	override val featureCount: Int = FeaturizationConfig.defaultFeatureCount,
+	override val octaveLayerCount : Int = FeaturizationConfig.defaultOctaveLayerCount,
+	override val contrastThreshold : Double = FeaturizationConfig.defaultContrastThreshold,
+	override val edgeThreshold : Double = FeaturizationConfig.defaultEdgeThreshold,
+	override val sigma : Double = FeaturizationConfig.defaultSigma,
 	maxSize: Int = FeaturizationConfig.defaultMaxSize,
 	assignNearest: Boolean = FeaturizationConfig.defaultAssignNearest
-) extends LoadableConfig {
+) extends LoadableConfig with DescriptorConfig {
 
 	require(codebookSize >= 1 && codebookSize <= 10000, s"${nameOf(codebookSize)} must fall in range [1, 10000]")
 	require(featureCount >= 1 && featureCount <= 1000, s"${nameOf(featureCount)} must fall in range [1, 1000]")
 	require(maxSize >= 4 && maxSize <= 8192, s"${nameOf(maxSize)} must fall in range [4, 8192]")
+	require(octaveLayerCount >= 1 && octaveLayerCount <= 32, s"${nameOf(octaveLayerCount)} must fall in range [1, 32]")
+	require(contrastThreshold >= 0, s"${nameOf(contrastThreshold)} cannot be negative")
+	require(edgeThreshold >= 0, s"${nameOf(edgeThreshold)} cannot be negative")
+	require(sigma >= 0,  s"${nameOf(sigma)} cannot be negative")
 
 }
 
@@ -56,8 +65,12 @@ object FeaturizationConfig {
 
 	val defaultCodebookSize = 500
 	val defaultAlgorithm = ImageFeatureAlgorithm.Sift
-	val defaultFeatureCount = 10
-	val defaultMaxSize = 512
+	val defaultOctaveLayerCount = 3
+	val defaultContrastThreshold = 0.04
+	val defaultEdgeThreshold = 10
+	val defaultSigma = 1.6
+	val defaultFeatureCount = 20
+	val defaultMaxSize = 1024
 	val defaultAssignNearest = true
 
 }

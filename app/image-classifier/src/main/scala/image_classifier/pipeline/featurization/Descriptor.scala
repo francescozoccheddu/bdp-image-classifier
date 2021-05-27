@@ -6,21 +6,29 @@ import org.apache.spark.ml.linalg.{Vector => MLVector}
 import org.bytedeco.javacpp.opencv_core.Mat
 import org.bytedeco.javacpp.opencv_features2d.Feature2D
 
-private[featurization] final case class Descriptor(featureCount: Int, algorithm: ImageFeatureAlgorithm) {
+private[image_classifier] trait DescriptorConfig {
 
-	require(featureCount > 0)
+	def algorithm : ImageFeatureAlgorithm
+	def featureCount : Int
+	def octaveLayerCount : Int
+	def contrastThreshold : Double
+	def edgeThreshold : Double
+	def sigma : Double
+
+}
+
+private[featurization] final case class Descriptor(config : DescriptorConfig) {
 
 	lazy val detector: Feature2D = {
 		import org.bytedeco.javacpp.opencv_xfeatures2d.SIFT
-		algorithm match {
-			case ImageFeatureAlgorithm.Sift => SIFT.create(featureCount, 3, 0.04, 10, 1.6)
+		config.algorithm match {
+			case ImageFeatureAlgorithm.Sift => SIFT.create(config.featureCount, config.octaveLayerCount, config.contrastThreshold, config.edgeThreshold, config.sigma)
 		}
 	}
 
 	def apply(image: Mat): Array[MLVector] = {
 		import org.apache.spark.ml.linalg.Vectors
 		import org.bytedeco.javacpp.opencv_core.{CV_64F, CV_64FC1, KeyPointVector, Mat}
-
 		import java.nio.DoubleBuffer
 		val size = detector.descriptorSize
 		val kpv = new KeyPointVector

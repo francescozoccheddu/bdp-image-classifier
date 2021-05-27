@@ -4,7 +4,7 @@
 
 USR="ic_env"
 PASSWD="$USR"
-IC_REL_HOME=".$USR"
+IC_REL_HOME=".ic_env"
 
 echo "-- Installing environment as user $USR"
 

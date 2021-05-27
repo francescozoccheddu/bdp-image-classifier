@@ -3,7 +3,7 @@
 # Environment installer
 
 USR=`whoami`
-IC_HOME=`realpath ~/."$USR"`
+IC_HOME=`realpath ~/.ic_env`
 ADDIT_PROF="$IC_HOME/profile"
 HADOOP_HOME="$IC_HOME/hadoop"
 SPARK_HOME="$IC_HOME/spark"
@@ -56,20 +56,21 @@ export HADOOP_COMMON_HOME=\"\$HADOOP_HOME\"
 export HADOOP_HDFS_HOME=\"\$HADOOP_HOME\"
 export YARN_HOME=\"\$HADOOP_HOME\"
 export HADOOP_COMMON_LIB_NATIVE_DIR=\"\$HADOOP_HOME/lib/native\"
-export HADOOP_OPTS=-Djava.library.path=\"\$HADOOP_PREFIX/lib\"
+export LD_LIBRARY_PATH=\"\$HADOOP_COMMON_LIB_NATIVE_DIR\"
+export HADOOP_OPTS=\"-Djava.net.preferIPv4Stack=true -Djava.library.path=\\\"\$HADOOP_COMMON_LIB_NATIVE_DIR\\\"\"
 export PATH=\"\$PATH:\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin\"
 # Spark
 export SPARK_HOME=\"$SPARK_HOME\"
 export PATH=\"\$PATH:\$SPARK_HOME/bin:\$SPARK_HOME/sbin\"
 " > "$ADDIT_PROF"
 sed -i "/ic_env/d" ~/.profile 
-echo ". \"$ADDIT_PROF\" # ic_env" >> ~/.profile
+echo ". \"$ADDIT_PROF\" # ic_env profile" >> ~/.profile
 . ~/.profile
 
 # Setup Hadoop
 echo "-- Configuring Hadoop"
 echo "
-export HADOOP_OPTS=\"-Djava.net.preferIPv4Stack=true\"
+export HADOOP_OS_TYPE=\"\${HADOOP_OS_TYPE:-\$(uname -s)}\"
 export JAVA_HOME=\"$JAVA_HOME\"
 export HADOOP_HOME_WARN_SUPPRESS=\"TRUE\"
 export HADOOP_ROOT_LOGGER=\"WARN,DRFA\"
@@ -78,7 +79,7 @@ export HDFS_DATANODE_USER=\"$USR\"
 export HDFS_SECONDARYNAMENODE_USER=\"$USR\"
 export YARN_RESOURCEMANAGER_USER=\"$USR\"
 export YARN_NODEMANAGER_USER=\"$USR\"
-" >> "$HADOOP_CONF_DIR/hadoop-env.sh"
+" > "$HADOOP_CONF_DIR/hadoop-env.sh"
 echo "
 <configuration>
 	<property>
@@ -135,6 +136,14 @@ echo "
 	</property>
 </configuration>
 " > "$HADOOP_CONF_DIR/mapred-site.xml"
+echo "
+log4j.rootCategory=ERROR, console
+log4j.appender.console=org.apache.log4j.ConsoleAppender
+log4j.appender.console.target=System.err
+log4j.appender.console.layout=org.apache.log4j.PatternLayout
+log4j.appender.console.layout.ConversionPattern=%p %c{1}: %m%n
+log4j.logger.image_classifier=INFO
+" > "$SPARK_HOME/conf/log4j.properties"
 mkdir -p "$DATA_HOME"
 mkdir -p "$TEMP_HOME"
 
