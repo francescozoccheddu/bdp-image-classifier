@@ -2,14 +2,14 @@
 
 # Environment uninstaller
 
-HOME=`realpath ~/.ic_env`
+IC_HOME=`realpath ~/.ic_env`
 
-echo "-- Uninstalling environment in $HOME"
+echo "-- Uninstalling environment in $IC_HOME"
 
-echo "-- Removing $HOME"
-rm -rf "$HOME"
+echo "-- Removing $IC_HOME"
+rm -rf "$IC_HOME"
 
 echo "-- Restoring ~/.profile"
-sed -i '/ic_env/d' ~/.profile 
+sed -i '/# ic_env profile/d' ~/.profile 
 
 echo "-- Done"

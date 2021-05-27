@@ -4,7 +4,7 @@
 
 USR="ic_env"
 PASSWD="$USR"
-IC_REL_HOME=".$USR"
+IC_REL_HOME=".ic_env"
 
 USR_IC_HOME=`eval echo "~$USR"`"/$IC_REL_HOME"
 ASSEMBLY_NAME=".assembly.jar"

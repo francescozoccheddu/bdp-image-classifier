@@ -18,7 +18,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 
 	private def describe(config: FeaturizationConfig, data: DataFrame) = {
 		import org.apache.spark.sql.functions.{col, udf}
-		val descriptor = Descriptor(config.featureCount, config.algorithm)
+		val descriptor = Descriptor(config)
 		val describe = udf((d: Array[Byte]) => descriptor(Image.limitSize(Image.decode(d), config.maxSize)))
 		data.withColumn(outputCol, describe(col(dataStage.imageCol)))
 	}
