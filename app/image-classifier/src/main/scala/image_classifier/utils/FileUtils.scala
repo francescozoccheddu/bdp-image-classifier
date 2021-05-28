@@ -1,13 +1,11 @@
 package image_classifier.utils
 
 import scala.collection.mutable
-import scala.jdk.CollectionConverters.iterableAsScalaIterableConverter
 import scala.util.Try
-import java.io.File
 import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
-import java.nio.file.{Files, InvalidPathException, Paths}
+import java.nio.file.{InvalidPathException, Paths}
 import image_classifier.utils.FileUtils._
 import org.apache.hadoop.fs.{FileSystem, LocalFileSystem, Path}
 import org.apache.hadoop.io.IOUtils
@@ -51,6 +49,12 @@ private[image_classifier] final class FileUtils(implicit spark: SparkSession) {
 		} finally IOUtils.closeStream(stream)
 	}
 
+	private def getFs(path: String): FileSystem = getIsLocalAndRest(path) match {
+		case Some((true, _)) => localFs
+		case Some((false, _)) => hdfs
+		case _ => throw new IllegalArgumentException
+	}
+
 	def readString(file: String): String = new String(readBytes(file))
 
 	def readBytes(file: String): Array[Byte] = {
@@ -58,6 +62,9 @@ private[image_classifier] final class FileUtils(implicit spark: SparkSession) {
 		try IOUtils.readFullyToByteArray(stream)
 		finally IOUtils.closeStream(stream)
 	}
+
+	def glob(glob: String): Seq[String] =
+		getFs(glob).globStatus(toPath(glob)).map(_.getPath.toString)
 
 	private def clearTempFiles(): Unit = {
 		logger.info(s"Clearing ${tempFiles.length} temp files")
@@ -68,29 +75,11 @@ private[image_classifier] final class FileUtils(implicit spark: SparkSession) {
 		tempFiles.clear()
 	}
 
-	private def getFs(path: String): FileSystem = getIsLocalAndRest(path) match {
-		case Some((true, _)) => localFs
-		case Some((false, _)) => hdfs
-		case _ => throw new IllegalArgumentException
-	}
-
 }
 
 private[image_classifier] object FileUtils {
 
 	private val logger: Logger = Logger.getLogger(getClass)
-
-	def listFiles(workingDir: String, glob: String): Seq[String] = {
-		val (globHead, globTail) = {
-			val index = glob.lastIndexWhere(c => c == '\\' || c == '/' || c == File.separatorChar)
-			if (index > 0) (glob.substring(0, index + 1), glob.substring(index + 1))
-			else (".", glob)
-		}
-		val head = if (URI.create(globHead).isAbsolute) globHead else workingDir + File.separator + globHead
-		val stream = Files.newDirectoryStream(Paths.get(head), globTail)
-		try stream.asScala.map(_.normalize().toString).toSeq.sorted
-		finally if (stream != null) stream.close()
-	}
 
 	def parent(path: String): String = {
 		val parent = toPath(path).getParent
@@ -99,13 +88,10 @@ private[image_classifier] object FileUtils {
 
 	private def toPath(path: String): Path = new Path(path)
 
+	def resolve(context: String, path: String): String = new Path(context, path).toString
+
 	def isValidLocalPath(path: String): Boolean = getIsLocalAndRest(path) match {
 		case Some((true, _)) => true
-		case _ => false
-	}
-
-	def isValidHDFSPath(path: String): Boolean = getIsLocalAndRest(path) match {
-		case Some((false, _)) => true
 		case _ => false
 	}
 
@@ -134,6 +120,11 @@ private[image_classifier] object FileUtils {
 		}
 		else
 			None
+	}
+
+	def isValidHDFSPath(path: String): Boolean = getIsLocalAndRest(path) match {
+		case Some((false, _)) => true
+		case _ => false
 	}
 
 	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
