@@ -3,7 +3,7 @@
 # App launcher
 
 . ~/.profile
-"$JAVA_HOME/jps" | grep NameNode > /dev/null
+"$JAVA_HOME/bin/jps" | grep NameNode > /dev/null
 RES=$?
 
 if [[ $RES == 0 ]]; then

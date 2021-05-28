@@ -141,7 +141,7 @@ log4j.rootCategory=ERROR, console
 log4j.appender.console=org.apache.log4j.ConsoleAppender
 log4j.appender.console.target=System.err
 log4j.appender.console.layout=org.apache.log4j.PatternLayout
-log4j.appender.console.layout.ConversionPattern=%p %c{1}: %m%n
+log4j.appender.console.layout.ConversionPattern=%d{HH:mm:ss} %c{1}: %m%n
 log4j.logger.image_classifier=INFO
 " > "$SPARK_HOME/conf/log4j.properties"
 mkdir -p "$DATA_HOME"
