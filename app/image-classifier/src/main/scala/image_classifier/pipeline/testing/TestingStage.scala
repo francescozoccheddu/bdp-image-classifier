@@ -108,7 +108,7 @@ private[testing] object TestingStage {
 		def addSection(key: String): Unit = {
 			if (builder.nonEmpty)
 				builder.append('\n')
-			builder.append(s"--- $key ---")
+			builder.append(s"--- $key ---\n")
 		}
 
 		def get: String = builder.toString
