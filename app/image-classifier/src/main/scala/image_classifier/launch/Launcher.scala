@@ -13,17 +13,17 @@ object Launcher {
 		logger.info(s"Launched with config file '$configFile'")
 		val workingDir = FileUtils.parent(configFile)
 		SparkInstance.execute(spark => {
-			implicit val fileUtils = new FileUtils()(spark)
+			implicit val fileUtils = new FileUtils(workingDir)(spark)
 			val config = Config.fromFile(configFile)
-			Pipeline.run(config, workingDir)(spark, fileUtils)
+			Pipeline.run(config)(spark, fileUtils)
 		})
 	}
 
 	def run(config: Config, workingDir: String): Unit = {
 		logger.info(s"Launched with config file inside '$workingDir'")
 		SparkInstance.execute(spark => {
-			val fileUtils = new FileUtils()(spark)
-			Pipeline.run(config, workingDir)(spark, fileUtils)
+			val fileUtils = new FileUtils(workingDir)(spark)
+			Pipeline.run(config)(spark, fileUtils)
 		})
 	}
 

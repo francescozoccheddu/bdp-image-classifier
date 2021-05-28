@@ -6,16 +6,18 @@ import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
 import java.nio.file.{InvalidPathException, Paths}
-import image_classifier.utils.FileUtils._
+import image_classifier.utils.FileUtils.logger
 import org.apache.hadoop.fs.{FileSystem, LocalFileSystem, Path}
 import org.apache.hadoop.io.IOUtils
 import org.apache.log4j.Logger
 import org.apache.spark.scheduler.{SparkListener, SparkListenerApplicationEnd}
 import org.apache.spark.sql.SparkSession
 
-private[image_classifier] final class FileUtils(implicit spark: SparkSession) {
+private[image_classifier] final class FileUtils(val workingDir: String)(implicit spark: SparkSession) {
 
 	logger.info("New instance")
+
+	require(FileUtils.isValidLocalPath(workingDir))
 
 	private val sparkListener: SparkListener = new SparkListener {
 
@@ -31,8 +33,10 @@ private[image_classifier] final class FileUtils(implicit spark: SparkSession) {
 
 	def addTempFile(file: String): Unit = {
 		logger.info(s"Adding temp file '$file'")
-		tempFiles += file
+		tempFiles += resolve(file)
 	}
+
+	def resolve(file: String): String = FileUtils.resolve(workingDir, file)
 
 	def makeDirs(dir: String): Boolean = getFs(dir).mkdirs(toPath(dir))
 
@@ -47,12 +51,6 @@ private[image_classifier] final class FileUtils(implicit spark: SparkSession) {
 			try IOUtils.writeFully(channel, ByteBuffer.wrap(bytes))
 			finally IOUtils.closeStream(channel)
 		} finally IOUtils.closeStream(stream)
-	}
-
-	private def getFs(path: String): FileSystem = getIsLocalAndRest(path) match {
-		case Some((true, _)) => localFs
-		case Some((false, _)) => hdfs
-		case _ => throw new IllegalArgumentException
 	}
 
 	def readString(file: String): String = new String(readBytes(file))
@@ -75,6 +73,14 @@ private[image_classifier] final class FileUtils(implicit spark: SparkSession) {
 		tempFiles.clear()
 	}
 
+	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
+		case Some((true, _)) => localFs
+		case Some((false, _)) => hdfs
+		case _ => throw new IllegalArgumentException
+	}
+
+	private def toPath(path: String): Path = new Path(workingDir, path)
+
 }
 
 private[image_classifier] object FileUtils {
@@ -82,17 +88,27 @@ private[image_classifier] object FileUtils {
 	private val logger: Logger = Logger.getLogger(getClass)
 
 	def parent(path: String): String = {
-		val parent = toPath(path).getParent
+		val parent = new Path(path).getParent
 		if (parent == null) "/" else parent.toString
 	}
-
-	private def toPath(path: String): Path = new Path(path)
 
 	def resolve(context: String, path: String): String = new Path(context, path).toString
 
 	def isValidLocalPath(path: String): Boolean = getIsLocalAndRest(path) match {
 		case Some((true, _)) => true
 		case _ => false
+	}
+
+	def isValidHDFSPath(path: String): Boolean = getIsLocalAndRest(path) match {
+		case Some((false, _)) => true
+		case _ => false
+	}
+
+	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
+
+	def toSimpleLocalPath(path: String): String = getIsLocalAndRest(path) match {
+		case Some((true, rest)) => rest
+		case _ => throw new IllegalArgumentException
 	}
 
 	private def getIsLocalAndRest(path: String): Option[(Boolean, String)] = {
@@ -120,18 +136,6 @@ private[image_classifier] object FileUtils {
 		}
 		else
 			None
-	}
-
-	def isValidHDFSPath(path: String): Boolean = getIsLocalAndRest(path) match {
-		case Some((false, _)) => true
-		case _ => false
-	}
-
-	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
-
-	def toSimpleLocalPath(path: String): String = getIsLocalAndRest(path) match {
-		case Some((true, rest)) => rest
-		case _ => throw new IllegalArgumentException
 	}
 
 }

@@ -20,10 +20,10 @@ object Pipeline {
 	private val labelCol: String = colName("label")
 	private val predictionCol: String = colName("prediction")
 
-	def run(config: Config, workingDir: String)(implicit spark: SparkSession, fileUtils: FileUtils): Unit = {
+	def run(config: Config)(implicit spark: SparkSession, fileUtils: FileUtils): Unit = {
 		logger.info("Pipeline started")
 		val time = System.nanoTime
-		val data = new DataStage(config.data, workingDir, labelCol, isTestCol, dataCol)
+		val data = new DataStage(config.data, labelCol, isTestCol, dataCol)
 		val featurization = new FeaturizationStage(config.featurization, data, dataCol)
 		val training = new TrainingStage(config.training, featurization, predictionCol)
 		val testing = new TestingStage(config.testing, training)
