@@ -1,34 +1,28 @@
 package image_classifier.pipeline.training
 
-import image_classifier.configuration.{Loader, TrainingConfig}
+import java.nio.file.{Files, Paths}
+import image_classifier.configuration.{LoadMode, Loader, TrainingAlgorithm, TrainingConfig}
+import image_classifier.pipeline.Columns.colName
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.featurization.FeaturizationStage
-import image_classifier.pipeline.training.TrainingStage.{ModelType, defaultPredictionCol}
+import image_classifier.pipeline.training.TrainingStage._
+import image_classifier.utils.DataTypeImplicits.DataTypeExtension
 import image_classifier.utils.FileUtils
+import org.apache.log4j.Logger
 import org.apache.spark.ml.Model
-import org.apache.spark.ml.util.MLWritable
+import org.apache.spark.ml.classification.{Classifier, _}
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.apache.spark.ml.linalg.{Vector => MLVector}
+import org.apache.spark.ml.param.shared.{HasFeaturesCol, HasLabelCol, HasPredictionCol}
+import org.apache.spark.ml.util.{MLReadable, MLWritable}
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.DataType
+import org.apache.spark.sql.functions.{approx_count_distinct, col}
+import org.apache.spark.sql.types.{BooleanType, DataType, IntegerType}
 
 private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig]], val featurizationStage: FeaturizationStage, val predictionCol: String = defaultPredictionCol)(implicit spark: SparkSession, fileUtils: FileUtils)
   extends LoaderStage[ModelType, TrainingConfig]("Training", loader)(fileUtils) {
 
-	private def validate(schema: DataType) = {
-		import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
-		import image_classifier.utils.DataTypeImplicits.DataTypeExtension
-		import org.apache.spark.sql.types.{IntegerType, BooleanType}
-		schema.requireField(featurizationStage.outputCol, VectorType)
-		schema.requireField(featurizationStage.dataStage.isTestCol, BooleanType)
-		schema.requireField(featurizationStage.dataStage.labelCol, IntegerType)
-	}
-
 	override protected def load(file: String): ModelType = {
-		import image_classifier.configuration.TrainingAlgorithm
-		import image_classifier.pipeline.training.TrainingStage.{algorithmPath, dataPath}
-		import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, FMClassificationModel, GBTClassificationModel, LinearSVCModel, LogisticRegressionModel, MultilayerPerceptronClassificationModel, NaiveBayesModel, RandomForestClassificationModel}
-		import org.apache.spark.ml.util.MLReadable
-
-		import java.nio.file.{Files, Paths}
 		val dir = Paths.get(file)
 		val bytes = Files.readAllBytes(dir.resolve(algorithmPath))
 		require(bytes.length == 1)
@@ -46,10 +40,6 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 	}
 
 	override protected def make(config: TrainingConfig): ModelType = {
-		import image_classifier.configuration.TrainingAlgorithm
-		import image_classifier.pipeline.training.TrainingStage.{ClassifierType, logger}
-		import org.apache.spark.ml.classification.{DecisionTreeClassifier, FMClassifier, GBTClassifier, LinearSVC, LogisticRegression, MultilayerPerceptronClassifier, NaiveBayes, RandomForestClassifier}
-		import org.apache.spark.sql.functions.col
 		validate(featurizationStage.result.cache.schema)
 		val (featuresCol, labelCol) = (featurizationStage.outputCol, featurizationStage.dataStage.labelCol)
 		val classifier: ClassifierType = config.algorithm match {
@@ -80,9 +70,6 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 				  .setNumTrees(config.treeCount)
 				  .setSeed(config.seed)
 			case TrainingAlgorithm.MultilayerPerceptron =>
-				import image_classifier.configuration.LoadMode
-				import org.apache.spark.ml.linalg.{Vector => MLVector}
-				import org.apache.spark.sql.functions.approx_count_distinct
 				val featureSize = featurizationStage.specs.get.mode match {
 					case LoadMode.Make | LoadMode.MakeAndSave => featurizationStage.specs.get.config.get.codebookSize
 					case _ => featurizationStage.result.first.getAs[MLVector](featuresCol).size
@@ -103,9 +90,13 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 		classifier.fit(training).asInstanceOf[ModelType]
 	}
 
+	private def validate(schema: DataType): Unit = {
+		schema.requireField(featurizationStage.outputCol, VectorType)
+		schema.requireField(featurizationStage.dataStage.isTestCol, BooleanType)
+		schema.requireField(featurizationStage.dataStage.labelCol, IntegerType)
+	}
+
 	override protected def save(result: ModelType, file: String): Unit = {
-		import image_classifier.pipeline.training.TrainingStage.{algorithmPath, dataPath}
-		import java.nio.file.{Files, Paths}
 		val dir = Paths.get(file)
 		Files.createDirectories(dir)
 		Files.write(dir.resolve(algorithmPath), Array[Byte](specs.get.config.get.algorithm.id.toByte))
@@ -116,20 +107,14 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 
 private[pipeline] object TrainingStage {
 
-	import image_classifier.pipeline.Columns.colName
-	import org.apache.log4j.Logger
-	import org.apache.spark.ml.classification.Classifier
-	import org.apache.spark.ml.param.shared.{HasFeaturesCol, HasLabelCol, HasPredictionCol}
-	import org.apache.spark.ml.linalg.{Vector => MLVector}
-
 	private type ModelType = Model[_] with MLWritable
 	private type ClassifierType = Classifier[MLVector, _, _ <: MLWritable] with HasLabelCol with HasFeaturesCol with HasPredictionCol
 
-	val defaultPredictionCol = colName("prediction")
+	val defaultPredictionCol: String = colName("prediction")
 
-	private val logger = Logger.getLogger(getClass)
+	private val logger: Logger = Logger.getLogger(getClass)
 
-	private val algorithmPath = "algorithm"
-	private val dataPath = "data"
+	private val algorithmPath: String = "algorithm"
+	private val dataPath: String = "data"
 
 }

@@ -1,14 +1,13 @@
 package image_classifier.launch
 
+import image_classifier.configuration.Config
 import image_classifier.pipeline.Pipeline
 import image_classifier.utils.{FileUtils, SparkInstance}
 import org.apache.log4j.Logger
 
 object Launcher {
 
-	import image_classifier.configuration.Config
-
-	private val logger = Logger.getLogger(getClass)
+	private val logger: Logger = Logger.getLogger(getClass)
 
 	def run(configFile: String): Unit = {
 		logger.info(s"Launched with config file '$configFile'")
