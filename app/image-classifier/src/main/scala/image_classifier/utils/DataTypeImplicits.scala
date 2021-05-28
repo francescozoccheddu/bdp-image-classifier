@@ -1,10 +1,13 @@
 package image_classifier.utils
 
-import org.apache.spark.sql.types.{DataType, StructType, StructField}
+import org.apache.spark.sql.types.{DataType, StructField, StructType}
 
 private[image_classifier] object DataTypeImplicits {
 
 	implicit final class DataTypeExtension(dataType: DataType) {
+
+		def requireNoField(name: String): Unit =
+			require(dataType.getField(name).isEmpty)
 
 		def getField(name: String): Option[StructField] =
 			try {
@@ -15,14 +18,10 @@ private[image_classifier] object DataTypeImplicits {
 				case _: Exception => None
 			}
 
-		def requireNoField(name: String) =
-			require(dataType.getField(name).isEmpty)
-
-		def requireField(name: String) = {
+		def requireField(name: String): Unit =
 			require(dataType.getField(name).isDefined)
-		}
 
-		def requireField(name: String, requiredDataType: DataType) = {
+		def requireField(name: String, requiredDataType: DataType): Unit = {
 			val field = dataType.getField(name)
 			require(field.isDefined && field.get.dataType == requiredDataType)
 		}
