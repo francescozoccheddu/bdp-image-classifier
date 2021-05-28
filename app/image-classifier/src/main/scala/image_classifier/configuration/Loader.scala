@@ -2,8 +2,8 @@ package image_classifier.configuration
 
 import com.github.dwickern.macros.NameOf.nameOf
 import image_classifier.configuration.LoadMode.LoadMode
-import image_classifier.configuration.Utils.{O, isValidFilePath, isValidHdfsFilePath}
-import scala.reflect.runtime.universe._
+import image_classifier.configuration.Utils.O
+import image_classifier.pipeline.utils.FileUtils
 
 final case class Loader[Type <: LoadableConfig] private[configuration](
 	private[configuration] val make: O[Type] = None,
@@ -23,26 +23,15 @@ final case class Loader[Type <: LoadableConfig] private[configuration](
 	val file: O[String] = load orElse save orElse loadAndSave
 	val config = make
 	val mode: LoadMode = (make, load, save, loadAndSave) match {
-		case (None, Some(load), None, None) => LoadMode.Load
-		case (Some(make), Some(load), None, None) => LoadMode.LoadOrMake
-		case (Some(make), None, None, None) => LoadMode.Make
-		case (Some(make), None, None, Some(loadAndSave)) => LoadMode.LoadOrMakeAndSave
-		case (Some(make), None, Some(save), None) => LoadMode.MakeAndSave
+		case (None, Some(_), None, None) => LoadMode.Load
+		case (Some(_), Some(_), None, None) => LoadMode.LoadOrMake
+		case (Some(_), None, None, None) => LoadMode.Make
+		case (Some(_), None, None, Some(_)) => LoadMode.LoadOrMakeAndSave
+		case (Some(_), None, Some(_), None) => LoadMode.MakeAndSave
 		case _ => throw new MatchError((make, load, save, loadAndSave))
 	}
 
-	private def requireValidPaths(validator: String => Boolean, errorFormat: String): Unit =
-		require(file.forall(validator), errorFormat.format(nameOf(file)))
-
-	private[configuration] def requireValidPaths(implicit tag: TypeTag[Type]) = {
-		if (classOf[HdfsLoadableConfig].isAssignableFrom(tag.mirror.runtimeClass(tag.tpe)))
-			requireValidHdfsPaths()
-		else
-			requireValidFsPaths()
-	}
-
-	private def requireValidFsPaths(): Unit = requireValidPaths(isValidFilePath, "%s is not a valid file path")
-	private def requireValidHdfsPaths(): Unit = requireValidPaths(isValidHdfsFilePath, "%s is not a valid hdfs file path")
+	require(file.forall(FileUtils.isValidPath), "Not a valid path")
 
 	private def hrMode = mode match {
 		case LoadMode.Load => s"Load '${file.get}'"

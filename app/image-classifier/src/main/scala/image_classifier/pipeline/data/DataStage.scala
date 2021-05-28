@@ -3,14 +3,15 @@ package image_classifier.pipeline.data
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import image_classifier.configuration.{DataConfig, Loader}
 import image_classifier.pipeline.LoaderStage
-import image_classifier.pipeline.data.DataStage.{defaultImageCol, defaultIsTestCol, defaultLabelCol}
+import image_classifier.pipeline.data.DataStage.{defaultImageCol, defaultIsTestCol, defaultLabelCol, logger}
+import image_classifier.pipeline.utils.FileUtils
+import org.apache.log4j.Logger
 
-private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], workingDir: String, val labelCol: String, val isTestCol: String, val imageCol: String)(implicit spark: SparkSession) extends LoaderStage[DataFrame, DataConfig]("Data", loader) {
+private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], workingDir: String, val labelCol: String, val isTestCol: String, val imageCol: String)(implicit spark: SparkSession, fileUtils: FileUtils)
+  extends LoaderStage[DataFrame, DataConfig]("Data", loader)(fileUtils) {
 	import image_classifier.pipeline.data.DataStage.encode
 
-	def this(loader: Option[Loader[DataConfig]], workingDir: String)(implicit spark: SparkSession) = this(loader, workingDir, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark)
-
-	override protected def exists(file: String): Boolean = FileUtils.exists(file)
+	def this(loader: Option[Loader[DataConfig]], workingDir: String)(implicit spark: SparkSession, fileUtils: FileUtils) = this(loader, workingDir, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark, fileUtils)
 
 	override protected def save(result: DataFrame, file: String): Unit = {}
 
@@ -26,8 +27,8 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], work
 		sources(1) = config.trainingSet.map(encodeFiles(_, false))
 		sources(2) = config.testSet.map(encodeFiles(_, true))
 		if (save.isEmpty)
-			addTempFile(file)
-		FileUtils.makeDirs(FileUtils.parent(file))
+			fileUtils.addTempFile(file)
+		fileUtils.makeDirs(FileUtils.parent(file))
 		Merger.mergeFiles(sources.flatten.flatten.toSeq, file)
 		load(file)
 	}
@@ -35,6 +36,8 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], work
 	protected override def load(file: String): DataFrame = {
 		import image_classifier.pipeline.data.DataStage.{keyCol, dataCol}
 		import org.apache.spark.sql.functions.{col, abs}
+		if (!FileUtils.isValidHDFSPath(file))
+			logger.warn("Loading from a local path hampers parallelization")
 		Merger.load(file, keyCol, dataCol)
 			.select(
 				col(dataCol).alias(imageCol),
@@ -68,13 +71,6 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], work
 		resolveFiles(classFiles)
 			.flatMap(zip => encode(zip._1.map((zip._2, _)), testFraction, testSeed))
 
-	private def addTempFile(file: String) = {
-		import image_classifier.pipeline.data.DataStage.sparkListener
-		spark.sparkContext.removeSparkListener(sparkListener)
-		spark.sparkContext.addSparkListener(sparkListener)
-		FileUtils.addTempFile(file)
-	}
-
 }
 
 private[pipeline] object DataStage {
@@ -87,6 +83,7 @@ private[pipeline] object DataStage {
 
 	private val keyCol = resColName("key")
 	private val dataCol = resColName("data")
+	private val logger = Logger.getLogger(getClass)
 
 	private def encode(file: (Int, String), isTest: Boolean): (Int, String) = {
 		val (label, path) = file
@@ -105,12 +102,6 @@ private[pipeline] object DataStage {
 			.map(p => encode(p._1, p._2 < count))
 	}
 
-	private val sparkListener = new SparkListener {
-		import org.apache.spark.scheduler.SparkListenerApplicationEnd
 
-		override def onApplicationEnd(applicationEnd: SparkListenerApplicationEnd): Unit =
-			FileUtils.clearTempFiles()
-
-	}
 
 }

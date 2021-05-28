@@ -1,5 +1,7 @@
 package image_classifier.pipeline
 
+import image_classifier.pipeline.utils.FileUtils
+
 object Pipeline {
 	import image_classifier.configuration.Config
 	import image_classifier.pipeline.utils.Columns.colName
@@ -13,7 +15,7 @@ object Pipeline {
 	private val labelCol = colName("label")
 	private val predictionCol = colName("prediction")
 
-	def run(config: Config, workingDir: String)(implicit spark: SparkSession): Unit = {
+	def run(config: Config, workingDir: String)(implicit spark: SparkSession, fileUtils: FileUtils): Unit = {
 		import image_classifier.pipeline.data.DataStage
 		import org.apache.commons.lang.time.DurationFormatUtils
 		import image_classifier.pipeline.featurization.FeaturizationStage

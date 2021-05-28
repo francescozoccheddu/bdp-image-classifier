@@ -1,8 +1,9 @@
 package image_classifier.pipeline
 
 import image_classifier.configuration.{LoadableConfig, Loader}
+import image_classifier.pipeline.utils.FileUtils
 
-private[pipeline] abstract class Stage[Result, Specs](val name: String, val specs: Option[Specs]) {
+private[pipeline] abstract class Stage[Result, Specs](val name: String, val specs: Option[Specs])(implicit protected val fileUtils : FileUtils) {
 	import image_classifier.pipeline.Stage.logger
 
 	protected def run(specs: Specs): Result
@@ -26,7 +27,8 @@ private[pipeline] abstract class Stage[Result, Specs](val name: String, val spec
 
 }
 
-private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](name: String, loader: Option[Loader[Config]]) extends Stage[Result, Loader[Config]](name, loader) {
+private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](name: String, loader: Option[Loader[Config]])(implicit fileUtils: FileUtils)
+  extends Stage[Result, Loader[Config]](name, loader)(fileUtils) {
 	import image_classifier.configuration.LoadMode
 	import image_classifier.utils.OptionImplicits._
 	import image_classifier.pipeline.LoaderStage.logger
@@ -42,10 +44,7 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
 		}
 	}
 
-	protected def exists(file :String) =  {
-		import image_classifier.pipeline.utils.Files
-		Files.exists(file)
-	}
+	protected def exists(file :String) = fileUtils.exists(file)
 
 	private def loadIfExists(file: String): Option[Result] =
 		if (exists(file))

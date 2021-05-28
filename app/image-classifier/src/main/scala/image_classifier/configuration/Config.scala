@@ -5,10 +5,9 @@ import image_classifier.configuration.ImageFeatureAlgorithm.ImageFeatureAlgorith
 import image_classifier.configuration.TrainingAlgorithm.TrainingAlgorithm
 import image_classifier.configuration.Utils._
 import image_classifier.pipeline.featurization.DescriptorConfig
+import image_classifier.pipeline.utils.FileUtils
 
 private[image_classifier] sealed trait LoadableConfig
-
-private[image_classifier] sealed trait HdfsLoadableConfig extends LoadableConfig
 
 final case class DataConfig private[configuration](
 	tempFile: String = DataConfig.defaultTempFile,
@@ -18,10 +17,10 @@ final case class DataConfig private[configuration](
 	testFraction: Double = JointDataConfig.defaultTestFraction,
 	splitSeed: Int = JointDataConfig.defaultSplitSeed,
 	stratified: Boolean = JointDataConfig.defaultStratified
-) extends HdfsLoadableConfig {
+) extends LoadableConfig {
 
 	require(testFraction >= 0 && testFraction <= 1, s"${nameOf(testFraction)} must fall in range [0, 1]")
-	require(isValidHdfsFilePath(tempFile), s"${nameOf(tempFile)} is not a valid HDFS file path")
+	require(FileUtils.isValidPath(tempFile), s"${nameOf(tempFile)} is not a valid HDFS file path")
 
 }
 
@@ -115,11 +114,7 @@ object TrainingConfig {
 final case class TestingConfig(
 	save: O[String] = None,
 	labels: O[Seq[String]] = None
-) {
-
-	require(save.forall(isValidFilePath), s"${nameOf(save)} is not a valid file path")
-
-}
+)
 
 final case class Config(
 	data: OL[DataConfig],
@@ -132,11 +127,9 @@ final case class Config(
 	require(training.forall(_.config.isEmpty) || featurization.isDefined, s"${nameOf(training)} requires ${nameOf(featurization)}")
 	require(testing.isEmpty || training.isDefined, s"${nameOf(testing)} requires ${nameOf(training)}")
 	require(testing.isEmpty || featurization.isDefined, s"${nameOf(testing)} requires ${nameOf(featurization)}")
-	data.foreach(_.requireValidPaths)
-	featurization.foreach(_.requireValidPaths)
-	training.foreach(_.requireValidPaths)
 
-	def save(file: String) = configToFile(this, file)
+	def saveLocal(file: String) = configToFile(this, file)
+	def save(file: String)(implicit fileUtils: FileUtils) = configToFile(this, file, fileUtils)
 	def toJson = configToJson(this)
 
 }
@@ -146,9 +139,14 @@ object Config {
 
 	private val logger = Logger.getLogger(getClass)
 
-	def fromFile(file: String) = {
+	def fromLocalFile(file: String) = {
 		logger.info(s"Loading config file '$file'")
 		configFromFile(file)
+	}
+
+	def fromFile(file: String)(implicit fileUtils: FileUtils) = {
+		logger.info(s"Loading config file '$file'")
+		configFromFile(file, fileUtils)
 	}
 
 	def fromJson(json: String) =

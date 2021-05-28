@@ -5,8 +5,11 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import image_classifier.pipeline.featurization.FeaturizationStage.defaultOutputCol
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.data.DataStage
+import image_classifier.pipeline.featurization.FeaturizationStage.logger
+import image_classifier.pipeline.utils.FileUtils
 
-private[pipeline] final class FeaturizationStage(loader: Option[Loader[FeaturizationConfig]], val dataStage: DataStage, val outputCol: String = defaultOutputCol)(implicit spark: SparkSession) extends LoaderStage[DataFrame, FeaturizationConfig]("Featurization", loader) {
+private[pipeline] final class FeaturizationStage(loader: Option[Loader[FeaturizationConfig]], val dataStage: DataStage, val outputCol: String = defaultOutputCol)(implicit spark: SparkSession, fileUtils: FileUtils)
+  extends LoaderStage[DataFrame, FeaturizationConfig]("Featurization", loader)(fileUtils) {
 	import org.apache.spark.sql.types.DataType
 
 	private def validate(schema: DataType) = {
@@ -41,8 +44,11 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 		bowv
 	}
 
-	override protected def load(file: String) =
+	override protected def load(file: String) = {
+		if (!FileUtils.isValidHDFSPath(file))
+			logger.warn("Loading from a local path hampers parallelization")
 		spark.read.format("parquet").load(file)
+	}
 
 	override protected def save(result: DataFrame, file: String): Unit = result.write.format("parquet").save(file)
 
