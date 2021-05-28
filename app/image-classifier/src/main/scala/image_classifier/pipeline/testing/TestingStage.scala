@@ -3,9 +3,22 @@ package image_classifier.pipeline.testing
 import image_classifier.configuration.TestingConfig
 import image_classifier.pipeline.Stage
 import image_classifier.pipeline.training.TrainingStage
+import image_classifier.pipeline.utils.FileUtils
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types.DataType
 
-private[pipeline] final class TestingStage(config: Option[TestingConfig], val trainingStage: TrainingStage)(implicit spark: SparkSession) extends Stage[Unit, TestingConfig]("Testing", config) {
+private[pipeline] final class TestingStage(config: Option[TestingConfig], val trainingStage: TrainingStage)(implicit spark: SparkSession, fileUtils: FileUtils)
+  extends Stage[Unit, TestingConfig]("Testing", config) {
+
+	private def validate(schema: DataType) = {
+		import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+		import image_classifier.utils.DataTypeImplicits.DataTypeExtension
+		import org.apache.spark.sql.types.{IntegerType, BooleanType}
+		val featurizationStage = trainingStage.featurizationStage
+		schema.requireField(featurizationStage.outputCol, VectorType)
+		schema.requireField(featurizationStage.dataStage.isTestCol, BooleanType)
+		schema.requireField(featurizationStage.dataStage.labelCol, IntegerType)
+	}
 
 	override protected def run(specs: TestingConfig): Unit = {
 		import org.apache.spark.mllib.evaluation.MulticlassMetrics
@@ -15,6 +28,7 @@ private[pipeline] final class TestingStage(config: Option[TestingConfig], val tr
 		import image_classifier.utils.OptionImplicits._
 		val model = trainingStage.result
 		val featurizationStage = trainingStage.featurizationStage
+		validate(featurizationStage.result.schema)
 		val dataStage = featurizationStage.dataStage
 		val test = featurizationStage.result.filter(col(dataStage.isTestCol))
 		val data = model

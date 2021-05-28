@@ -4,11 +4,23 @@ import image_classifier.configuration.{Loader, TrainingConfig}
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.featurization.FeaturizationStage
 import image_classifier.pipeline.training.TrainingStage.{ModelType, defaultPredictionCol}
+import image_classifier.pipeline.utils.FileUtils
 import org.apache.spark.ml.Model
 import org.apache.spark.ml.util.MLWritable
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types.DataType
 
-private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig]], val featurizationStage: FeaturizationStage, val predictionCol: String = defaultPredictionCol)(implicit spark: SparkSession) extends LoaderStage[ModelType, TrainingConfig]("Training", loader) {
+private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig]], val featurizationStage: FeaturizationStage, val predictionCol: String = defaultPredictionCol)(implicit spark: SparkSession, fileUtils: FileUtils)
+  extends LoaderStage[ModelType, TrainingConfig]("Training", loader)(fileUtils) {
+
+	private def validate(schema: DataType) = {
+		import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+		import image_classifier.utils.DataTypeImplicits.DataTypeExtension
+		import org.apache.spark.sql.types.{IntegerType, BooleanType}
+		schema.requireField(featurizationStage.outputCol, VectorType)
+		schema.requireField(featurizationStage.dataStage.isTestCol, BooleanType)
+		schema.requireField(featurizationStage.dataStage.labelCol, IntegerType)
+	}
 
 	override protected def load(file: String): ModelType = {
 		import image_classifier.configuration.TrainingAlgorithm
@@ -38,35 +50,35 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 		import image_classifier.pipeline.training.TrainingStage.{ClassifierType, logger}
 		import org.apache.spark.ml.classification.{DecisionTreeClassifier, FMClassifier, GBTClassifier, LinearSVC, LogisticRegression, MultilayerPerceptronClassifier, NaiveBayes, RandomForestClassifier}
 		import org.apache.spark.sql.functions.col
-		featurizationStage.result.cache
+		validate(featurizationStage.result.cache.schema)
 		val (featuresCol, labelCol) = (featurizationStage.outputCol, featurizationStage.dataStage.labelCol)
 		val classifier: ClassifierType = config.algorithm match {
 			case TrainingAlgorithm.NaiveBayes =>
 				new NaiveBayes()
 			case TrainingAlgorithm.LogisticRegression =>
 				new LogisticRegression()
-					.setElasticNetParam(config.elasticNetParam)
-					.setRegParam(config.regParam)
-					.setMaxIter(config.maxIterations)
+				  .setElasticNetParam(config.elasticNetParam)
+				  .setRegParam(config.regParam)
+				  .setMaxIter(config.maxIterations)
 			case TrainingAlgorithm.DecisionTree =>
 				new DecisionTreeClassifier()
-					.setSeed(config.seed)
+				  .setSeed(config.seed)
 			case TrainingAlgorithm.FactorizationMachines =>
 				new FMClassifier()
-					.setMaxIter(config.maxIterations)
-					.setRegParam(config.regParam)
+				  .setMaxIter(config.maxIterations)
+				  .setRegParam(config.regParam)
 			case TrainingAlgorithm.GradientBoosted =>
 				new GBTClassifier()
-					.setMaxIter(config.maxIterations)
-					.setStepSize(config.stepSize)
+				  .setMaxIter(config.maxIterations)
+				  .setStepSize(config.stepSize)
 			case TrainingAlgorithm.LinearSupportVector =>
 				new LinearSVC()
-					.setMaxIter(config.maxIterations)
-					.setRegParam(config.regParam)
+				  .setMaxIter(config.maxIterations)
+				  .setRegParam(config.regParam)
 			case TrainingAlgorithm.RandomForest =>
 				new RandomForestClassifier()
-					.setNumTrees(config.treeCount)
-					.setSeed(config.seed)
+				  .setNumTrees(config.treeCount)
+				  .setSeed(config.seed)
 			case TrainingAlgorithm.MultilayerPerceptron =>
 				import image_classifier.configuration.LoadMode
 				import org.apache.spark.ml.linalg.{Vector => MLVector}
@@ -77,11 +89,11 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 				}
 				val labelsCount = featurizationStage.result.select(approx_count_distinct(labelCol)).first.getLong(0).toInt
 				new MultilayerPerceptronClassifier()
-					.setSeed(config.seed)
-					.setMaxIter(config.maxIterations)
-					.setLayers(featureSize +: config.hiddenLayers.toArray :+ labelsCount)
-					.setStepSize(config.stepSize)
-					.setBlockSize(config.blockSize)
+				  .setSeed(config.seed)
+				  .setMaxIter(config.maxIterations)
+				  .setLayers(featureSize +: config.hiddenLayers.toArray :+ labelsCount)
+				  .setStepSize(config.stepSize)
+				  .setBlockSize(config.blockSize)
 		}
 		logger.info(s"Training with '${classifier.getClass.getSimpleName}'")
 		val training = featurizationStage.result.filter(!col(featurizationStage.dataStage.isTestCol))
@@ -103,6 +115,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 }
 
 private[pipeline] object TrainingStage {
+
 	import image_classifier.pipeline.utils.Columns.colName
 	import org.apache.log4j.Logger
 	import org.apache.spark.ml.classification.Classifier

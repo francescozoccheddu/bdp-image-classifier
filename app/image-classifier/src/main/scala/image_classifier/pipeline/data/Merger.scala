@@ -1,19 +1,15 @@
 package image_classifier.pipeline.data
 
-import org.apache.spark.sql.{SparkSession, DataFrame}
+import image_classifier.pipeline.utils.FileUtils
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 private[data] object Merger {
 	import org.apache.log4j.Logger
 
 	private val logger = Logger.getLogger(getClass)
 
-	private def readFile(file: String): Array[Byte] = {
-		import java.nio.file.{Files, Paths}
-		Files.readAllBytes(Paths.get(file))
-	}
-
-	def mergeFiles(files: Seq[(Int, String)], outputFile: String): Unit =
-		mergeBytes(files.map { case (k, v) => (k, readFile(v)) }, outputFile)
+	def mergeFiles(files: Seq[(Int, String)], outputFile: String)(implicit fileUtils: FileUtils): Unit =
+		mergeBytes(files.map { case (k, v) => (k, fileUtils.readBytes(v)) }, outputFile)
 
 	def mergeBytes(bytes: Seq[(Int, Array[Byte])], outputFile: String): Unit = {
 		import org.apache.hadoop.io.{SequenceFile, BytesWritable, IntWritable, IOUtils}
