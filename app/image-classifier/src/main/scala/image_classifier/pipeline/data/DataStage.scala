@@ -46,7 +46,7 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], work
 
 	private def resolveFiles(classFiles: Seq[Seq[String]]): Seq[(Seq[String], Int)] =
 		classFiles
-		  .map(_.flatMap(FileUtils.listFiles(workingDir, _)))
+		  .map(_.flatMap(glob => fileUtils.glob(FileUtils.resolve(workingDir, glob))))
 		  .zipWithIndex
 
 	private def explodeFiles(classFiles: Seq[Seq[String]]): Seq[(Int, String)] =
