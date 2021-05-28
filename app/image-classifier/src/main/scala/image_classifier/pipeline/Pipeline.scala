@@ -1,10 +1,10 @@
 package image_classifier.pipeline
 
-import image_classifier.pipeline.utils.FileUtils
+import image_classifier.utils.FileUtils
 
 object Pipeline {
 	import image_classifier.configuration.Config
-	import image_classifier.pipeline.utils.Columns.colName
+	import Columns.colName
 	import org.apache.spark.sql.SparkSession
 	import org.apache.log4j.Logger
 

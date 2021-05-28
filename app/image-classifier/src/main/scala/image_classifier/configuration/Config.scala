@@ -5,7 +5,7 @@ import image_classifier.configuration.ImageFeatureAlgorithm.ImageFeatureAlgorith
 import image_classifier.configuration.TrainingAlgorithm.TrainingAlgorithm
 import image_classifier.configuration.Utils._
 import image_classifier.pipeline.featurization.DescriptorConfig
-import image_classifier.pipeline.utils.FileUtils
+import image_classifier.utils.FileUtils
 
 private[image_classifier] sealed trait LoadableConfig
 
@@ -20,7 +20,7 @@ final case class DataConfig private[configuration](
 ) extends LoadableConfig {
 
 	require(testFraction >= 0 && testFraction <= 1, s"${nameOf(testFraction)} must fall in range [0, 1]")
-	require(FileUtils.isValidPath(tempFile), s"${nameOf(tempFile)} is not a valid HDFS file path")
+	require(FileUtils.isValidPath(tempFile), s"${nameOf(tempFile)} is not a valid file path")
 
 }
 
@@ -114,7 +114,11 @@ object TrainingConfig {
 final case class TestingConfig(
 	save: O[String] = None,
 	labels: O[Seq[String]] = None
-)
+) {
+
+	require(save.forall(FileUtils.isValidPath), s"${nameOf(save)} is not a valid file path")
+
+}
 
 final case class Config(
 	data: OL[DataConfig],

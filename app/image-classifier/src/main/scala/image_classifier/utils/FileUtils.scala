@@ -1,9 +1,9 @@
-package image_classifier.pipeline.utils
+package image_classifier.utils
 
-import image_classifier.pipeline.utils.FileUtils._
 import org.apache.spark.scheduler.SparkListener
-import org.apache.spark.shuffle.api.WritableByteChannelWrapper
 import org.apache.spark.sql.SparkSession
+import image_classifier.utils.FileUtils._
+import org.apache.hadoop.fs.FileSystem
 
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
@@ -11,6 +11,7 @@ import scala.collection.mutable
 
 private[image_classifier] final class FileUtils(implicit spark: SparkSession) {
 
+	logger.info("New instance")
 
 	private val sparkListener = new SparkListener {
 
@@ -23,6 +24,8 @@ private[image_classifier] final class FileUtils(implicit spark: SparkSession) {
 	spark.sparkContext.addSparkListener(sparkListener)
 
 	private val tempFiles = mutable.MutableList[String]()
+	private val hdfs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
+	private val localFs = FileSystem.getLocal(spark.sparkContext.hadoopConfiguration)
 
 	def addTempFile(file: String): Unit = {
 		logger.info(s"Adding temp file '$file'")
@@ -64,10 +67,10 @@ private[image_classifier] final class FileUtils(implicit spark: SparkSession) {
 
 	def readString(file: String) = new String(readBytes(file))
 
-	private def getFs(path: String) = {
-		import java.net.URI
-		import org.apache.hadoop.fs.FileSystem
-		FileSystem.get(new URI(path), spark.sparkContext.hadoopConfiguration)
+	private def getFs(path: String) = getIsLocalAndRest(path) match {
+		case Some((true, _)) => localFs
+		case Some((false, _)) => hdfs
+		case _ => throw new IllegalArgumentException
 	}
 
 }
@@ -96,7 +99,7 @@ private[image_classifier] object FileUtils {
 	}
 
 	def parent(path: String) = {
-		val parent = path.getParent
+		val parent = toPath(path).getParent
 		if (parent == null) "/" else parent.toString
 	}
 
@@ -117,7 +120,7 @@ private[image_classifier] object FileUtils {
 		case _ => throw new IllegalArgumentException
 	}
 
-	private implicit def toPath(path: String): Path = new Path(path)
+	private def toPath(path: String): Path = new Path(path)
 
 	private def getIsLocalAndRest(path: String) = {
 		import java.net.URI
@@ -126,7 +129,7 @@ private[image_classifier] object FileUtils {
 		catch {
 			case _: IllegalArgumentException => null
 		}
-		val (scheme, rest) = (uri.getScheme, uri.getAuthority + uri.getPath)
+		val (scheme, rest) = (if (uri.getScheme != null) uri.getScheme else "", uri.getAuthority + uri.getPath)
 		val ok = try {
 			Paths.get(rest)
 			true

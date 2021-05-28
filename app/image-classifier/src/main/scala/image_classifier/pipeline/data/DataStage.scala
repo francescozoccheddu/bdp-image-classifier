@@ -4,7 +4,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import image_classifier.configuration.{DataConfig, Loader}
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.data.DataStage.{defaultImageCol, defaultIsTestCol, defaultLabelCol, logger}
-import image_classifier.pipeline.utils.FileUtils
+import image_classifier.utils.FileUtils
 import org.apache.log4j.Logger
 
 private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], workingDir: String, val labelCol: String, val isTestCol: String, val imageCol: String)(implicit spark: SparkSession, fileUtils: FileUtils)
@@ -74,7 +74,7 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], work
 }
 
 private[pipeline] object DataStage {
-	import image_classifier.pipeline.utils.Columns.{colName, resColName}
+	import image_classifier.pipeline.Columns.{colName, resColName}
 	import org.apache.spark.scheduler.SparkListener
 
 	val defaultLabelCol = colName("label")

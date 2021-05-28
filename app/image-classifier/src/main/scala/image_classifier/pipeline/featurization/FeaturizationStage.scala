@@ -6,7 +6,7 @@ import image_classifier.pipeline.featurization.FeaturizationStage.defaultOutputC
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.data.DataStage
 import image_classifier.pipeline.featurization.FeaturizationStage.logger
-import image_classifier.pipeline.utils.FileUtils
+import image_classifier.utils.FileUtils
 
 private[pipeline] final class FeaturizationStage(loader: Option[Loader[FeaturizationConfig]], val dataStage: DataStage, val outputCol: String = defaultOutputCol)(implicit spark: SparkSession, fileUtils: FileUtils)
   extends LoaderStage[DataFrame, FeaturizationConfig]("Featurization", loader)(fileUtils) {
@@ -55,7 +55,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 }
 
 private[pipeline] object FeaturizationStage {
-	import image_classifier.pipeline.utils.Columns.colName
+	import image_classifier.pipeline.Columns.colName
 	import org.apache.log4j.Logger
 
 	val defaultOutputCol = colName("features")

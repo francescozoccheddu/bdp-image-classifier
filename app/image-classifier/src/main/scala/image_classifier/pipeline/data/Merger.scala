@@ -1,6 +1,6 @@
 package image_classifier.pipeline.data
 
-import image_classifier.pipeline.utils.FileUtils
+import image_classifier.utils.FileUtils
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 private[data] object Merger {

@@ -1,6 +1,6 @@
 package image_classifier.configuration
 
-import image_classifier.pipeline.utils.FileUtils
+import image_classifier.utils.FileUtils
 
 private[configuration] object Utils {
 

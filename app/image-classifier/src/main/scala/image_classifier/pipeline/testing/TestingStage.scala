@@ -3,7 +3,7 @@ package image_classifier.pipeline.testing
 import image_classifier.configuration.TestingConfig
 import image_classifier.pipeline.Stage
 import image_classifier.pipeline.training.TrainingStage
-import image_classifier.pipeline.utils.FileUtils
+import image_classifier.utils.FileUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.DataType
 
@@ -39,17 +39,14 @@ private[pipeline] final class TestingStage(config: Option[TestingConfig], val tr
 		val metrics = new MulticlassMetrics(data)
 		val labels = specs.labels.getOr(() => metrics.labels.map(_.toInt.toString))
 		require(labels.length == metrics.labels.length)
+		val summary = TestingStage.print(metrics, labels)
 		if (specs.save.isDefined) {
-			import java.io.{FileOutputStream, PrintStream}
 			logger.info(s"Writing metrics to '${specs.save.get}'")
-			val out = new PrintStream(new FileOutputStream(specs.save.get))
-			try TestingStage.print(metrics, labels, out)
-			finally out.close()
+			fileUtils.writeString(specs.save.get, summary)
 		} else {
 			logger.info(s"Writing metrics to stdout")
 			println()
-			TestingStage.print(metrics, labels, System.out)
-			println()
+			println(summary)
 		}
 	}
 
@@ -61,10 +58,10 @@ private[testing] object TestingStage {
 
 	import java.io.PrintStream
 
-	private final class Printer(out: PrintStream) {
+	private final class Printer {
 
 		private val minSpace = 32
-		private var isEmpty = true
+		private val builder = new StringBuilder(4096)
 
 		private def truncate(value: Double)
 		= "%.3f".format(value)
@@ -79,31 +76,30 @@ private[testing] object TestingStage {
 				.map(" " * space + _.trim)
 				.mkString("\n")
 				.substring(column)
-			out.print(body)
-			isEmpty = false
+			builder.append(body)
 		}
 
 		def add(key: String, value: String): Unit = {
 			val header = s"$key:  "
-			out.print(header)
+			builder.append(header)
 			addAligned(value, header.length)
-			out.println()
-			isEmpty = false
+			builder.append('\n')
 		}
 
 		def addSection(key: String) = {
-			if (!isEmpty)
-				out.println()
-			out.println(s"--- $key ---")
-			isEmpty = false
+			if (builder.nonEmpty)
+				builder.append('\n')
+			builder.append(s"--- $key ---")
 		}
+
+		def get = builder.toString
 
 	}
 
 	private val logger = Logger.getLogger(getClass)
 
-	private def print(metrics: MulticlassMetrics, labels: Seq[String], out: PrintStream) = {
-		val printer = new Printer(out)
+	private def print(metrics: MulticlassMetrics, labels: Seq[String]) = {
+		val printer = new Printer
 		printer.addSection("Summary")
 		printer.addPercent("Accuracy", metrics.accuracy)
 		printer.addPercent("Hamming loss", metrics.hammingLoss)
@@ -121,6 +117,7 @@ private[testing] object TestingStage {
 			printer.addPercent("True positives", metrics.truePositiveRate(i))
 			printer.addPercent("False positives", metrics.falsePositiveRate(i))
 		}
+		printer.get
 	}
 
 }
