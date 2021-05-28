@@ -35,9 +35,6 @@ private[featurization] final class NearestNeighbor(inputCol: String, testInputCo
 	def joinMap[T](key: DataFrame, test: DataFrame, map: Row => T)(implicit tag: TypeTag[T], classTag: ClassTag[T]): DataFrame =
 		joinMap[T](key, test, (t: DataFrame) => t.rdd.map(map).collect.toSeq)
 
-	def joinAs[T](key: DataFrame, test: DataFrame)(implicit tag: TypeTag[T], encoder: Encoder[T]): DataFrame =
-		joinMap[T](key, test, (t: DataFrame) => t.as[T].collect.toSeq)
-
 	private def joinMap[T](key: DataFrame, test: DataFrame, map: DataFrame => Seq[T])(implicit tag: TypeTag[T]): DataFrame = {
 		val distinctTest = test.dropDuplicates(testInputCol).cache
 		val testData = map(distinctTest)
@@ -60,6 +57,9 @@ private[featurization] final class NearestNeighbor(inputCol: String, testInputCo
 		})
 		key.withColumn(outputCol, mapper(col(inputCol)))
 	}
+
+	def joinAs[T](key: DataFrame, test: DataFrame)(implicit tag: TypeTag[T], encoder: Encoder[T]): DataFrame =
+		joinMap[T](key, test, (t: DataFrame) => t.as[T].collect.toSeq)
 
 	def join[T](key: DataFrame, test: Dataset[T])(implicit tag: TypeTag[T]): DataFrame =
 		join(key, test.collect(), test.select(col(testInputCol)).rdd.map(_.getAs[MLVector](0)).collect)

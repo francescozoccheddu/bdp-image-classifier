@@ -35,7 +35,8 @@ private[pipeline] final class TestingStage(config: Option[TestingConfig], val tr
 		if (specs.save.isDefined) {
 			logger.info(s"Writing metrics to '${specs.save.get}'")
 			fileUtils.writeString(specs.save.get, summary)
-		} else {
+		}
+		if (specs.print) {
 			logger.info(s"Writing metrics to stdout")
 			println()
 			println(summary)

@@ -10,31 +10,33 @@ import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.{abs, col}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
-private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], workingDir: String, val labelCol: String, val isTestCol: String, val imageCol: String)(implicit spark: SparkSession, fileUtils: FileUtils)
+private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val labelCol: String, val isTestCol: String, val imageCol: String)(implicit spark: SparkSession, fileUtils: FileUtils)
   extends LoaderStage[DataFrame, DataConfig]("Data", loader)(fileUtils) {
 
-	def this(loader: Option[Loader[DataConfig]], workingDir: String)(implicit spark: SparkSession, fileUtils: FileUtils) = this(loader, workingDir, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark, fileUtils)
+	def this(loader: Option[Loader[DataConfig]])(implicit spark: SparkSession, fileUtils: FileUtils) = this(loader, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark, fileUtils)
 
-	override protected def save(result: DataFrame, file: String): Unit = {}
+	override protected def save(result: DataFrame): Unit = {}
 
-	override protected def make(config: DataConfig): DataFrame = {
-		val save = specs.get.mode match {
-			case LoadMode.MakeAndSave | LoadMode.LoadOrMakeAndSave => specs.get.file
+	override protected def make(): DataFrame = {
+		val save = loadMode match {
+			case LoadMode.MakeAndSave | LoadMode.LoadOrMakeAndSave => Some(file)
 			case _ => None
 		}
-		val file = save.getOrElse(config.tempFile)
+		val outputFile = save.getOrElse(config.tempFile)
 		val sources = Array.ofDim[Option[Seq[(Int, String)]]](3)
 		sources(0) = config.dataSet.map(encodeFiles(_, config.testFraction, config.splitSeed, config.stratified))
 		sources(1) = config.trainingSet.map(encodeFiles(_, false))
 		sources(2) = config.testSet.map(encodeFiles(_, true))
 		if (save.isEmpty)
-			fileUtils.addTempFile(file)
-		fileUtils.makeDirs(FileUtils.parent(file))
-		Merger.mergeFiles(sources.flatten.flatten.toSeq, file)
-		load(file)
+			fileUtils.addTempFile(outputFile)
+		fileUtils.makeDirs(FileUtils.parent(outputFile))
+		Merger.mergeFiles(sources.flatten.flatten.toSeq, outputFile)
+		load(outputFile)
 	}
 
-	protected override def load(file: String): DataFrame = {
+	protected override def load(): DataFrame = load(file)
+
+	private def load(file: String): DataFrame = {
 		if (!FileUtils.isValidHDFSPath(file))
 			logger.warn("Loading from a local path hampers parallelization")
 		Merger.load(file, keyCol, dataCol)
@@ -46,7 +48,7 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], work
 
 	private def resolveFiles(classFiles: Seq[Seq[String]]): Seq[(Seq[String], Int)] =
 		classFiles
-		  .map(_.flatMap(glob => fileUtils.glob(FileUtils.resolve(workingDir, glob))))
+		  .map(_.flatMap(fileUtils.glob))
 		  .zipWithIndex
 
 	private def explodeFiles(classFiles: Seq[Seq[String]]): Seq[(Int, String)] =

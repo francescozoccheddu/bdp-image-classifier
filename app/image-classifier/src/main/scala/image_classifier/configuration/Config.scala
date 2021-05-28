@@ -29,7 +29,7 @@ final case class DataConfig private[configuration](
 
 object DataConfig {
 
-	val defaultTempFile: String = "hdfs://localhost:9000/ic_temp_data"
+	val defaultTempFile: String = "hdfs://localhost:9000/image-classifier/temp_data"
 
 }
 
@@ -116,10 +116,17 @@ object TrainingConfig {
 
 final case class TestingConfig(
                                 save: O[String] = None,
-                                labels: O[Seq[String]] = None
+                                labels: O[Seq[String]] = None,
+                                print: Boolean = TestingConfig.defaultPrint
                               ) {
 
 	require(save.forall(FileUtils.isValidPath), s"${nameOf(save)} is not a valid file path")
+
+}
+
+object TestingConfig {
+
+	val defaultPrint: Boolean = true
 
 }
 

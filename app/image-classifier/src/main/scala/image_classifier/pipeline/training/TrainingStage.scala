@@ -1,6 +1,5 @@
 package image_classifier.pipeline.training
 
-import java.nio.file.{Files, Paths}
 import image_classifier.configuration.{LoadMode, Loader, TrainingAlgorithm, TrainingConfig}
 import image_classifier.pipeline.Columns.colName
 import image_classifier.pipeline.LoaderStage
@@ -22,9 +21,8 @@ import org.apache.spark.sql.types.{BooleanType, DataType, IntegerType}
 private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig]], val featurizationStage: FeaturizationStage, val predictionCol: String = defaultPredictionCol)(implicit spark: SparkSession, fileUtils: FileUtils)
   extends LoaderStage[ModelType, TrainingConfig]("Training", loader)(fileUtils) {
 
-	override protected def load(file: String): ModelType = {
-		val dir = Paths.get(file)
-		val bytes = Files.readAllBytes(dir.resolve(algorithmPath))
+	override protected def load(): ModelType = {
+		val bytes = fileUtils.readBytes(FileUtils.resolve(file, algorithmPath))
 		require(bytes.length == 1)
 		val model: MLReadable[_] = TrainingAlgorithm(bytes(0)) match {
 			case TrainingAlgorithm.MultilayerPerceptron => MultilayerPerceptronClassificationModel
@@ -36,10 +34,10 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 			case TrainingAlgorithm.LogisticRegression => LogisticRegressionModel
 			case TrainingAlgorithm.NaiveBayes => NaiveBayesModel
 		}
-		model.read.load(dir.resolve(dataPath).toString).asInstanceOf[ModelType]
+		model.read.load(FileUtils.resolve(file, dataPath)).asInstanceOf[ModelType]
 	}
 
-	override protected def make(config: TrainingConfig): ModelType = {
+	override protected def make(): ModelType = {
 		validate(featurizationStage.result.cache.schema)
 		val (featuresCol, labelCol) = (featurizationStage.outputCol, featurizationStage.dataStage.labelCol)
 		val classifier: ClassifierType = config.algorithm match {
@@ -70,8 +68,8 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 				  .setNumTrees(config.treeCount)
 				  .setSeed(config.seed)
 			case TrainingAlgorithm.MultilayerPerceptron =>
-				val featureSize = featurizationStage.specs.get.mode match {
-					case LoadMode.Make | LoadMode.MakeAndSave => featurizationStage.specs.get.config.get.codebookSize
+				val featureSize = featurizationStage.loadMode match {
+					case LoadMode.Make | LoadMode.MakeAndSave => featurizationStage.config.codebookSize
 					case _ => featurizationStage.result.first.getAs[MLVector](featuresCol).size
 				}
 				val labelsCount = featurizationStage.result.select(approx_count_distinct(labelCol)).first.getLong(0).toInt
@@ -96,11 +94,10 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 		schema.requireField(featurizationStage.dataStage.labelCol, IntegerType)
 	}
 
-	override protected def save(result: ModelType, file: String): Unit = {
-		val dir = Paths.get(file)
-		Files.createDirectories(dir)
-		Files.write(dir.resolve(algorithmPath), Array[Byte](specs.get.config.get.algorithm.id.toByte))
-		result.write.save(dir.resolve(dataPath).toString)
+	override protected def save(result: ModelType): Unit = {
+		fileUtils.makeDirs(file)
+		fileUtils.writeBytes(FileUtils.resolve(file, algorithmPath), Array[Byte](config.algorithm.id.toByte))
+		result.write.save(FileUtils.resolve(file, dataPath))
 	}
 
 }

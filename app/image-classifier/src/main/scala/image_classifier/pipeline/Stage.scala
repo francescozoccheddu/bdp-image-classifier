@@ -1,5 +1,6 @@
 package image_classifier.pipeline
 
+import image_classifier.configuration.LoadMode.LoadMode
 import image_classifier.configuration.{LoadMode, LoadableConfig, Loader}
 import image_classifier.pipeline.LoaderStage.logger
 import image_classifier.pipeline.Stage.logger
@@ -14,6 +15,8 @@ private[pipeline] abstract class Stage[Result, Specs](val name: String, val spec
 
 	final def result: Result = apply.get
 
+	final def hasResult: Boolean = apply.isDefined
+
 	final def apply: Option[Result] = {
 		if (!ran) {
 			ran = true
@@ -25,8 +28,6 @@ private[pipeline] abstract class Stage[Result, Specs](val name: String, val spec
 		optResult
 	}
 
-	final def hasResult: Boolean = apply.isDefined
-
 	protected def run(specs: Specs): Result
 
 }
@@ -34,55 +35,63 @@ private[pipeline] abstract class Stage[Result, Specs](val name: String, val spec
 private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](name: String, loader: Option[Loader[Config]])(implicit fileUtils: FileUtils)
   extends Stage[Result, Loader[Config]](name, loader)(fileUtils) {
 
+	private[pipeline] val file: String = specs.map(_.file.map(fileUtils.resolve).orNull).orNull
+	private[pipeline] val loadMode: LoadMode = specs.map(_.mode).orNull
+	private[pipeline] val config: Config =
+		if (specs.isDefined && specs.get.config.isDefined)
+			specs.get.config.get
+		else
+			null.asInstanceOf[Config]
+
 	final override protected def run(specs: Loader[Config]): Result = {
 		logger.info(s"Stage '$name': Running loader $specs")
 		specs.mode match {
-			case LoadMode.Load => loadImpl(specs.file.get)
-			case LoadMode.LoadOrMake => loadIfExistsImpl(specs.file.get).getOr(() => makeImpl(specs.config.get))
-			case LoadMode.LoadOrMakeAndSave => loadIfExistsImpl(specs.file.get).getOr(() => makeAndSaveImpl(specs.config.get, specs.file.get))
-			case LoadMode.MakeAndSave => makeAndSaveImpl(specs.config.get, specs.file.get)
-			case LoadMode.Make => makeImpl(specs.config.get)
+			case LoadMode.Load => loadImpl()
+			case LoadMode.LoadOrMake => loadIfExistsImpl().getOr(() => makeImpl())
+			case LoadMode.LoadOrMakeAndSave => loadIfExistsImpl().getOr(() => makeAndSaveImpl())
+			case LoadMode.MakeAndSave => makeAndSaveImpl()
+			case LoadMode.Make => makeImpl()
 		}
 	}
 
-	protected def makeImpl(config: Config): Result = {
+	protected def makeImpl(): Result = {
 		logger.info(s"Stage '$name': Making")
-		make(config)
+		make()
 	}
 
-	private def loadIfExistsImpl(file: String): Option[Result] =
+	protected def loadImpl(): Result = {
+		logger.info(s"Stage '$name': Loading '$file'")
+		load()
+	}
+
+	protected def exists(file: String): Boolean = fileUtils.exists(file)
+
+	protected def saveImpl(result: Result): Unit = {
+		logger.info(s"Stage '$name': Saving to '$file'")
+		fileUtils.makeDirs(FileUtils.parent(file))
+		save(result)
+	}
+
+	protected def load(): Result
+
+	protected def make(): Result
+
+	protected def save(result: Result): Unit
+
+	private def loadIfExistsImpl(): Option[Result] =
 		if (exists(file))
-			Some(loadImpl(file))
+			Some(loadImpl())
 		else {
 			logger.info(s"Stage '$name': File '$file' does not exist")
 			None
 		}
 
-	protected def loadImpl(file: String): Result = {
-		logger.info(s"Stage '$name': Loading '$file'")
-		load(file)
-	}
-
-	protected def exists(file: String): Boolean = fileUtils.exists(file)
-
-	private def makeAndSaveImpl(config: Config, file: String): Result = {
-		val result = make(config)
+	private def makeAndSaveImpl(): Result = {
+		val result = make()
 		logger.info(s"Stage '$name': Saving to '$file'")
-		save(result, file)
+		save(result)
 		result
 	}
-
-	protected def saveImpl(result: Result, file: String): Unit = {
-		logger.info(s"Stage '$name': Saving to '$file'")
-		fileUtils.makeDirs(FileUtils.parent(file))
-		save(result, file)
-	}
-
-	protected def load(file: String): Result
-
-	protected def make(config: Config): Result
-
-	protected def save(result: Result, file: String): Unit
 
 }
 

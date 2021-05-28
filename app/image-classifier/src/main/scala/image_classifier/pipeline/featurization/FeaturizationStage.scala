@@ -15,7 +15,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 private[pipeline] final class FeaturizationStage(loader: Option[Loader[FeaturizationConfig]], val dataStage: DataStage, val outputCol: String = defaultOutputCol)(implicit spark: SparkSession, fileUtils: FileUtils)
   extends LoaderStage[DataFrame, FeaturizationConfig]("Featurization", loader)(fileUtils) {
 
-	override protected def make(config: FeaturizationConfig): DataFrame = {
+	override protected def make(): DataFrame = {
 		validate(dataStage.result.schema)
 		logger.info("Extracting features")
 		val describedData = describe(config, dataStage.result).cache
@@ -42,13 +42,13 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 		BOWV.createCodebook(training, config.codebookSize, outputCol, config.assignNearest)
 	}
 
-	override protected def load(file: String): DataFrame = {
+	override protected def load(): DataFrame = {
 		if (!FileUtils.isValidHDFSPath(file))
 			logger.warn("Loading from a local path hampers parallelization")
 		spark.read.format("parquet").load(file)
 	}
 
-	override protected def save(result: DataFrame, file: String): Unit = result.write.format("parquet").save(file)
+	override protected def save(result: DataFrame): Unit = result.write.format("parquet").save(file)
 
 }
 

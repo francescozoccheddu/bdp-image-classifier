@@ -1,0 +1,42 @@
+{
+	"data": {
+		"save": "hdfs://localhost:9000/image-classifier/data",
+		"make": {
+			"trainingSet": [
+				["./seg_train/seg_train/buildings/*.jpg"],
+				["./seg_train/seg_train/forest/*.jpg"],
+				["./seg_train/seg_train/glacier/*.jpg"],
+				["./seg_train/seg_train/mountain/*.jpg"],
+				["./seg_train/seg_train/sea/*.jpg"],
+				["./seg_train/seg_train/street/*.jpg"]
+			],
+			"testSet": [
+				["./seg_test/seg_test/buildings/*.jpg"],
+				["./seg_test/seg_test/forest/*.jpg"],
+				["./seg_test/seg_test/glacier/*.jpg"],
+				["./seg_test/seg_test/mountain/*.jpg"],
+				["./seg_test/seg_test/sea/*.jpg"],
+				["./seg_test/seg_test/street/*.jpg"]
+			]
+		}
+	},
+	"featurization": {
+		"save": "hdfs://localhost:9000/image-classifier/features",
+		"make": {
+			"algorithm": "sift",
+			"codebookSize": 500,
+			"featureCount": 20
+		}
+	},
+	"training": {
+		"save": "file://./output/model",
+		"make": {
+			"algorithm" : "lsv",
+			"maxIterations": 30
+		}
+	},
+	"testing": {
+		"save": "file://./output/summary.txt",
+		"labels": ["Buildings", "Forest", "Glacier", "Mountain", "Sea", "Street"]
+	}
+}
