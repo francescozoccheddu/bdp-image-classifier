@@ -1,7 +1,7 @@
 package image_classifier.pipeline
 
 import image_classifier.configuration.{LoadableConfig, Loader}
-import image_classifier.pipeline.utils.FileUtils
+import image_classifier.utils.FileUtils
 
 private[pipeline] abstract class Stage[Result, Specs](val name: String, val specs: Option[Specs])(implicit protected val fileUtils : FileUtils) {
 	import image_classifier.pipeline.Stage.logger

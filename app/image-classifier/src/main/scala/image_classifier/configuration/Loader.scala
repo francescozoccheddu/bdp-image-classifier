@@ -3,7 +3,7 @@ package image_classifier.configuration
 import com.github.dwickern.macros.NameOf.nameOf
 import image_classifier.configuration.LoadMode.LoadMode
 import image_classifier.configuration.Utils.O
-import image_classifier.pipeline.utils.FileUtils
+import image_classifier.utils.FileUtils
 
 final case class Loader[Type <: LoadableConfig] private[configuration](
 	private[configuration] val make: O[Type] = None,

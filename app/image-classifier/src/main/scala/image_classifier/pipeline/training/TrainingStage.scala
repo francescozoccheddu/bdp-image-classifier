@@ -4,7 +4,7 @@ import image_classifier.configuration.{Loader, TrainingConfig}
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.featurization.FeaturizationStage
 import image_classifier.pipeline.training.TrainingStage.{ModelType, defaultPredictionCol}
-import image_classifier.pipeline.utils.FileUtils
+import image_classifier.utils.FileUtils
 import org.apache.spark.ml.Model
 import org.apache.spark.ml.util.MLWritable
 import org.apache.spark.sql.SparkSession
@@ -116,7 +116,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 
 private[pipeline] object TrainingStage {
 
-	import image_classifier.pipeline.utils.Columns.colName
+	import image_classifier.pipeline.Columns.colName
 	import org.apache.log4j.Logger
 	import org.apache.spark.ml.classification.Classifier
 	import org.apache.spark.ml.param.shared.{HasFeaturesCol, HasLabelCol, HasPredictionCol}

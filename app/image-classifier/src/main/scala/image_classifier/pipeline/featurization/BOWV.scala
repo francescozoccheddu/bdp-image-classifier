@@ -3,7 +3,7 @@ package image_classifier.pipeline.featurization
 import org.apache.spark.sql.DataFrame
 
 private[featurization] object BOWV {
-	import image_classifier.pipeline.utils.Columns.{colName, resColName}
+	import image_classifier.pipeline.Columns.{colName, resColName}
 
 	private val codebookDataCol = resColName("data")
 	private val codebookIdCol = resColName("id")
