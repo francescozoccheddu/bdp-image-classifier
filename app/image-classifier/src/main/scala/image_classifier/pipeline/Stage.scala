@@ -35,7 +35,7 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
   extends Stage[Result, Loader[Config]](name, loader)(fileUtils) {
 
 	final override protected def run(specs: Loader[Config]): Result = {
-		logger.info(s"Running loader $specs")
+		logger.info(s"Stage '$name': Running loader $specs")
 		specs.mode match {
 			case LoadMode.Load => loadImpl(specs.file.get)
 			case LoadMode.LoadOrMake => loadIfExistsImpl(specs.file.get).getOr(() => makeImpl(specs.config.get))
@@ -46,7 +46,7 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
 	}
 
 	protected def makeImpl(config: Config): Result = {
-		logger.info(s"Making")
+		logger.info(s"Stage '$name': Making")
 		make(config)
 	}
 
@@ -54,12 +54,12 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
 		if (exists(file))
 			Some(loadImpl(file))
 		else {
-			logger.info(s"File '$file' does not exist")
+			logger.info(s"Stage '$name': File '$file' does not exist")
 			None
 		}
 
 	protected def loadImpl(file: String): Result = {
-		logger.info(s"Loading '$file'")
+		logger.info(s"Stage '$name': Loading '$file'")
 		load(file)
 	}
 
@@ -67,13 +67,13 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
 
 	private def makeAndSaveImpl(config: Config, file: String): Result = {
 		val result = make(config)
-		logger.info(s"Saving to '$file'")
+		logger.info(s"Stage '$name': Saving to '$file'")
 		save(result, file)
 		result
 	}
 
 	protected def saveImpl(result: Result, file: String): Unit = {
-		logger.info(s"Saving to '$file'")
+		logger.info(s"Stage '$name': Saving to '$file'")
 		fileUtils.makeDirs(FileUtils.parent(file))
 		save(result, file)
 	}
