@@ -42,14 +42,6 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 
 	def exists(path: String): Boolean = getFs(path).exists(toPath(path))
 
-	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
-		case Some((true, _)) => localFs
-		case Some((false, _)) => hdfs
-		case _ => throw new IllegalArgumentException
-	}
-
-	private def toPath(path: String): Path = new Path(workingDir, path)
-
 	def writeString(file: String, string: String): Unit = writeBytes(file, string.getBytes)
 
 	def writeBytes(file: String, bytes: Array[Byte]): Unit = {
@@ -71,6 +63,14 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 
 	def glob(glob: String): Seq[String] =
 		getFs(glob).globStatus(toPath(glob)).map(_.getPath.toString)
+
+	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
+		case Some((true, _)) => localFs
+		case Some((false, _)) => hdfs
+		case _ => throw new IllegalArgumentException
+	}
+
+	private def toPath(path: String): Path = new Path(workingDir, path)
 
 	private def clearTempFiles(): Unit = {
 		logger.info(s"Clearing ${tempFiles.length} temp files")
@@ -99,6 +99,13 @@ private[image_classifier] object FileUtils {
 		case _ => false
 	}
 
+	def isValidHDFSPath(path: String): Boolean = getIsLocalAndRest(path) match {
+		case Some((false, _)) => true
+		case _ => false
+	}
+
+	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
+
 	private def getIsLocalAndRest(path: String): Option[(Boolean, String)] = {
 		val uri = try URI.create(path)
 		catch {
@@ -125,13 +132,6 @@ private[image_classifier] object FileUtils {
 		else
 			None
 	}
-
-	def isValidHDFSPath(path: String): Boolean = getIsLocalAndRest(path) match {
-		case Some((false, _)) => true
-		case _ => false
-	}
-
-	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
 
 	def toSimpleLocalPath(path: String): String = getIsLocalAndRest(path) match {
 		case Some((true, rest)) => rest
