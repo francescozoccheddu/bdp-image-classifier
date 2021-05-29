@@ -50,6 +50,8 @@ final case class FeaturizationConfig(
                                       override val contrastThreshold: Double = FeaturizationConfig.defaultContrastThreshold,
                                       override val edgeThreshold: Double = FeaturizationConfig.defaultEdgeThreshold,
                                       override val sigma: Double = FeaturizationConfig.defaultSigma,
+                                      override val hessianThreshold: Double = FeaturizationConfig.defaultHessianThreshold,
+                                      override val octaveCount: Int = FeaturizationConfig.defaultOctaveCount,
                                       maxSize: Int = FeaturizationConfig.defaultMaxSize,
                                       assignNearest: Boolean = FeaturizationConfig.defaultAssignNearest
                                     ) extends LoadableConfig with DescriptorConfig {
@@ -69,10 +71,12 @@ object FeaturizationConfig {
 	val defaultCodebookSize: Int = 500
 	val defaultAlgorithm: configuration.ImageFeatureAlgorithm.Value = ImageFeatureAlgorithm.Sift
 	val defaultOctaveLayerCount: Int = 3
+	val defaultOctaveCount: Int = 4
 	val defaultContrastThreshold: Double = 0.04
-	val defaultEdgeThreshold: Int = 10
+	val defaultEdgeThreshold: Int = 30
 	val defaultSigma: Double = 1.6
 	val defaultFeatureCount: Int = 20
+	val defaultHessianThreshold: Double = 100
 	val defaultMaxSize: Int = 1024
 	val defaultAssignNearest: Boolean = true
 
