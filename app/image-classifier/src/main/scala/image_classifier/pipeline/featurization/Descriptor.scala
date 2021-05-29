@@ -5,15 +5,17 @@ import image_classifier.configuration.ImageFeatureAlgorithm
 import image_classifier.configuration.ImageFeatureAlgorithm._
 import org.apache.spark.ml.linalg.{Vectors, Vector => MLVector}
 import org.bytedeco.javacpp.opencv_core.{CV_64F, CV_64FC1, KeyPointVector, Mat}
-import org.bytedeco.javacpp.opencv_features2d.Feature2D
-import org.bytedeco.javacpp.opencv_xfeatures2d.SIFT
+import org.bytedeco.javacpp.opencv_features2d.{Feature2D, ORB}
+import org.bytedeco.javacpp.opencv_xfeatures2d.{SIFT, SURF}
 
 private[image_classifier] trait DescriptorConfig {
 
 	def algorithm: ImageFeatureAlgorithm
 	def featureCount: Int
 	def octaveLayerCount: Int
+	def octaveCount: Int
 	def contrastThreshold: Double
+	def hessianThreshold: Double
 	def edgeThreshold: Double
 	def sigma: Double
 
@@ -24,6 +26,8 @@ private[featurization] final case class Descriptor(config: DescriptorConfig) {
 	lazy val detector: Feature2D = {
 		config.algorithm match {
 			case ImageFeatureAlgorithm.Sift => SIFT.create(config.featureCount, config.octaveLayerCount, config.contrastThreshold, config.edgeThreshold, config.sigma)
+			case ImageFeatureAlgorithm.Surf => SURF.create(config.hessianThreshold, config.octaveCount, config.octaveLayerCount, false, false)
+			case ImageFeatureAlgorithm.Orb => ORB.create(config.featureCount, 1.2f, 8, config.edgeThreshold.toInt, 0, 2, ORB.HARRIS_SCORE, 31, 20)
 		}
 	}
 

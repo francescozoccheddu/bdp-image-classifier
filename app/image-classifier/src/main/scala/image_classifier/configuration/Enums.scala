@@ -6,6 +6,8 @@ object ImageFeatureAlgorithm extends Enumeration {
 
 	type ImageFeatureAlgorithm = Value
 	val Sift: configuration.ImageFeatureAlgorithm.Value = Value("sift")
+	val Surf: configuration.ImageFeatureAlgorithm.Value = Value("surf")
+	val Orb: configuration.ImageFeatureAlgorithm.Value = Value("orb")
 
 }
 
