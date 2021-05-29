@@ -33,16 +33,18 @@ private[featurization] final case class Descriptor(config: DescriptorConfig) {
 		val rawDesMat = new Mat
 		detector.detectAndCompute(image, new Mat, kpv, rawDesMat)
 		val kpCount = kpv.size.toInt
-		val desMat = {
-			require(rawDesMat.channels == 1)
-			if (rawDesMat.depth != CV_64F) {
-				val mat = new Mat(kpCount, size, CV_64FC1)
-				rawDesMat.convertTo(mat, CV_64F)
-				mat
+		val buffer = if (kpCount != 0) {
+			val desMat = {
+				require(rawDesMat.channels == 1)
+				if (rawDesMat.depth != CV_64F) {
+					val mat = new Mat(kpCount, size, CV_64FC1)
+					rawDesMat.convertTo(mat, CV_64F)
+					mat
+				}
+				else rawDesMat
 			}
-			else rawDesMat
-		}
-		val buffer = desMat.createBuffer[DoubleBuffer]()
+			desMat.createBuffer[DoubleBuffer]()
+		} else null
 		val desArr = Array.ofDim[MLVector](kpCount)
 		for (d <- 0 until kpCount) {
 			val row = Array.ofDim[Double](size)
