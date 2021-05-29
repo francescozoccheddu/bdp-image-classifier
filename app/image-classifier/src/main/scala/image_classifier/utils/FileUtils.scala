@@ -42,6 +42,14 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 
 	def exists(path: String): Boolean = getFs(path).exists(toPath(path))
 
+	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
+		case Some((true, _)) => localFs
+		case Some((false, _)) => hdfs
+		case _ => throw new IllegalArgumentException
+	}
+
+	private def toPath(path: String): Path = new Path(workingDir, path)
+
 	def writeString(file: String, string: String): Unit = writeBytes(file, string.getBytes)
 
 	def writeBytes(file: String, bytes: Array[Byte]): Unit = {
@@ -73,14 +81,6 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 		tempFiles.clear()
 	}
 
-	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
-		case Some((true, _)) => localFs
-		case Some((false, _)) => hdfs
-		case _ => throw new IllegalArgumentException
-	}
-
-	private def toPath(path: String): Path = new Path(workingDir, path)
-
 }
 
 private[image_classifier] object FileUtils {
@@ -97,18 +97,6 @@ private[image_classifier] object FileUtils {
 	def isValidLocalPath(path: String): Boolean = getIsLocalAndRest(path) match {
 		case Some((true, _)) => true
 		case _ => false
-	}
-
-	def isValidHDFSPath(path: String): Boolean = getIsLocalAndRest(path) match {
-		case Some((false, _)) => true
-		case _ => false
-	}
-
-	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
-
-	def toSimpleLocalPath(path: String): String = getIsLocalAndRest(path) match {
-		case Some((true, rest)) => rest
-		case _ => throw new IllegalArgumentException
 	}
 
 	private def getIsLocalAndRest(path: String): Option[(Boolean, String)] = {
@@ -136,6 +124,18 @@ private[image_classifier] object FileUtils {
 		}
 		else
 			None
+	}
+
+	def isValidHDFSPath(path: String): Boolean = getIsLocalAndRest(path) match {
+		case Some((false, _)) => true
+		case _ => false
+	}
+
+	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
+
+	def toSimpleLocalPath(path: String): String = getIsLocalAndRest(path) match {
+		case Some((true, rest)) => rest
+		case _ => throw new IllegalArgumentException
 	}
 
 }

@@ -13,6 +13,8 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val labelCol: String, val isTestCol: String, val imageCol: String)(implicit spark: SparkSession, fileUtils: FileUtils)
   extends LoaderStage[DataFrame, DataConfig]("Data", loader)(fileUtils) {
 
+	private val merger: Merger = new Merger()(spark)
+
 	def this(loader: Option[Loader[DataConfig]])(implicit spark: SparkSession, fileUtils: FileUtils) = this(loader, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark, fileUtils)
 
 	override protected def save(result: DataFrame): Unit = {}
@@ -30,7 +32,7 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val 
 		if (save.isEmpty)
 			fileUtils.addTempFile(outputFile)
 		fileUtils.makeDirs(FileUtils.parent(outputFile))
-		Merger.mergeFiles(sources.flatten.flatten.toSeq, outputFile)
+		merger.mergeFiles(sources.flatten.flatten.toSeq, outputFile)
 		load(outputFile)
 	}
 
@@ -39,7 +41,7 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val 
 	private def load(file: String): DataFrame = {
 		if (!FileUtils.isValidHDFSPath(file))
 			logger.warn("Loading from a local path hampers parallelization")
-		Merger.load(file, keyCol, dataCol)
+		merger.load(file, keyCol, dataCol)
 		  .select(
 			  col(dataCol).alias(imageCol),
 			  (col(keyCol) < 0).alias(isTestCol),

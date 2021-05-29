@@ -10,7 +10,7 @@ import image_classifier.utils.FileUtils
 import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.{col, explode, udf}
 import org.apache.spark.sql.types.{BinaryType, BooleanType, DataType}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 private[pipeline] final class FeaturizationStage(loader: Option[Loader[FeaturizationConfig]], val dataStage: DataStage, val outputCol: String = defaultOutputCol)(implicit spark: SparkSession, fileUtils: FileUtils)
   extends LoaderStage[DataFrame, FeaturizationConfig]("Featurization", loader)(fileUtils) {
@@ -48,7 +48,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 		spark.read.format("parquet").load(file)
 	}
 
-	override protected def save(result: DataFrame): Unit = result.write.format("parquet").save(file)
+	override protected def save(result: DataFrame): Unit = result.write.format("parquet").mode(SaveMode.Overwrite).save(file)
 
 }
 
