@@ -8,12 +8,12 @@ import image_classifier.pipeline.training.TrainingStage._
 import image_classifier.utils.DataTypeImplicits.DataTypeExtension
 import image_classifier.utils.FileUtils
 import org.apache.log4j.Logger
-import org.apache.spark.ml.Model
 import org.apache.spark.ml.classification.{Classifier, _}
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.{Vector => MLVector}
 import org.apache.spark.ml.param.shared.{HasFeaturesCol, HasLabelCol, HasPredictionCol}
 import org.apache.spark.ml.util.{MLReadable, MLWritable}
+import org.apache.spark.ml.{Estimator, Model}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{approx_count_distinct, col}
 import org.apache.spark.sql.types.{BooleanType, DataType, IntegerType}
@@ -27,7 +27,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 		val model: MLReadable[_] = TrainingAlgorithm(bytes(0)) match {
 			case TrainingAlgorithm.MultilayerPerceptron => MultilayerPerceptronClassificationModel
 			case TrainingAlgorithm.RandomForest => RandomForestClassificationModel
-			case TrainingAlgorithm.LinearSupportVector => LinearSVCModel
+			case TrainingAlgorithm.LinearSupportVector => OneVsRestModel
 			case TrainingAlgorithm.GradientBoosted => GBTClassificationModel
 			case TrainingAlgorithm.FactorizationMachines => FMClassificationModel
 			case TrainingAlgorithm.DecisionTree => DecisionTreeClassificationModel
@@ -85,7 +85,16 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 		classifier.setFeaturesCol(featuresCol)
 		classifier.setLabelCol(labelCol)
 		classifier.setPredictionCol(predictionCol)
-		classifier.fit(training).asInstanceOf[ModelType]
+		val estimator: Estimator[_ <: MLWritable] = config.algorithm match {
+			case TrainingAlgorithm.LinearSupportVector =>
+				new OneVsRest()
+				  .setClassifier(classifier)
+				  .setFeaturesCol(featuresCol)
+				  .setLabelCol(labelCol)
+				  .setPredictionCol(predictionCol)
+			case _ => classifier
+		}
+		estimator.fit(training).asInstanceOf[ModelType]
 	}
 
 	private def validate(schema: DataType): Unit = {
