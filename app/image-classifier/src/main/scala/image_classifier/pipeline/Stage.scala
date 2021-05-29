@@ -15,6 +15,8 @@ private[pipeline] abstract class Stage[Result, Specs](val name: String, val spec
 
 	final def result: Result = apply.get
 
+	final def hasResult: Boolean = apply.isDefined
+
 	final def apply: Option[Result] = {
 		if (!ran) {
 			ran = true
@@ -25,8 +27,6 @@ private[pipeline] abstract class Stage[Result, Specs](val name: String, val spec
 		}
 		optResult
 	}
-
-	final def hasResult: Boolean = apply.isDefined
 
 	protected def run(specs: Specs): Result
 
