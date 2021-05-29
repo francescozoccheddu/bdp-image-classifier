@@ -2,21 +2,43 @@
 
 # App launcher
 
+echo "-- Running from config $2"
+
+MODE=${3:-local}
+case "${MODE,,}" in
+
+  "local")
+    MASTER="local[*]"
+	echo "Local master."
+    ;;
+
+  "yarn")
+    MASTER="yarn"
+	echo "YARN master."
+    ;;
+
+  *)
+    echo "Unknown run mode. Expected 'local' or 'yarn'."
+	echo "-- Failed"
+	exit 1
+    ;;
+esac
+
 . ~/.profile
 "$JAVA_HOME/bin/jps" | grep NameNode > /dev/null
 RES=$?
 
 if [[ $RES == 0 ]]; then
-	echo "-- Running from config $2"
 	echo "Hadoop daemons are already running and will not be automatically stopped."
 else
 	echo "-- Starting Hadoop daemons"
 	"$HADOOP_HOME/sbin/start-dfs.sh" >& /dev/null
 	"$HADOOP_HOME/sbin/start-yarn.sh" >& /dev/null
-	echo "-- Running from config $2"
 fi
 
-"$SPARK_HOME/bin/spark-submit" --master yarn "$1" "$2"
+echo "-- Running"
+
+"$SPARK_HOME/bin/spark-submit" --master $MASTER --driver-cores 1 --driver-memory 1G --num-executors 1 --executor-cores 1 --executor-memory 512M "$1" "$2"
 
 if [[ $RES != 0 ]]; then
 	echo "-- Stopping Hadoop daemons"
