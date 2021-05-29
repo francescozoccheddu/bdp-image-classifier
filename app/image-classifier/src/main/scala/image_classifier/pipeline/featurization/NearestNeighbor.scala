@@ -46,17 +46,20 @@ private[featurization] final class NearestNeighbor(inputCol: String, testInputCo
 	}
 
 	def join[T](key: DataFrame, test: Seq[T], testFeatures: Seq[MLVector])(implicit tag: TypeTag[T]): DataFrame = {
+		val spark = key.sparkSession.sparkContext
+		val testBroadcast = spark.broadcast(test)
+		val testFeaturesBroadcast = spark.broadcast(testFeatures)
 		val mapper = udf[T, MLVector]((f: MLVector) => {
 			var minDist: Double = Double.PositiveInfinity
 			var minI = 0
-			for ((v, i) <- testFeatures.zipWithIndex) {
+			for ((v, i) <- testFeaturesBroadcast.value.zipWithIndex) {
 				val dist = Vectors.sqdist(v, f)
 				if (dist < minDist) {
 					minDist = dist
 					minI = i
 				}
 			}
-			test(minI)
+			testBroadcast.value(minI)
 		})
 		key.withColumn(outputCol, mapper(col(inputCol)))
 	}
