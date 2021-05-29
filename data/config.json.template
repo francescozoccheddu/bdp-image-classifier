@@ -29,14 +29,13 @@
 		}
 	},
 	"training": {
-		"save": "file://./output/model",
+		"save": "./output/model",
 		"make": {
-			"algorithm" : "lsv",
-			"maxIterations": 30
+			"algorithm" : "nb"
 		}
 	},
 	"testing": {
-		"save": "file://./output/summary.txt",
+		"save": "./output/summary.txt",
 		"labels": ["Buildings", "Forest", "Glacier", "Mountain", "Sea", "Street"]
 	}
 }
