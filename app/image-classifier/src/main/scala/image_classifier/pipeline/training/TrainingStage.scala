@@ -97,7 +97,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 	override protected def save(result: ModelType): Unit = {
 		fileUtils.makeDirs(file)
 		fileUtils.writeBytes(FileUtils.resolve(file, algorithmPath), Array[Byte](config.algorithm.id.toByte))
-		result.write.save(FileUtils.resolve(file, dataPath))
+		result.write.overwrite().save(FileUtils.resolve(file, dataPath))
 	}
 
 }

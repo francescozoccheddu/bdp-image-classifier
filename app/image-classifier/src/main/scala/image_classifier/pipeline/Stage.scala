@@ -15,8 +15,6 @@ private[pipeline] abstract class Stage[Result, Specs](val name: String, val spec
 
 	final def result: Result = apply.get
 
-	final def hasResult: Boolean = apply.isDefined
-
 	final def apply: Option[Result] = {
 		if (!ran) {
 			ran = true
@@ -27,6 +25,8 @@ private[pipeline] abstract class Stage[Result, Specs](val name: String, val spec
 		}
 		optResult
 	}
+
+	final def hasResult: Boolean = apply.isDefined
 
 	protected def run(specs: Specs): Result
 
@@ -59,12 +59,27 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
 		make()
 	}
 
+	private def loadIfExistsImpl(): Option[Result] =
+		if (exists(file))
+			Some(loadImpl())
+		else {
+			logger.info(s"Stage '$name': File '$file' does not exist")
+			None
+		}
+
 	protected def loadImpl(): Result = {
 		logger.info(s"Stage '$name': Loading '$file'")
 		load()
 	}
 
 	protected def exists(file: String): Boolean = fileUtils.exists(file)
+
+	private def makeAndSaveImpl(): Result = {
+		val result = make()
+		logger.info(s"Stage '$name': Saving to '$file'")
+		save(result)
+		result
+	}
 
 	protected def saveImpl(result: Result): Unit = {
 		logger.info(s"Stage '$name': Saving to '$file'")
@@ -77,21 +92,6 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
 	protected def make(): Result
 
 	protected def save(result: Result): Unit
-
-	private def loadIfExistsImpl(): Option[Result] =
-		if (exists(file))
-			Some(loadImpl())
-		else {
-			logger.info(s"Stage '$name': File '$file' does not exist")
-			None
-		}
-
-	private def makeAndSaveImpl(): Result = {
-		val result = make()
-		logger.info(s"Stage '$name': Saving to '$file'")
-		save(result)
-		result
-	}
 
 }
 
