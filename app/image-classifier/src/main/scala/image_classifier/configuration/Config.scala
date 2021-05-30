@@ -64,11 +64,15 @@ object DescriptorConfig {
 
 object CodebookConfig {
 
+	val defaultStratifiedSampling: Boolean = true
 	val defaultMaxIterations: Int = 10
 	val defaultConvergenceTolerance: Double = 0.0001
 	val defaultSize: Int = 500
 	val defaultAssignNearest: Boolean = false
 	val defaultInitSteps: Int = 2
+	val defaultSampleFraction: Double = 1
+
+	def defaultSampleSeed: Int = Random.nextInt
 
 	def defaultSeed: Int = Random.nextInt
 
@@ -80,14 +84,19 @@ final case class CodebookConfig(
                                  maxIterations: Int = CodebookConfig.defaultMaxIterations,
                                  convergenceTolerance: Double = CodebookConfig.defaultConvergenceTolerance,
                                  seed: Int = CodebookConfig.defaultSeed,
-                                 initSteps: Int = CodebookConfig.defaultInitSteps
-
+                                 initSteps: Int = CodebookConfig.defaultInitSteps,
+                                 sampleFraction: Double = CodebookConfig.defaultSampleFraction,
+                                 sampleSeed: Int = CodebookConfig.defaultSampleSeed,
+                                 labelsCount: O[Int] = None,
+                                 stratifiedSampling: Boolean = CodebookConfig.defaultStratifiedSampling
                                ) {
 
 	requireIn(nameOf(size), size, 10, 100000)
 	requireIn(nameOf(maxIterations), maxIterations, 1, 100)
 	requireIn(nameOf(initSteps), initSteps, 1, 10)
 	requireIn(nameOf(convergenceTolerance), convergenceTolerance, 0, 0.1, false)
+	requireIn(nameOf(sampleFraction), sampleFraction, 0, 1, false)
+	labelsCount.foreach(requirePositive(nameOf(labelsCount), _))
 
 }
 
@@ -131,6 +140,7 @@ final case class TrainingConfig(
 	requirePositive(nameOf(stepSize), stepSize)
 	requireNonNegative(nameOf(regParam), regParam)
 	requireNonNegative(nameOf(treeCount), treeCount)
+	labelsCount.foreach(requirePositive(nameOf(labelsCount), _))
 	hiddenLayers.foreach(requirePositive(nameOf(hiddenLayers), _))
 
 }
