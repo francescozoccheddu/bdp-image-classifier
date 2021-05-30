@@ -26,11 +26,11 @@ private[configuration] object Utils {
 	def configFromFile(file: String): Config =
 		configFromJson(LocalFileUtils.readFileToString(new File(file), Charset.defaultCharset()))
 
-	def configFromJson(json: String): Config =
-		readFromString[Config](json)
-
 	def configFromFile(file: String, fileUtils: FileUtils): Config =
 		configFromJson(fileUtils.readString(file))
+
+	def configFromJson(json: String): Config =
+		readFromString[Config](json)
 
 }
 
