@@ -13,7 +13,7 @@ private[featurization] final class NearestNeighbor(inputCol: String, outputCol: 
 		if (testInputCol == neighborCol)
 			joinFeatures(key, test, testInputCol)
 		else
-			join(key, test.select(neighborCol, testInputCol).collect(), (r: Row) => r.getAs[T](1), (r: Row) => r.getAs[MLVector](0))
+			join(key, test.select(neighborCol, testInputCol).collect(), (r: Row) => r.getAs[T](0), (r: Row) => r.getAs[MLVector](1))
 	}
 
 	def joinFeatures(key: DataFrame, test: DataFrame, testInputCol: String): DataFrame = {
