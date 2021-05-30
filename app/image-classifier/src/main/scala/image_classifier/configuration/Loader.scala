@@ -49,12 +49,6 @@ object Loader {
 	def loadOrMakeAndSave[Type <: LoadableConfig](file: String, config: Type): Loader[Type] =
 		create(LoadOrMakeAndSave, Some(file), Some(config))
 
-	def makeAndSave[Type <: LoadableConfig](config: Type, file: String): Loader[Type] =
-		create(MakeAndSave, Some(file), Some(config))
-
-	def load[Type <: LoadableConfig](file: String): Loader[Type] =
-		create(Load, Some(file), None)
-
 	def create[Type <: LoadableConfig](mode: LoadMode, file: O[String], config: O[Type]): Loader[Type] = mode match {
 		case Make => Loader(config, None, None, None)
 		case MakeAndSave => Loader(config, None, file, None)
@@ -62,6 +56,12 @@ object Loader {
 		case LoadOrMake => Loader(config, file, None, None)
 		case Load => Loader(None, file, None, None)
 	}
+
+	def makeAndSave[Type <: LoadableConfig](config: Type, file: String): Loader[Type] =
+		create(MakeAndSave, Some(file), Some(config))
+
+	def load[Type <: LoadableConfig](file: String): Loader[Type] =
+		create(Load, Some(file), None)
 
 	def loadOrMake[Type <: LoadableConfig](file: String, config: Type): Loader[Type] =
 		create(LoadOrMake, Some(file), Some(config))

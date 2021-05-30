@@ -21,6 +21,18 @@ private[featurization] final class NearestNeighbor(inputCol: String, outputCol: 
 		join(key, testFeatures, testFeatures)
 	}
 
+	def join[T](key: DataFrame, test: DataFrame, neighborProvider: Row => T, testInputCol: String)(implicit tag: TypeTag[T]): DataFrame = {
+		val schema = test.schema
+		val inputIndex = schema.fieldIndex(testInputCol)
+		join(key, test.collect(), neighborProvider, (r: Row) => r.getAs[MLVector](inputIndex))
+	}
+
+	def join[T, N](key: DataFrame, test: Seq[T], neighborProvider: T => N, featureProvider: T => MLVector)(implicit tag: TypeTag[N]): DataFrame =
+		join(key, test.map(neighborProvider), test.map(featureProvider))
+
+	def join[T](key: DataFrame, test: Seq[T], featureProvider: T => MLVector)(implicit tag: TypeTag[T]): DataFrame =
+		join(key, test, test.map(featureProvider))
+
 	def join[T](key: DataFrame, test: Seq[T], testFeatures: Seq[MLVector])(implicit tag: TypeTag[T]): DataFrame = {
 		val spark = key.sparkSession.sparkContext
 		val testBroadcast = spark.broadcast(test)
@@ -39,18 +51,6 @@ private[featurization] final class NearestNeighbor(inputCol: String, outputCol: 
 		})
 		key.withColumn(outputCol, mapper(col(inputCol)))
 	}
-
-	def join[T, N](key: DataFrame, test: Seq[T], neighborProvider: T => N, featureProvider: T => MLVector)(implicit tag: TypeTag[N]): DataFrame =
-		join(key, test.map(neighborProvider), test.map(featureProvider))
-
-	def join[T](key: DataFrame, test: DataFrame, neighborProvider: Row => T, testInputCol: String)(implicit tag: TypeTag[T]): DataFrame = {
-		val schema = test.schema
-		val inputIndex = schema.fieldIndex(testInputCol)
-		join(key, test.collect(), neighborProvider, (r: Row) => r.getAs[MLVector](inputIndex))
-	}
-
-	def join[T](key: DataFrame, test: Seq[T], featureProvider: T => MLVector)(implicit tag: TypeTag[T]): DataFrame =
-		join(key, test, test.map(featureProvider))
 
 }
 

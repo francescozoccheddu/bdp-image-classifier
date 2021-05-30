@@ -8,6 +8,7 @@ import image_classifier.pipeline.featurization.FeaturizationStage.{defaultOutput
 import image_classifier.utils.DataTypeImplicits.DataTypeExtension
 import image_classifier.utils.FileUtils
 import org.apache.log4j.Logger
+import org.apache.spark.ml.linalg.{Vector => MLVector}
 import org.apache.spark.sql.functions.{col, explode, udf}
 import org.apache.spark.sql.types.{BinaryType, BooleanType, DataType}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
@@ -22,7 +23,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 		logger.info("Creating codebook")
 		val codebook = createCodebook(config, describedData)
 		logger.info("Computing BOVW")
-		val bowv = BOWV.compute(describedData, codebook, config.codebookSize, outputCol)
+		val bowv = BOWV.compute(describedData, codebook, config.codebook.size, outputCol)
 		bowv
 	}
 
@@ -32,14 +33,14 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 	}
 
 	private def describe(config: FeaturizationConfig, data: DataFrame): DataFrame = {
-		val descriptor = Descriptor(config)
-		val describe = udf((d: Array[Byte]) => descriptor(Image.limitSize(Image.decode(d), config.maxSize)))
+		val descriptor = Descriptor(config.descriptor)
+		val describe = udf(descriptor.apply: Array[Byte] => Array[MLVector])
 		data.withColumn(outputCol, describe(col(dataStage.imageCol)))
 	}
 
 	private def createCodebook(config: FeaturizationConfig, data: DataFrame): DataFrame = {
 		val training = data.filter(!col(dataStage.isTestCol)).withColumn(outputCol, explode(col(outputCol)))
-		BOWV.createCodebook(training, config.codebookSize, outputCol, config.assignNearest)
+		BOWV.createCodebook(training, outputCol, config.codebook)
 	}
 
 	override protected def load(): DataFrame = {

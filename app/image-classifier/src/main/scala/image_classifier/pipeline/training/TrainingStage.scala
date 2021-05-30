@@ -70,7 +70,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 				  .setSeed(config.seed)
 			case TrainingAlgorithm.MultilayerPerceptron =>
 				val featureSize = if (featurizationStage.wasMade)
-					featurizationStage.config.codebookSize
+					featurizationStage.config.codebook.size
 				else
 					featurizationStage.result.first.getAs[MLVector](featuresCol).size
 				val labelsCount = if (featurizationStage.wasMade && featurizationStage.dataStage.wasMade)

@@ -1,5 +1,6 @@
 package image_classifier.pipeline.featurization
 
+import image_classifier.configuration.CodebookConfig
 import image_classifier.pipeline.Columns.{colName, resColName}
 import image_classifier.utils.DataTypeImplicits._
 import org.apache.spark.ml.clustering.KMeans
@@ -15,16 +16,23 @@ private[featurization] object BOWV {
 	private val codebookIdCol: String = resColName("id")
 	private val idCol: String = resColName("id")
 
-	def createCodebook(data: DataFrame, size: Int, inputCol: String, assignNearest: Boolean): DataFrame = {
+	def createCodebook(data: DataFrame, inputCol: String, config: CodebookConfig): DataFrame = {
 		data.schema.requireField(inputCol, VectorType)
 		import data.sparkSession.implicits._
-		val model = new KMeans().setK(size).setMaxIter(10).setFeaturesCol(inputCol).fit(data)
+		val model = new KMeans()
+		  .setK(config.size)
+		  .setMaxIter(config.maxIterations)
+		  .setTol(config.convergenceTolerance)
+		  .setSeed(config.seed)
+		  .setInitSteps(config.initSteps)
+		  .setFeaturesCol(inputCol)
+		  .fit(data)
 		val centers = model
 		  .clusterCenters
 		  .toSeq
 		  .zipWithIndex
 		  .toDF(codebookDataCol, codebookIdCol)
-		val assignedCenters = if (assignNearest)
+		val assignedCenters = if (config.assignNearest)
 			new NearestNeighbor(codebookDataCol, codebookDataCol).joinFeatures(centers, data, inputCol)
 		else
 			centers

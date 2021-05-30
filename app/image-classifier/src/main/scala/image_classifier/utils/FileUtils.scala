@@ -53,14 +53,6 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 		} finally IOUtils.closeStream(stream)
 	}
 
-	def readString(file: String): String = new String(readBytes(file))
-
-	def readBytes(file: String): Array[Byte] = {
-		val stream = getFs(file).open(toPath(file))
-		try IOUtils.readFullyToByteArray(stream)
-		finally IOUtils.closeStream(stream)
-	}
-
 	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
 		case Some((true, _)) => localFs
 		case Some((false, _)) => hdfs
@@ -68,6 +60,14 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 	}
 
 	private def toPath(path: String): Path = new Path(workingDir, path)
+
+	def readString(file: String): String = new String(readBytes(file))
+
+	def readBytes(file: String): Array[Byte] = {
+		val stream = getFs(file).open(toPath(file))
+		try IOUtils.readFullyToByteArray(stream)
+		finally IOUtils.closeStream(stream)
+	}
 
 	def glob(glob: String): Seq[String] =
 		getFs(glob).globStatus(toPath(glob)).map(_.getPath.toString)
@@ -104,6 +104,8 @@ private[image_classifier] object FileUtils {
 		case _ => false
 	}
 
+	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
+
 	private def getIsLocalAndRest(path: String): Option[(Boolean, String)] = {
 		val uri = try URI.create(path)
 		catch {
@@ -130,8 +132,6 @@ private[image_classifier] object FileUtils {
 		else
 			None
 	}
-
-	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
 
 	def toSimpleLocalPath(path: String): String = getIsLocalAndRest(path) match {
 		case Some((true, rest)) => rest

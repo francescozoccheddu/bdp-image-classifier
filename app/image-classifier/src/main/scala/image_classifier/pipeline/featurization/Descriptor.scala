@@ -1,25 +1,11 @@
 package image_classifier.pipeline.featurization
 
 import java.nio.DoubleBuffer
-import image_classifier.configuration.ImageFeatureAlgorithm
-import image_classifier.configuration.ImageFeatureAlgorithm._
+import image_classifier.configuration.{DescriptorConfig, ImageFeatureAlgorithm}
 import org.apache.spark.ml.linalg.{Vectors, Vector => MLVector}
 import org.bytedeco.javacpp.opencv_core.{CV_64F, CV_64FC1, KeyPointVector, Mat}
 import org.bytedeco.javacpp.opencv_features2d.{Feature2D, ORB}
 import org.bytedeco.javacpp.opencv_xfeatures2d.{SIFT, SURF}
-
-private[image_classifier] trait DescriptorConfig {
-
-	def algorithm: ImageFeatureAlgorithm
-	def featureCount: Int
-	def octaveLayerCount: Int
-	def octaveCount: Int
-	def contrastThreshold: Double
-	def hessianThreshold: Double
-	def edgeThreshold: Double
-	def sigma: Double
-
-}
 
 private[featurization] final case class Descriptor(config: DescriptorConfig) {
 
@@ -31,7 +17,13 @@ private[featurization] final case class Descriptor(config: DescriptorConfig) {
 		}
 	}
 
-	def apply(image: Mat): Array[MLVector] = {
+	def apply(data: Array[Byte]): Array[MLVector] = {
+		val img = Image.decode(data)
+		val resizedImg = Image.limitSize(img, config.maxSize)
+		describe(resizedImg)
+	}
+
+	private def describe(image: Mat): Array[MLVector] = {
 		val size = detector.descriptorSize
 		val kpv = new KeyPointVector
 		val rawDesMat = new Mat

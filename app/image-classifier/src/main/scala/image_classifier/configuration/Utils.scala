@@ -32,5 +32,31 @@ private[configuration] object Utils {
 	def configFromJson(json: String): Config =
 		readFromString[Config](json)
 
+	def requireIn[T](name: String, value: T, min: T, max: T, minInclusive: Boolean = true, maxInclusive: Boolean = true)(implicit ordered: T => Ordered[T]): Unit =
+		require(
+			(if (minInclusive) value >= min else value > min) && (if (maxInclusive) value <= max else value < max),
+			s"'$name' must fall in range ${if (minInclusive) '[' else '('}$min,$max${if (maxInclusive) ']' else ')'}")
+
+	def requireMin[T](name: String, value: T, min: T, inclusive: Boolean = true)(implicit ordered: T => Ordered[T]): Unit =
+		require(if (inclusive) value >= min else value > min, s"'$name' must be greater than ${if (inclusive) "or equal to " else ""} $min")
+
+	def requireMax[T](name: String, value: T, max: T, inclusive: Boolean = true)(implicit ordered: T => Ordered[T]): Unit =
+		require(if (inclusive) value <= max else value < max, s"'$name' must be less than ${if (inclusive) "or equal to " else ""} $max")
+
+	def requirePositive[T](name: String, value: T)(implicit ordered: T => Ordered[T]): Unit =
+		require(value > 0.asInstanceOf[T], s"'$name' must be positive")
+
+	def requireNonNegative[T](name: String, value: T)(implicit ordered: T => Ordered[T]): Unit =
+		require(value >= 0.asInstanceOf[T], s"'$name' must be positive or zero")
+
+	def requireNonEmpty(name: String, value: TraversableOnce[_]): Unit =
+		require(value.nonEmpty, s"'$name' cannot be empty")
+
+	def requireFile(name: String, value: String): Unit =
+		require(FileUtils.isValidPath(value), s"'$name' must be a valid file path")
+
+	def requireDep(name: String, value: Option[_], dependencyName: String, dependencyValue: Option[_]): Unit =
+		require(value.isEmpty || dependencyValue.isDefined, s"'$name' requires '$dependencyName'")
+
 }
 
