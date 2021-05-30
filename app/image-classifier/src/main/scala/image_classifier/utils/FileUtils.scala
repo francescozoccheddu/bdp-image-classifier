@@ -99,13 +99,6 @@ private[image_classifier] object FileUtils {
 		case _ => false
 	}
 
-	def isValidHDFSPath(path: String): Boolean = getIsLocalAndRest(path) match {
-		case Some((false, _)) => true
-		case _ => false
-	}
-
-	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
-
 	private def getIsLocalAndRest(path: String): Option[(Boolean, String)] = {
 		val uri = try URI.create(path)
 		catch {
@@ -132,6 +125,13 @@ private[image_classifier] object FileUtils {
 		else
 			None
 	}
+
+	def isValidHDFSPath(path: String): Boolean = getIsLocalAndRest(path) match {
+		case Some((false, _)) => true
+		case _ => false
+	}
+
+	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
 
 	def toSimpleLocalPath(path: String): String = getIsLocalAndRest(path) match {
 		case Some((true, rest)) => rest

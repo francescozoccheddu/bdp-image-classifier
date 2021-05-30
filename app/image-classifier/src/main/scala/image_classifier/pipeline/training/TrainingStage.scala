@@ -6,18 +6,15 @@ import image_classifier.pipeline.Columns.colName
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.featurization.FeaturizationStage
 import image_classifier.pipeline.training.TrainingStage._
-import image_classifier.utils.DataTypeImplicits.DataTypeExtension
 import image_classifier.utils.FileUtils
 import org.apache.log4j.Logger
 import org.apache.spark.ml.classification.{Classifier, _}
-import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.{Vector => MLVector}
 import org.apache.spark.ml.param.shared.{HasFeaturesCol, HasLabelCol, HasPredictionCol}
 import org.apache.spark.ml.util.{MLReadable, MLWritable}
 import org.apache.spark.ml.{Estimator, Model}
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{col, countDistinct}
-import org.apache.spark.sql.types.{BooleanType, DataType, IntegerType}
+import org.apache.spark.sql.functions.col
 
 private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig]], val featurizationStage: FeaturizationStage, val predictionCol: String = defaultPredictionCol)(implicit spark: SparkSession, fileUtils: FileUtils)
   extends LoaderStage[ModelType, TrainingConfig]("Training", loader)(fileUtils) {
@@ -39,7 +36,6 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 	}
 
 	override protected def make(): ModelType = {
-		validate(featurizationStage.result.cache.schema)
 		val (featuresCol, labelCol) = (featurizationStage.outputCol, featurizationStage.dataStage.labelCol)
 		val classifier: ClassifierType = config.algorithm match {
 			case TrainingAlgorithm.NaiveBayes =>
@@ -69,20 +65,12 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 				  .setNumTrees(config.treeCount)
 				  .setSeed(config.seed)
 			case TrainingAlgorithm.MultilayerPerceptron =>
-				val featureSize = if (featurizationStage.wasMade)
-					featurizationStage.config.codebook.size
-				else
-					featurizationStage.result.first.getAs[MLVector](featuresCol).size
-				val labelsCount = if (featurizationStage.wasMade && featurizationStage.dataStage.wasMade)
-					featurizationStage.dataStage.config.labelsCount
-				else if (config.labelsCount.isDefined)
+				val labelsCount = if (config.labelsCount.isDefined) {
+					logger.info(s"Trusting '${nameOf(config.labelsCount)}'")
 					config.labelsCount.get
-				else {
-					logger.warn(s"Computing labels count. This may take a while. Please consider specifying ${nameOf(config.labelsCount)}.")
-					val count = featurizationStage.result.select(countDistinct(labelCol)).first.getLong(0).toInt
-					logger.info(s"Labels count is $count")
-					count
 				}
+				else featurizationStage.labelsCount
+				val featureSize = featurizationStage.codebookSize
 				require(config.labelsCount.forall(_ == labelsCount), s"${nameOf(config.labelsCount)} does not match labels count")
 				new MultilayerPerceptronClassifier()
 				  .setSeed(config.seed)
@@ -106,12 +94,6 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 			case _ => classifier
 		}
 		estimator.fit(training).asInstanceOf[ModelType]
-	}
-
-	private def validate(schema: DataType): Unit = {
-		schema.requireField(featurizationStage.outputCol, VectorType)
-		schema.requireField(featurizationStage.dataStage.isTestCol, BooleanType)
-		schema.requireField(featurizationStage.dataStage.labelCol, IntegerType)
 	}
 
 	override protected def save(result: ModelType): Unit = {

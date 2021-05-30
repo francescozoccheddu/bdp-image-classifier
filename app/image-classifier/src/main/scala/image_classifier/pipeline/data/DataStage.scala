@@ -5,9 +5,11 @@ import image_classifier.configuration.{DataConfig, LoadMode, Loader}
 import image_classifier.pipeline.Columns.{colName, resColName}
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.data.DataStage._
+import image_classifier.utils.DataTypeImplicits.DataTypeExtension
 import image_classifier.utils.FileUtils
 import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.{abs, col}
+import org.apache.spark.sql.types.{BinaryType, BooleanType, IntegerType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val labelCol: String, val isTestCol: String, val imageCol: String)(implicit spark: SparkSession, fileUtils: FileUtils)
@@ -18,6 +20,14 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val 
 	def this(loader: Option[Loader[DataConfig]])(implicit spark: SparkSession, fileUtils: FileUtils) = this(loader, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark, fileUtils)
 
 	override protected def save(result: DataFrame): Unit = {}
+
+	override protected def validate(result: DataFrame): Unit = {
+		val schema = result.schema
+		schema.requireField(imageCol, BinaryType)
+		schema.requireField(isTestCol, BooleanType)
+		schema.requireField(labelCol, IntegerType)
+		require(schema.fields.length == 3)
+	}
 
 	override protected def make(): DataFrame = {
 		val save = loadMode match {
