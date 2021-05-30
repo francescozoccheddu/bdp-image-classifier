@@ -64,10 +64,10 @@ object DescriptorConfig {
 
 object CodebookConfig {
 
-	val defaultMaxIterations: Int = 500
-	val defaultConvergenceTolerance: Double = 100
-	val defaultSize: Int = 1024
-	val defaultAssignNearest: Boolean = true
+	val defaultMaxIterations: Int = 10
+	val defaultConvergenceTolerance: Double = 0.0001
+	val defaultSize: Int = 500
+	val defaultAssignNearest: Boolean = false
 	val defaultInitSteps: Int = 2
 
 	def defaultSeed: Int = Random.nextInt
