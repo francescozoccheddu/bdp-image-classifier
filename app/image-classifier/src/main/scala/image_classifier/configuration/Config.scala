@@ -25,6 +25,8 @@ final case class DataConfig private[configuration](
 	require(testFraction >= 0 && testFraction <= 1, s"${nameOf(testFraction)} must fall in range [0, 1]")
 	require(FileUtils.isValidPath(tempFile), s"${nameOf(tempFile)} is not a valid file path")
 
+	def labelsCount: Int = dataSet.map(_.length).getOrElse(0) max trainingSet.map(_.length).getOrElse(0) max testSet.map(_.length).getOrElse(0)
+
 }
 
 object DataConfig {
@@ -91,6 +93,7 @@ final case class TrainingConfig(
                                  hiddenLayers: Seq[Int] = TrainingConfig.defaultHiddenLayers,
                                  blockSize: Int = TrainingConfig.defaultBlockSize,
                                  stepSize: Double = TrainingConfig.defaultStepSize,
+                                 labelsCount: O[Int] = None,
                                  seed: Int = TrainingConfig.defaultSeed
                                ) extends LoadableConfig {
 

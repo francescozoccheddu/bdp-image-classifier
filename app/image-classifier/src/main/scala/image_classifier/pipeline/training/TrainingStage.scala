@@ -1,6 +1,7 @@
 package image_classifier.pipeline.training
 
-import image_classifier.configuration.{LoadMode, Loader, TrainingAlgorithm, TrainingConfig}
+import com.github.dwickern.macros.NameOf.nameOf
+import image_classifier.configuration.{Loader, TrainingAlgorithm, TrainingConfig}
 import image_classifier.pipeline.Columns.colName
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.featurization.FeaturizationStage
@@ -15,7 +16,7 @@ import org.apache.spark.ml.param.shared.{HasFeaturesCol, HasLabelCol, HasPredict
 import org.apache.spark.ml.util.{MLReadable, MLWritable}
 import org.apache.spark.ml.{Estimator, Model}
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{approx_count_distinct, col}
+import org.apache.spark.sql.functions.{col, countDistinct}
 import org.apache.spark.sql.types.{BooleanType, DataType, IntegerType}
 
 private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig]], val featurizationStage: FeaturizationStage, val predictionCol: String = defaultPredictionCol)(implicit spark: SparkSession, fileUtils: FileUtils)
@@ -68,11 +69,21 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 				  .setNumTrees(config.treeCount)
 				  .setSeed(config.seed)
 			case TrainingAlgorithm.MultilayerPerceptron =>
-				val featureSize = featurizationStage.loadMode match {
-					case LoadMode.Make | LoadMode.MakeAndSave => featurizationStage.config.codebookSize
-					case _ => featurizationStage.result.first.getAs[MLVector](featuresCol).size
+				val featureSize = if (featurizationStage.wasMade)
+					featurizationStage.config.codebookSize
+				else
+					featurizationStage.result.first.getAs[MLVector](featuresCol).size
+				val labelsCount = if (featurizationStage.wasMade && featurizationStage.dataStage.wasMade)
+					featurizationStage.dataStage.config.labelsCount
+				else if (config.labelsCount.isDefined)
+					config.labelsCount.get
+				else {
+					logger.warn(s"Computing labels count. This may take a while. Please consider specifying ${nameOf(config.labelsCount)}.")
+					val count = featurizationStage.result.select(countDistinct(labelCol)).first.getLong(0).toInt
+					logger.info(s"Labels count is $count")
+					count
 				}
-				val labelsCount = featurizationStage.result.select(approx_count_distinct(labelCol)).first.getLong(0).toInt
+				require(config.labelsCount.forall(_ == labelsCount), s"${nameOf(config.labelsCount)} does not match labels count")
 				new MultilayerPerceptronClassifier()
 				  .setSeed(config.seed)
 				  .setMaxIter(config.maxIterations)
