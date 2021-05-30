@@ -53,6 +53,14 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 		} finally IOUtils.closeStream(stream)
 	}
 
+	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
+		case Some((true, _)) => localFs
+		case Some((false, _)) => hdfs
+		case _ => throw new IllegalArgumentException
+	}
+
+	private def toPath(path: String): Path = new Path(workingDir, path)
+
 	def readString(file: String): String = new String(readBytes(file))
 
 	def readBytes(file: String): Array[Byte] = {
@@ -63,14 +71,6 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 
 	def glob(glob: String): Seq[String] =
 		getFs(glob).globStatus(toPath(glob)).map(_.getPath.toString)
-
-	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
-		case Some((true, _)) => localFs
-		case Some((false, _)) => hdfs
-		case _ => throw new IllegalArgumentException
-	}
-
-	private def toPath(path: String): Path = new Path(workingDir, path)
 
 	private def clearTempFiles(): Unit = {
 		logger.info(s"Clearing ${tempFiles.length} temp files")

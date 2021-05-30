@@ -1,5 +1,6 @@
 package image_classifier.configuration
 
+import scala.language.implicitConversions
 import image_classifier.configuration
 
 object ImageFeatureAlgorithm extends Enumeration {
@@ -28,10 +29,35 @@ object TrainingAlgorithm extends Enumeration {
 object LoadMode extends Enumeration {
 
 	type LoadMode = Value
+
+	implicit def extend(value: LoadMode): LoadModeExtension = new LoadModeExtension(value)
+
 	val Load: configuration.LoadMode.Value = Value("load")
 	val Make: configuration.LoadMode.Value = Value("make")
 	val LoadOrMake: configuration.LoadMode.Value = Value("loadOrMake")
 	val MakeAndSave: configuration.LoadMode.Value = Value("makeAndSave")
 	val LoadOrMakeAndSave: configuration.LoadMode.Value = Value("loadOrMakeAndSave")
+
+	final class LoadModeExtension(value: Value) {
+		def canMake: Boolean = value match {
+			case LoadOrMake | Make | MakeAndSave => true
+			case _ => false
+		}
+
+		def canLoad: Boolean = value match {
+			case Load | LoadOrMake | LoadOrMakeAndSave => true
+			case _ => false
+		}
+
+		def canSave: Boolean = value match {
+			case LoadOrMakeAndSave | MakeAndSave => true
+			case _ => false
+		}
+
+		def alwaysDoesMake: Boolean = value match {
+			case Make | MakeAndSave => true
+			case _ => false
+		}
+	}
 
 }

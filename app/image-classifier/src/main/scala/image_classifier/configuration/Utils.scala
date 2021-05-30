@@ -17,20 +17,20 @@ private[configuration] object Utils {
 	def configToFile(config: Config, file: String): Unit =
 		LocalFileUtils.writeStringToFile(new File(file), configToJson(config), Charset.defaultCharset())
 
-	def configToFile(config: Config, file: String, fileUtils: FileUtils): Unit =
-		fileUtils.writeString(file, configToJson(config))
-
 	def configToJson(config: Config): String =
 		writeToString(config)
+
+	def configToFile(config: Config, file: String, fileUtils: FileUtils): Unit =
+		fileUtils.writeString(file, configToJson(config))
 
 	def configFromFile(file: String): Config =
 		configFromJson(LocalFileUtils.readFileToString(new File(file), Charset.defaultCharset()))
 
-	def configFromFile(file: String, fileUtils: FileUtils): Config =
-		configFromJson(fileUtils.readString(file))
-
 	def configFromJson(json: String): Config =
 		readFromString[Config](json)
+
+	def configFromFile(file: String, fileUtils: FileUtils): Config =
+		configFromJson(fileUtils.readString(file))
 
 }
 
