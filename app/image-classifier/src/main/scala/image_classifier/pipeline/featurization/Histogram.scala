@@ -5,12 +5,20 @@ import org.apache.spark.ml.linalg.{Vectors, Vector => MLVector}
 private[featurization] object Histogram {
 
 	def compute(data: Seq[Long], codebookSize: Int): MLVector = {
-		val sparseFraction = 0.1
-		val minSparseSize = 100
-		if (data.length > minSparseSize && data.length < codebookSize.toDouble * sparseFraction)
-			computeSparse(data, codebookSize)
-		else
-			computeDense(data, codebookSize)
+		val minDensityForComputation = 0.5
+		val minDensity = 0.7
+		val minSparseSize = 5
+		if (codebookSize > minSparseSize) {
+			val maxDensity = data.length.toDouble / codebookSize
+			if (maxDensity <= minDensityForComputation)
+				computeSparse(data, codebookSize)
+			else {
+				val dense = computeDense(data, codebookSize)
+				val density = dense.numNonzeros.toDouble / codebookSize
+				if (density >= minDensity) dense else dense.toSparse
+			}
+		}
+		else computeDense(data, codebookSize)
 	}
 
 	def computeSparse(data: Seq[Long], codebookSize: Int): MLVector = {
