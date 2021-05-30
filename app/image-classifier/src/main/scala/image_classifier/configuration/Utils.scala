@@ -43,11 +43,11 @@ private[configuration] object Utils {
 	def requireMax[T](name: String, value: T, max: T, inclusive: Boolean = true)(implicit ordered: T => Ordered[T]): Unit =
 		require(if (inclusive) value <= max else value < max, s"'$name' must be less than ${if (inclusive) "or equal to " else ""} $max")
 
-	def requirePositive[T](name: String, value: T)(implicit ordered: T => Ordered[T]): Unit =
-		require(value > 0.asInstanceOf[T], s"'$name' must be positive")
+	def requirePositive[T](name: String, value: T)(implicit ordered: T => Ordered[T], numeric: Numeric[T]): Unit =
+		require(value > numeric.zero, s"'$name' must be positive")
 
-	def requireNonNegative[T](name: String, value: T)(implicit ordered: T => Ordered[T]): Unit =
-		require(value >= 0.asInstanceOf[T], s"'$name' must be positive or zero")
+	def requireNonNegative[T](name: String, value: T)(implicit ordered: T => Ordered[T], numeric: Numeric[T]): Unit =
+		require(value >= numeric.zero, s"'$name' must be positive or zero")
 
 	def requireNonEmpty(name: String, value: TraversableOnce[_]): Unit =
 		require(value.nonEmpty, s"'$name' cannot be empty")
