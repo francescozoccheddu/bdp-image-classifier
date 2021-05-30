@@ -16,9 +16,7 @@ private[featurization] object BOWV {
 	private val idCol: String = resColName("id")
 
 	def createCodebook(data: DataFrame, size: Int, inputCol: String, assignNearest: Boolean): DataFrame = {
-		{
-			data.schema.requireField(inputCol, VectorType)
-		}
+		data.schema.requireField(inputCol, VectorType)
 		import data.sparkSession.implicits._
 		val model = new KMeans().setK(size).setMaxIter(10).setFeaturesCol(inputCol).fit(data)
 		val centers = model
@@ -27,7 +25,7 @@ private[featurization] object BOWV {
 		  .zipWithIndex
 		  .toDF(codebookDataCol, codebookIdCol)
 		val assignedCenters = if (assignNearest)
-			new NearestNeighbor(codebookDataCol, inputCol, codebookDataCol).joinFeatures(centers, data)
+			new NearestNeighbor(codebookDataCol, codebookDataCol).joinFeatures(centers, data, inputCol)
 		else
 			centers
 		assignedCenters.dropDuplicates(codebookDataCol)
@@ -41,16 +39,14 @@ private[featurization] object BOWV {
 			codebookSchema.requireField(codebookDataCol, VectorType)
 			codebookSchema.requireField(codebookIdCol, IntegerType)
 		}
-		val indexedIn = {
-			data.withColumn(idCol, monotonically_increasing_id).cache
-		}
+		val indexedIn = data.withColumn(idCol, monotonically_increasing_id).cache
 		val indexedOut = {
 			val explodedData = indexedIn.select(
 				col(idCol),
 				explode(col(inputCol)).alias(inputCol))
 			val vectorizeUdf = udf((matches: Array[Long]) => Histogram.compute(matches, codebookSize))
-			new NearestNeighbor(inputCol, codebookDataCol, outputCol)
-			  .joinColumn[Int](explodedData, codebook, codebookIdCol)
+			new NearestNeighbor(inputCol, outputCol)
+			  .join[Int](explodedData, codebook, codebookIdCol, codebookDataCol)
 			  .select(col(idCol), col(outputCol))
 			  .groupBy(col(idCol))
 			  .agg(collect_list(outputCol).alias(outputCol))

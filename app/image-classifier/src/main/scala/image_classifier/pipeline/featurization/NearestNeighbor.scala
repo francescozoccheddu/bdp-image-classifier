@@ -1,57 +1,30 @@
 package image_classifier.pipeline.featurization
 
-import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
 import image_classifier.pipeline.featurization.NearestNeighbor.defaultOutputCol
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.ml.linalg.{Vectors, Vector => MLVector}
 import org.apache.spark.sql.functions.{col, udf}
-import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Row}
+import org.apache.spark.sql.{DataFrame, Row}
 
-private[featurization] final class NearestNeighbor(inputCol: String, testInputCol: String, outputCol: String = defaultOutputCol) {
+private[featurization] final class NearestNeighbor(inputCol: String, outputCol: String = defaultOutputCol) {
 
-	def this(inputCol: String, outputCol: String) = this(inputCol, inputCol, outputCol)
-
-	def this(inputCol: String) = this(inputCol, inputCol, defaultOutputCol)
-
-	def joinColumn[T](key: DataFrame, test: DataFrame, column: String)(implicit tag: TypeTag[T], classTag: ClassTag[T]): DataFrame = {
-		if (column == testInputCol)
-			joinFeatures(key, test)
-		else {
-			val index = test.schema.fieldIndex(column)
-			joinMap(key, test, (r: Row) => r.getAs[T](index))
-		}
+	def join[T](key: DataFrame, test: DataFrame, neighborCol: String, testInputCol: String)(implicit tag: TypeTag[T]): DataFrame = {
+		if (testInputCol == neighborCol)
+			joinFeatures(key, test, testInputCol)
+		else
+			join(key, test.select(neighborCol, testInputCol).collect(), (r: Row) => r.getAs[T](1), (r: Row) => r.getAs[MLVector](0))
 	}
 
-	def joinFeatures(key: DataFrame, test: DataFrame): DataFrame = {
-		val testFeatures = test
-		  .dropDuplicates(testInputCol)
-		  .select(col(testInputCol))
-		  .rdd
-		  .map(_.getAs[MLVector](0))
-		  .collect
+	def joinFeatures(key: DataFrame, test: DataFrame, testInputCol: String): DataFrame = {
+		val testFeatures = test.select(testInputCol).collect().map(_.getAs[MLVector](0))
 		join(key, testFeatures, testFeatures)
 	}
-
-	def joinMap[T](key: DataFrame, test: DataFrame, map: Row => T)(implicit tag: TypeTag[T], classTag: ClassTag[T]): DataFrame =
-		joinMap[T](key, test, (t: DataFrame) => t.rdd.map(map).collect.toSeq)
-
-	def joinAs[T](key: DataFrame, test: DataFrame)(implicit tag: TypeTag[T], encoder: Encoder[T]): DataFrame =
-		joinMap[T](key, test, (t: DataFrame) => t.as[T].collect.toSeq)
-
-	private def joinMap[T](key: DataFrame, test: DataFrame, map: DataFrame => Seq[T])(implicit tag: TypeTag[T]): DataFrame = {
-		val distinctTest = test.dropDuplicates(testInputCol).cache
-		val testData = map(distinctTest)
-		val testFeatures = distinctTest.select(col(testInputCol)).rdd.map(_.getAs[MLVector](0)).collect
-		join(key, testData, testFeatures)
-	}
-
-	def join[T](key: DataFrame, test: Dataset[T])(implicit tag: TypeTag[T]): DataFrame =
-		join(key, test.collect(), test.select(col(testInputCol)).rdd.map(_.getAs[MLVector](0)).collect)
 
 	def join[T](key: DataFrame, test: Seq[T], testFeatures: Seq[MLVector])(implicit tag: TypeTag[T]): DataFrame = {
 		val spark = key.sparkSession.sparkContext
 		val testBroadcast = spark.broadcast(test)
-		val testFeaturesBroadcast = spark.broadcast(testFeatures)
+		val testFeaturesBroadcast = if (test == testFeatures) testBroadcast.asInstanceOf[Broadcast[Seq[MLVector]]] else spark.broadcast(testFeatures)
 		val mapper = udf[T, MLVector]((f: MLVector) => {
 			var minDist: Double = Double.PositiveInfinity
 			var minI = 0
@@ -65,6 +38,15 @@ private[featurization] final class NearestNeighbor(inputCol: String, testInputCo
 			testBroadcast.value(minI)
 		})
 		key.withColumn(outputCol, mapper(col(inputCol)))
+	}
+
+	def join[T, N](key: DataFrame, test: Seq[T], neighborProvider: T => N, featureProvider: T => MLVector)(implicit tag: TypeTag[N]): DataFrame =
+		join(key, test.map(neighborProvider), test.map(featureProvider))
+
+	def join[T](key: DataFrame, test: DataFrame, neighborProvider: Row => T, testInputCol: String)(implicit tag: TypeTag[T]): DataFrame = {
+		val schema = test.schema
+		val inputIndex = schema.fieldIndex(testInputCol)
+		join(key, test.collect(), neighborProvider, (r: Row) => r.getAs[MLVector](inputIndex))
 	}
 
 	def join[T](key: DataFrame, test: Seq[T], featureProvider: T => MLVector)(implicit tag: TypeTag[T]): DataFrame =

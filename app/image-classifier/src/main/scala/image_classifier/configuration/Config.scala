@@ -77,7 +77,7 @@ object FeaturizationConfig {
 	val defaultContrastThreshold: Double = 0.04
 	val defaultEdgeThreshold: Int = 30
 	val defaultSigma: Double = 1.6
-	val defaultFeatureCount: Int = 20
+	val defaultFeatureCount: Int = 50
 	val defaultHessianThreshold: Double = 100
 	val defaultMaxSize: Int = 1024
 	val defaultAssignNearest: Boolean = true

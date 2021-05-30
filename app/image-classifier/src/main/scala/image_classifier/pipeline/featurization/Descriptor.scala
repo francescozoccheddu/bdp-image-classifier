@@ -36,7 +36,7 @@ private[featurization] final case class Descriptor(config: DescriptorConfig) {
 		val kpv = new KeyPointVector
 		val rawDesMat = new Mat
 		detector.detectAndCompute(image, new Mat, kpv, rawDesMat)
-		val kpCount = kpv.size.toInt
+		val kpCount = kpv.size.toInt min config.featureCount
 		val buffer = if (kpCount != 0) {
 			val desMat = {
 				require(rawDesMat.channels == 1)
