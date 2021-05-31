@@ -29,9 +29,7 @@ private[pipeline] final class TestingStage(config: Option[TestingConfig], val tr
 		  .rdd
 		  .map(r => (r.getDouble(0), r.getDouble(1)))
 		val metrics = new MulticlassMetrics(data)
-		val labels = specs.labels.getOr(() => metrics.labels.map(_.toInt.toString))
-		require(labels.length == metrics.labels.length)
-		val summary = TestingStage.print(metrics, labels)
+		val summary = TestingStage.print(metrics, specs.labels.getOr(() => metrics.labels.map(_.toInt.toString)))
 		if (specs.save.isDefined) {
 			logger.info(s"Writing metrics to '${specs.save.get}'")
 			fileUtils.writeString(specs.save.get, summary)
@@ -60,13 +58,13 @@ private[testing] object TestingStage {
 		printer.addPercent("True positives", metrics.weightedTruePositiveRate)
 		printer.addPercent("False positives", metrics.weightedFalsePositiveRate)
 		printer.add("Confusion matrix", metrics.confusionMatrix.toString)
-		for ((l, i) <- labels.zipWithIndex) {
-			printer.addSection(s"Class '$l'")
-			printer.addPercent("F-Measure", metrics.fMeasure(i))
-			printer.addPercent("Precision", metrics.precision(i))
-			printer.addPercent("Recall", metrics.recall(i))
-			printer.addPercent("True positives", metrics.truePositiveRate(i))
-			printer.addPercent("False positives", metrics.falsePositiveRate(i))
+		for (l <- metrics.labels) {
+			printer.addSection(s"Class '${labels(l.toInt)}'")
+			printer.addPercent("F-Measure", metrics.fMeasure(l))
+			printer.addPercent("Precision", metrics.precision(l))
+			printer.addPercent("Recall", metrics.recall(l))
+			printer.addPercent("True positives", metrics.truePositiveRate(l))
+			printer.addPercent("False positives", metrics.falsePositiveRate(l))
 		}
 		printer.get
 	}
