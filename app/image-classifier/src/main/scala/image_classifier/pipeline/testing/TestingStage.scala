@@ -19,7 +19,10 @@ private[pipeline] final class TestingStage(config: Option[TestingConfig], val tr
 		val model = trainingStage.result
 		val featurizationStage = trainingStage.featurizationStage
 		val dataStage = featurizationStage.dataStage
-		val test = featurizationStage.result.filter(col(dataStage.isTestCol))
+		val test = featurizationStage
+		  .result
+		  .filter(col(dataStage.isTestCol))
+		  .repartition(spark.sparkContext.defaultParallelism)
 		val data = model
 		  .transform(test)
 		  .select(col(trainingStage.predictionCol), col(dataStage.labelCol).cast(DoubleType))

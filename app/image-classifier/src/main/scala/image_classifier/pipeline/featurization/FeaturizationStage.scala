@@ -29,37 +29,44 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 		count
 	}
 
-	private lazy val computedCodebookSize: Int = if (canTrustConfig)
-		config.codebook.size
-	else
-		result.first.getAs[Vector](outputCol).size
+	private var codebookSizeOpt: Option[Int] = None
 
-	def codebookSize: Int = computedCodebookSize
+	def codebookSize: Int = codebookSizeOpt.getOr(() => {
+		result
+		codebookSizeOpt.get
+	})
 
 	override protected def make(): DataFrame = {
 		val describedData = describe(config.descriptor, dataStage.result).cache
 		val codebook = createCodebook(config.codebook, describedData)
 		logger.info("Computing BOVW")
-		val bowv = BOWV.compute(describedData, codebook, config.codebook.size, outputCol)
+		val bowv = BOWV.compute(describedData, codebook, outputCol).cache
+		describedData.unpersist
 		bowv
 	}
 
 	private def describe(config: DescriptorConfig, data: DataFrame): DataFrame = {
 		logger.info("Extracting features")
 		val descriptor = Descriptor(config)
-		val describe = udf(descriptor.apply: Array[Byte] => Array[Vector])
+		val describe = udf(descriptor.apply: Array[Byte] => Seq[Vector])
 		data.withColumn(outputCol, describe(col(dataStage.imageCol)))
 	}
 
-	private def createCodebook(config: CodebookConfig, data: DataFrame): DataFrame = {
+	private def createCodebook(config: CodebookConfig, data: DataFrame): Seq[Vector] = {
 		logger.info(s"Creating a codebook of size ${config.size} out of ${"%.3f".format(config.sampleFraction * 100)}% of data")
-		val training = data.filter(!col(dataStage.isTestCol)).withColumn(outputCol, explode(col(outputCol)))
+		val training = data
+		  .filter(!col(dataStage.isTestCol))
+		  .withColumn(outputCol, explode(col(outputCol)))
+		  .repartition(spark.sparkContext.defaultParallelism)
 		val sample =
-			if (config.stratifiedSampling)
-				training.stat.sampleBy(dataStage.labelCol, (0 until config.labelsCount.getOr(() => labelsCount)).map((_, config.sampleFraction)).toMap, config.sampleSeed.toLong)
-			else
+			if (config.stratifiedSampling) {
+				val fractions = (0 until config.labelsCount.getOr(() => labelsCount)).map((_, config.sampleFraction)).toMap
+				training.stat.sampleBy(dataStage.labelCol, fractions, config.sampleSeed.toLong)
+			} else
 				training.sample(config.sampleFraction, config.sampleSeed)
-		BOWV.createCodebook(sample, outputCol, config)
+		val codebook = BOWV.createCodebook(sample, outputCol, config)
+		codebookSizeOpt = Some(codebook.length)
+		codebook
 	}
 
 	def labelsCount: Int =
@@ -81,7 +88,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 	override protected def load(): DataFrame = {
 		if (!FileUtils.isValidHDFSPath(file))
 			logger.warn("Loading from a local path hampers parallelization")
-		spark.read.format("parquet").load(file)
+		spark.read.format("parquet").load(file).cache
 	}
 
 	override protected def save(result: DataFrame): Unit = result.write.format("parquet").mode(SaveMode.Overwrite).save(file)

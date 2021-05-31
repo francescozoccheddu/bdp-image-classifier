@@ -17,13 +17,13 @@ private[featurization] final case class Descriptor(config: DescriptorConfig) {
 		}
 	}
 
-	def apply(data: Array[Byte]): Array[Vector] = {
+	def apply(data: Array[Byte]): Seq[Vector] = {
 		val img = Image.decode(data)
 		val resizedImg = Image.limitSize(img, config.maxSize)
 		describe(resizedImg)
 	}
 
-	private def describe(image: Mat): Array[Vector] = {
+	private def describe(image: Mat): Seq[Vector] = {
 		val size = detector.descriptorSize
 		val kpv = new KeyPointVector
 		val rawDesMat = new Mat

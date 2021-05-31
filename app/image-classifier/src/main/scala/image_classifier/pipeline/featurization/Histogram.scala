@@ -4,7 +4,7 @@ import org.apache.spark.ml.linalg.{Vector, Vectors}
 
 private[featurization] object Histogram {
 
-	def compute(data: Seq[Long], codebookSize: Int): Vector = {
+	def compute(data: Seq[Int], codebookSize: Int): Vector = {
 		val minDensityForComputation = 0.5
 		val minDensity = 0.7
 		val minSparseSize = 5
@@ -21,10 +21,9 @@ private[featurization] object Histogram {
 		else computeDense(data, codebookSize)
 	}
 
-	def computeSparse(data: Seq[Long], codebookSize: Int): Vector = {
+	def computeSparse(data: Seq[Int], codebookSize: Int): Vector = {
 		val map = scala.collection.mutable.Map[Int, Double]().withDefaultValue(0)
-		for (n <- data)
-			map(n.toInt) += 1
+		for (n <- data) map(n) += 1
 		val entries = map
 		  .toSeq
 		  .sortBy(_._1)
@@ -32,12 +31,12 @@ private[featurization] object Histogram {
 		Vectors.sparse(codebookSize, entries)
 	}
 
-	def computeDense(data: TraversableOnce[Long], codebookSize: Int): Vector = {
+	def computeDense(data: TraversableOnce[Int], codebookSize: Int): Vector = {
 		val bins = Array.ofDim[Double](codebookSize)
-		var sum: Long = 0
+		var sum = 0
 		for (n <- data) {
 			sum += 1
-			bins(n.toInt) += 1
+			bins(n) += 1
 		}
 		for (i <- 0 until codebookSize) {
 			bins(i) /= sum.toDouble
