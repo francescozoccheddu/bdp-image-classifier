@@ -42,6 +42,14 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 
 	def exists(path: String): Boolean = getFs(path).exists(toPath(path))
 
+	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
+		case Some((true, _)) => localFs
+		case Some((false, _)) => hdfs
+		case _ => throw new IllegalArgumentException
+	}
+
+	private def toPath(path: String): Path = new Path(workingDir, path)
+
 	def writeString(file: String, string: String): Unit = writeBytes(file, string.getBytes)
 
 	def writeBytes(file: String, bytes: Array[Byte]): Unit = {
@@ -52,14 +60,6 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 			finally IOUtils.closeStream(channel)
 		} finally IOUtils.closeStream(stream)
 	}
-
-	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
-		case Some((true, _)) => localFs
-		case Some((false, _)) => hdfs
-		case _ => throw new IllegalArgumentException
-	}
-
-	private def toPath(path: String): Path = new Path(workingDir, path)
 
 	def readString(file: String): String = new String(readBytes(file))
 

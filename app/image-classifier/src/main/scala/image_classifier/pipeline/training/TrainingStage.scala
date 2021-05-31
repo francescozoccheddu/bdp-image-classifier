@@ -9,7 +9,7 @@ import image_classifier.pipeline.training.TrainingStage._
 import image_classifier.utils.FileUtils
 import org.apache.log4j.Logger
 import org.apache.spark.ml.classification.{Classifier, _}
-import org.apache.spark.ml.linalg.{Vector => MLVector}
+import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.param.shared.{HasFeaturesCol, HasLabelCol, HasPredictionCol}
 import org.apache.spark.ml.util.{MLReadable, MLWritable}
 import org.apache.spark.ml.{Estimator, Model}
@@ -107,7 +107,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 private[pipeline] object TrainingStage {
 
 	private type ModelType = Model[_] with MLWritable
-	private type ClassifierType = Classifier[MLVector, _, _ <: MLWritable] with HasLabelCol with HasFeaturesCol with HasPredictionCol
+	private type ClassifierType = Classifier[Vector, _, _ <: MLWritable] with HasLabelCol with HasFeaturesCol with HasPredictionCol
 
 	val defaultPredictionCol: String = colName("prediction")
 

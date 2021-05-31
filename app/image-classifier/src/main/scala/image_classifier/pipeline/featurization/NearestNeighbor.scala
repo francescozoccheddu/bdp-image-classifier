@@ -3,7 +3,7 @@ package image_classifier.pipeline.featurization
 import scala.reflect.runtime.universe.TypeTag
 import image_classifier.pipeline.featurization.NearestNeighbor.defaultOutputCol
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.ml.linalg.{Vectors, Vector => MLVector}
+import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.sql.functions.{col, udf}
 import org.apache.spark.sql.{DataFrame, Row}
 
@@ -13,28 +13,19 @@ private[featurization] final class NearestNeighbor(inputCol: String, outputCol: 
 		if (testInputCol == neighborCol)
 			joinFeatures(key, test, testInputCol)
 		else
-			join(key, test.select(neighborCol, testInputCol).collect(), (r: Row) => r.getAs[T](0), (r: Row) => r.getAs[MLVector](1))
+			join(key, test.select(neighborCol, testInputCol).collect(), (r: Row) => r.getAs[T](0), (r: Row) => r.getAs[Vector](1))
 	}
 
 	def joinFeatures(key: DataFrame, test: DataFrame, testInputCol: String): DataFrame = {
-		val testFeatures = test.select(testInputCol).collect().map(_.getAs[MLVector](0))
+		val testFeatures = test.select(testInputCol).collect().map(_.getAs[Vector](0))
 		join(key, testFeatures, testFeatures)
 	}
 
-	def join[T](key: DataFrame, test: DataFrame, neighborProvider: Row => T, testInputCol: String)(implicit tag: TypeTag[T]): DataFrame = {
-		val schema = test.schema
-		val inputIndex = schema.fieldIndex(testInputCol)
-		join(key, test.collect(), neighborProvider, (r: Row) => r.getAs[MLVector](inputIndex))
-	}
-
-	def join[T, N](key: DataFrame, test: Seq[T], neighborProvider: T => N, featureProvider: T => MLVector)(implicit tag: TypeTag[N]): DataFrame =
-		join(key, test.map(neighborProvider), test.map(featureProvider))
-
-	def join[T](key: DataFrame, test: Seq[T], testFeatures: Seq[MLVector])(implicit tag: TypeTag[T]): DataFrame = {
+	def join[T](key: DataFrame, test: Seq[T], testFeatures: Seq[Vector])(implicit tag: TypeTag[T]): DataFrame = {
 		val spark = key.sparkSession.sparkContext
 		val testBroadcast = spark.broadcast(test)
-		val testFeaturesBroadcast = if (test == testFeatures) testBroadcast.asInstanceOf[Broadcast[Seq[MLVector]]] else spark.broadcast(testFeatures)
-		val mapper = udf[T, MLVector]((f: MLVector) => {
+		val testFeaturesBroadcast = if (test == testFeatures) testBroadcast.asInstanceOf[Broadcast[Seq[Vector]]] else spark.broadcast(testFeatures)
+		val mapper = udf[T, Vector]((f: Vector) => {
 			var minDist: Double = Double.PositiveInfinity
 			var minI = 0
 			for ((v, i) <- testFeaturesBroadcast.value.zipWithIndex) {
@@ -49,7 +40,16 @@ private[featurization] final class NearestNeighbor(inputCol: String, outputCol: 
 		key.withColumn(outputCol, mapper(col(inputCol)))
 	}
 
-	def join[T](key: DataFrame, test: Seq[T], featureProvider: T => MLVector)(implicit tag: TypeTag[T]): DataFrame =
+	def join[T, N](key: DataFrame, test: Seq[T], neighborProvider: T => N, featureProvider: T => Vector)(implicit tag: TypeTag[N]): DataFrame =
+		join(key, test.map(neighborProvider), test.map(featureProvider))
+
+	def join[T](key: DataFrame, test: DataFrame, neighborProvider: Row => T, testInputCol: String)(implicit tag: TypeTag[T]): DataFrame = {
+		val schema = test.schema
+		val inputIndex = schema.fieldIndex(testInputCol)
+		join(key, test.collect(), neighborProvider, (r: Row) => r.getAs[Vector](inputIndex))
+	}
+
+	def join[T](key: DataFrame, test: Seq[T], featureProvider: T => Vector)(implicit tag: TypeTag[T]): DataFrame =
 		join(key, test, test.map(featureProvider))
 
 }
