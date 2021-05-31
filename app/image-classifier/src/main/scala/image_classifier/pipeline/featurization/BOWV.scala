@@ -33,17 +33,16 @@ private[featurization] object BOWV {
 		  .setPredictionCol(centerCol)
 		  .fit(data)
 		val centers = model.clusterCenters
-		val assignedCenters = if (config.assignNearest) {
+		if (config.assignNearest) {
 			val distance = udf((feature: Vector, centerIndex: Int) => Vectors.sqdist(feature, centers(centerIndex)))
 			model
 			  .transform(data)
 			  .withColumn(distanceCol, distance(col(inputCol), col(centerCol)))
-			  .groupBy(centerCol)
+			  .groupBy(centerCol, inputCol)
 			  .min(distanceCol)
 			  .select(col(centerCol).alias(codebookIdCol), col(inputCol).alias(codebookDataCol))
 		} else
-			centers.zipWithIndex.toSeq.toDF(codebookDataCol, codebookIdCol)
-		assignedCenters.dropDuplicates(codebookDataCol)
+			centers.distinct.zipWithIndex.toSeq.toDF(codebookDataCol, codebookIdCol)
 	}
 
 	def compute(data: DataFrame, codebook: DataFrame, codebookSize: Int, inputCol: String, outputCol: String = defaultOutputCol): DataFrame = {
