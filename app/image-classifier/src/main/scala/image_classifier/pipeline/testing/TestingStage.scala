@@ -5,7 +5,6 @@ import image_classifier.pipeline.Stage
 import image_classifier.pipeline.testing.TestingStage.logger
 import image_classifier.pipeline.training.TrainingStage
 import image_classifier.utils.FileUtils
-import image_classifier.utils.OptionImplicits._
 import org.apache.log4j.Logger
 import org.apache.spark.mllib.evaluation.MulticlassMetrics
 import org.apache.spark.sql.SparkSession
@@ -29,7 +28,7 @@ private[pipeline] final class TestingStage(config: Option[TestingConfig], val tr
 		  .rdd
 		  .map(r => (r.getDouble(0), r.getDouble(1)))
 		val metrics = new MulticlassMetrics(data)
-		val summary = TestingStage.print(metrics, specs.labels.getOr(() => metrics.labels.map(_.toInt.toString)))
+		val summary = TestingStage.print(metrics, specs.labels)
 		if (specs.save.isDefined) {
 			logger.info(s"Writing metrics to '${specs.save.get}'")
 			fileUtils.writeString(specs.save.get, summary)
@@ -47,7 +46,7 @@ private[testing] object TestingStage {
 
 	private val logger: Logger = Logger.getLogger(getClass)
 
-	private def print(metrics: MulticlassMetrics, labels: Seq[String]): String = {
+	private def print(metrics: MulticlassMetrics, labels: Option[Seq[String]]): String = {
 		val printer = new Printer
 		printer.addSection("Summary")
 		printer.addPercent("Accuracy", metrics.accuracy)
@@ -59,7 +58,8 @@ private[testing] object TestingStage {
 		printer.addPercent("False positives", metrics.weightedFalsePositiveRate)
 		printer.add("Confusion matrix", metrics.confusionMatrix.toString)
 		for (l <- metrics.labels) {
-			printer.addSection(s"Class '${labels(l.toInt)}'")
+			val i = l.toInt
+			printer.addSection(s"Class '${labels.map(_ (i)).getOrElse(i.toString)}'")
 			printer.addPercent("F-Measure", metrics.fMeasure(l))
 			printer.addPercent("Precision", metrics.precision(l))
 			printer.addPercent("Recall", metrics.recall(l))
