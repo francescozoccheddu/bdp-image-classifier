@@ -79,11 +79,11 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 				  .setStepSize(config.stepSize)
 				  .setBlockSize(config.blockSize)
 		}
-		logger.info(s"Training with '${classifier.getClass.getSimpleName}'")
 		val training = featurizationStage
 		  .result
 		  .filter(!col(featurizationStage.dataStage.isTestCol))
 		  .repartition(spark.sparkContext.defaultParallelism)
+		logger.info(s"Training with '${classifier.getClass.getSimpleName}'")
 		classifier.setFeaturesCol(featuresCol)
 		classifier.setLabelCol(labelCol)
 		classifier.setPredictionCol(predictionCol)
