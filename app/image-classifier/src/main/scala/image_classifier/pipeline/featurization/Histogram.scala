@@ -1,10 +1,10 @@
 package image_classifier.pipeline.featurization
 
-import org.apache.spark.ml.linalg.{Vectors, Vector => MLVector}
+import org.apache.spark.ml.linalg.{Vector, Vectors}
 
 private[featurization] object Histogram {
 
-	def compute(data: Seq[Long], codebookSize: Int): MLVector = {
+	def compute(data: Seq[Long], codebookSize: Int): Vector = {
 		val minDensityForComputation = 0.5
 		val minDensity = 0.7
 		val minSparseSize = 5
@@ -21,7 +21,7 @@ private[featurization] object Histogram {
 		else computeDense(data, codebookSize)
 	}
 
-	def computeSparse(data: Seq[Long], codebookSize: Int): MLVector = {
+	def computeSparse(data: Seq[Long], codebookSize: Int): Vector = {
 		val map = scala.collection.mutable.Map[Int, Double]().withDefaultValue(0)
 		for (n <- data)
 			map(n.toInt) += 1
@@ -32,7 +32,7 @@ private[featurization] object Histogram {
 		Vectors.sparse(codebookSize, entries)
 	}
 
-	def computeDense(data: TraversableOnce[Long], codebookSize: Int): MLVector = {
+	def computeDense(data: TraversableOnce[Long], codebookSize: Int): Vector = {
 		val bins = Array.ofDim[Double](codebookSize)
 		var sum: Long = 0
 		for (n <- data) {

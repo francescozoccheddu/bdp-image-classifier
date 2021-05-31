@@ -11,7 +11,7 @@ import image_classifier.utils.FileUtils
 import image_classifier.utils.OptionImplicits.OptionExtension
 import org.apache.log4j.Logger
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
-import org.apache.spark.ml.linalg.{Vector => MLVector}
+import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.functions.{col, countDistinct, explode, udf}
 import org.apache.spark.sql.types.{BooleanType, IntegerType}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
@@ -32,7 +32,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 	private lazy val computedCodebookSize: Int = if (canTrustConfig)
 		config.codebook.size
 	else
-		result.first.getAs[MLVector](outputCol).size
+		result.first.getAs[Vector](outputCol).size
 
 	def codebookSize: Int = computedCodebookSize
 
@@ -47,7 +47,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 	private def describe(config: DescriptorConfig, data: DataFrame): DataFrame = {
 		logger.info("Extracting features")
 		val descriptor = Descriptor(config)
-		val describe = udf(descriptor.apply: Array[Byte] => Array[MLVector])
+		val describe = udf(descriptor.apply: Array[Byte] => Array[Vector])
 		data.withColumn(outputCol, describe(col(dataStage.imageCol)))
 	}
 

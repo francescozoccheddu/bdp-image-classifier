@@ -5,6 +5,7 @@ import image_classifier.pipeline.Columns.{colName, resColName}
 import image_classifier.utils.DataTypeImplicits._
 import org.apache.spark.ml.clustering.KMeans
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{ArrayType, IntegerType}
@@ -15,10 +16,13 @@ private[featurization] object BOWV {
 	private val codebookDataCol: String = resColName("data")
 	private val codebookIdCol: String = resColName("id")
 	private val idCol: String = resColName("id")
+	private val centerCol: String = resColName("center")
+	private val distanceCol: String = resColName("distance")
 
 	def createCodebook(data: DataFrame, inputCol: String, config: CodebookConfig): DataFrame = {
-		data.schema.requireField(inputCol, VectorType)
 		import data.sparkSession.implicits._
+		data.schema.requireField(inputCol, VectorType)
+		data.cache
 		val model = new KMeans()
 		  .setK(config.size)
 		  .setMaxIter(config.maxIterations)
@@ -26,16 +30,19 @@ private[featurization] object BOWV {
 		  .setSeed(config.seed)
 		  .setInitSteps(config.initSteps)
 		  .setFeaturesCol(inputCol)
+		  .setPredictionCol(centerCol)
 		  .fit(data)
-		val centers = model
-		  .clusterCenters
-		  .toSeq
-		  .zipWithIndex
-		  .toDF(codebookDataCol, codebookIdCol)
-		val assignedCenters = if (config.assignNearest)
-			new NearestNeighbor(codebookDataCol, codebookDataCol).joinFeatures(centers, data, inputCol)
-		else
-			centers
+		val centers = model.clusterCenters
+		val assignedCenters = if (config.assignNearest) {
+			val distance = udf((feature: Vector, centerIndex: Int) => Vectors.sqdist(feature, centers(centerIndex)))
+			model
+			  .transform(data)
+			  .withColumn(distanceCol, distance(col(inputCol), col(centerCol)))
+			  .groupBy(centerCol)
+			  .min(distanceCol)
+			  .select(col(centerCol).alias(codebookIdCol), col(inputCol).alias(codebookDataCol))
+		} else
+			centers.zipWithIndex.toSeq.toDF(codebookDataCol, codebookIdCol)
 		assignedCenters.dropDuplicates(codebookDataCol)
 	}
 
