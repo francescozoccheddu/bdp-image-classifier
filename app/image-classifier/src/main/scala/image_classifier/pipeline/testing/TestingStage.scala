@@ -77,8 +77,7 @@ private[testing] object TestingStage {
 		def addPercent(key: String, value: Double): Unit =
 			add(key, truncate(value * 100) + "%")
 
-		private def truncate(value: Double): String
-		= "%.3f".format(value)
+		private def truncate(value: Double): String = "%.3f".format(value)
 
 		def add(key: String, value: String): Unit = {
 			val header = s"$key:  "
@@ -89,7 +88,7 @@ private[testing] object TestingStage {
 
 		private def addAligned(value: String, column: Int): Unit = {
 			val space = minSpace max column
-			val body = value
+			val body = (value + " ")
 			  .lines
 			  .map(" " * space + _.trim)
 			  .mkString("\n")
