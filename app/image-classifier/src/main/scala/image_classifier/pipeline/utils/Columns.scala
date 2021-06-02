@@ -1,4 +1,4 @@
-package image_classifier.pipeline
+package image_classifier.pipeline.utils
 
 private[pipeline] object Columns {
 

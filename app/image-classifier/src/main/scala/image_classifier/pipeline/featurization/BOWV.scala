@@ -1,9 +1,9 @@
 package image_classifier.pipeline.featurization
 
 import image_classifier.configuration.CodebookConfig
-import image_classifier.pipeline.Columns.{colName, resColName}
-import image_classifier.utils.DataTypeImplicits._
-import image_classifier.utils.SampleUtils
+import image_classifier.pipeline.utils.Columns.{colName, resColName}
+import image_classifier.pipeline.utils.DataTypeImplicits._
+import image_classifier.pipeline.utils.SampleUtils
 import org.apache.log4j.Logger
 import org.apache.spark.ml.clustering.KMeans
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType

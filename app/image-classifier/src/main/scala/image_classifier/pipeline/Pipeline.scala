@@ -1,11 +1,11 @@
 package image_classifier.pipeline
 
 import image_classifier.configuration.Config
-import image_classifier.pipeline.Columns.colName
 import image_classifier.pipeline.data.DataStage
 import image_classifier.pipeline.featurization.FeaturizationStage
 import image_classifier.pipeline.testing.TestingStage
 import image_classifier.pipeline.training.TrainingStage
+import image_classifier.pipeline.utils.Columns.colName
 import image_classifier.utils.FileUtils
 import org.apache.commons.lang.time.DurationFormatUtils
 import org.apache.log4j.Logger
