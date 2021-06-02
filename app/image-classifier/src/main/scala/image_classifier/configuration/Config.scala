@@ -64,17 +64,50 @@ object DescriptorConfig {
 
 object CodebookConfig {
 
-	val defaultStratifiedSampling: Boolean = true
 	val defaultMaxIterations: Int = 10
 	val defaultConvergenceTolerance: Double = 0.0001
 	val defaultSize: Int = 500
 	val defaultAssignNearest: Boolean = false
 	val defaultInitSteps: Int = 2
-	val defaultSampleFraction: Double = 1
-
-	def defaultSampleSeed: Int = Random.nextInt
+	val defaultImageSample: SampleConfig = SampleConfig()
+	val defaultFeatureSample: SampleConfig = SampleConfig()
 
 	def defaultSeed: Int = Random.nextInt
+
+}
+
+object SampleConfig {
+
+	val defaultMaxCount: Int = Int.MaxValue
+	val defaultMaxCountPerClass: Int = Int.MaxValue
+	val defaultMaxFraction: Double = 1
+	val defaultMaxFractionPerClass: Double = 1
+	val defaultMaxMaxMinFractionPerClass: Double = Double.PositiveInfinity
+
+	def defaultSeed: Int = Random.nextInt
+
+}
+
+final case class SampleConfig(
+                               maxCount: Int = SampleConfig.defaultMaxCount,
+                               maxCountPerClass: Int = SampleConfig.defaultMaxCountPerClass,
+                               maxFraction: Double = SampleConfig.defaultMaxFraction,
+                               maxFractionPerClass: Double = SampleConfig.defaultMaxFractionPerClass,
+                               maxMaxMinFractionPerClass: Double = SampleConfig.defaultMaxMaxMinFractionPerClass,
+                               seed: Int = SampleConfig.defaultSeed
+                             ) {
+
+	requirePositive(nameOf(maxCount), maxCount)
+	requirePositive(nameOf(maxCountPerClass), maxCountPerClass)
+	requireIn(nameOf(maxFraction), maxFraction, 0, 1, false)
+	requireIn(nameOf(maxFractionPerClass), maxFractionPerClass, 0, 1, false)
+	requireIn(nameOf(maxMaxMinFractionPerClass), maxFractionPerClass, 1, Double.PositiveInfinity)
+
+	def canSkip: Boolean =
+		maxCount == Int.MaxValue &&
+		  maxCountPerClass == Int.MaxValue &&
+		  maxFraction == 1 && maxFractionPerClass == 1 &&
+		  maxMaxMinFractionPerClass == Double.PositiveInfinity
 
 }
 
@@ -85,18 +118,14 @@ final case class CodebookConfig(
                                  convergenceTolerance: Double = CodebookConfig.defaultConvergenceTolerance,
                                  seed: Int = CodebookConfig.defaultSeed,
                                  initSteps: Int = CodebookConfig.defaultInitSteps,
-                                 sampleFraction: Double = CodebookConfig.defaultSampleFraction,
-                                 sampleSeed: Int = CodebookConfig.defaultSampleSeed,
-                                 labelsCount: O[Int] = None,
-                                 stratifiedSampling: Boolean = CodebookConfig.defaultStratifiedSampling
+                                 imageSample: SampleConfig = CodebookConfig.defaultImageSample,
+                                 featureSample: SampleConfig = CodebookConfig.defaultFeatureSample
                                ) {
 
 	requireIn(nameOf(size), size, 10, 100000)
 	requireIn(nameOf(maxIterations), maxIterations, 1, 100)
 	requireIn(nameOf(initSteps), initSteps, 1, 10)
 	requireIn(nameOf(convergenceTolerance), convergenceTolerance, 0, 0.1, false)
-	requireIn(nameOf(sampleFraction), sampleFraction, 0, 1, false)
-	labelsCount.foreach(requirePositive(nameOf(labelsCount), _))
 
 }
 
@@ -130,7 +159,6 @@ final case class TrainingConfig(
                                  hiddenLayers: Seq[Int] = TrainingConfig.defaultHiddenLayers,
                                  blockSize: Int = TrainingConfig.defaultBlockSize,
                                  stepSize: Double = TrainingConfig.defaultStepSize,
-                                 labelsCount: O[Int] = None,
                                  seed: Int = TrainingConfig.defaultSeed
                                ) extends LoadableConfig {
 
@@ -140,7 +168,6 @@ final case class TrainingConfig(
 	requirePositive(nameOf(stepSize), stepSize)
 	requireNonNegative(nameOf(regParam), regParam)
 	requireNonNegative(nameOf(treeCount), treeCount)
-	labelsCount.foreach(requirePositive(nameOf(labelsCount), _))
 	hiddenLayers.foreach(requirePositive(nameOf(hiddenLayers), _))
 
 }
