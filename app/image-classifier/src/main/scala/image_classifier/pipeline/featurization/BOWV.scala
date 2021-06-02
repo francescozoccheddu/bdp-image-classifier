@@ -16,7 +16,6 @@ private[featurization] object BOWV {
 	val defaultOutputCol: String = colName("data")
 	private val centerCol: String = resColName("center")
 	private val distanceCol: String = resColName("distance")
-	private val idCol: String = resColName("id")
 
 	def createCodebook(data: DataFrame, inputCol: String, config: CodebookConfig): Seq[Vector] = {
 		data.schema.requireField(inputCol, VectorType)

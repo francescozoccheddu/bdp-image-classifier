@@ -9,9 +9,6 @@ private[image_classifier] object DataTypeImplicits {
 		def requireNoField(name: String): Unit =
 			require(dataType.getField(name).isEmpty)
 
-		def requireField(name: String): Unit =
-			require(dataType.getField(name).isDefined)
-
 		def getField(name: String): Option[StructField] =
 			try {
 				val struct = dataType.asInstanceOf[StructType]
@@ -20,6 +17,9 @@ private[image_classifier] object DataTypeImplicits {
 			catch {
 				case _: Exception => None
 			}
+
+		def requireField(name: String): Unit =
+			require(dataType.getField(name).isDefined)
 
 		def requireField(name: String, requiredDataType: DataType): Unit = {
 			val field = dataType.getField(name)
