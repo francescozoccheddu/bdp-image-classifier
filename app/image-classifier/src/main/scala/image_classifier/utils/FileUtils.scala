@@ -106,11 +106,6 @@ private[image_classifier] object FileUtils {
 
 	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
 
-	def toSimpleLocalPath(path: String): String = getIsLocalAndRest(path) match {
-		case Some((true, rest)) => rest
-		case _ => throw new IllegalArgumentException
-	}
-
 	private def getIsLocalAndRest(path: String): Option[(Boolean, String)] = {
 		val uri = try URI.create(path)
 		catch {
@@ -136,6 +131,11 @@ private[image_classifier] object FileUtils {
 		}
 		else
 			None
+	}
+
+	def toSimpleLocalPath(path: String): String = getIsLocalAndRest(path) match {
+		case Some((true, rest)) => rest
+		case _ => throw new IllegalArgumentException
 	}
 
 }
