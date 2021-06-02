@@ -3,6 +3,7 @@ package image_classifier.pipeline.featurization
 import image_classifier.configuration.CodebookConfig
 import image_classifier.pipeline.Columns.{colName, resColName}
 import image_classifier.utils.DataTypeImplicits._
+import org.apache.log4j.Logger
 import org.apache.spark.ml.clustering.KMeans
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.{Vector, Vectors}
@@ -18,10 +19,11 @@ private[featurization] object BOWV {
 	private val centerCol: String = resColName("center")
 	private val distanceCol: String = resColName("distance")
 	private val minDistanceCol: String = resColName("minDistance")
+	private val logger: Logger = Logger.getLogger(getClass)
 
 	def createCodebook(data: DataFrame, inputCol: String, config: CodebookConfig): Seq[Vector] = {
 		data.schema.requireField(inputCol, VectorType)
-		data.cache
+		val projData = data.select(inputCol).cache
 		val model = new KMeans()
 		  .setK(config.size)
 		  .setMaxIter(config.maxIterations)
@@ -30,14 +32,15 @@ private[featurization] object BOWV {
 		  .setInitSteps(config.initSteps)
 		  .setFeaturesCol(inputCol)
 		  .setPredictionCol(centerCol)
-		  .fit(data)
+		  .fit(projData)
 		val centers = model.clusterCenters
 		val assignedCenters = if (config.assignNearest) {
-			val centersBroadcast = data.sparkSession.sparkContext.broadcast(centers)
+			logger.info("Assigning nearest features")
+			val centersBroadcast = projData.sparkSession.sparkContext.broadcast(centers)
 			val distanceUdf = udf((feature: Vector, centerIndex: Int) => Vectors.sqdist(feature, centersBroadcast.value(centerIndex)))
 			val window = Window.partitionBy(centerCol)
 			val newCenters = model
-			  .transform(data)
+			  .transform(projData)
 			  .withColumn(distanceCol, distanceUdf(col(inputCol), col(centerCol)))
 			  .withColumn(minDistanceCol, min(distanceCol).over(window))
 			  .filter(col(distanceCol) === col(minDistanceCol))
@@ -49,7 +52,7 @@ private[featurization] object BOWV {
 			centersBroadcast.destroy
 			newCenters
 		} else centers
-		data.unpersist
+		projData.unpersist
 		assignedCenters.distinct
 	}
 
