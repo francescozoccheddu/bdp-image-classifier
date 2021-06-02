@@ -23,30 +23,35 @@ private[featurization] final case class Descriptor(config: DescriptorConfig) {
 		describe(resizedImg)
 	}
 
+	override def finalize(): Unit = detector.deallocate()
+
 	private def describe(image: Mat): Seq[Vector] = {
 		val size = detector.descriptorSize
 		val kpv = new KeyPointVector
 		val rawDesMat = new Mat
-		detector.detectAndCompute(image, new Mat, kpv, rawDesMat)
+		val maskMat = new Mat
+		detector.detectAndCompute(image, maskMat, kpv, rawDesMat)
+		maskMat.deallocate()
 		val kpCount = kpv.size.toInt min config.featureCount
-		val buffer = if (kpCount != 0) {
-			val desMat = {
-				require(rawDesMat.channels == 1)
-				if (rawDesMat.depth != CV_64F) {
-					val mat = new Mat(kpCount, size, CV_64FC1)
-					rawDesMat.convertTo(mat, CV_64F)
-					mat
-				}
-				else rawDesMat
+		kpv.deallocate()
+		val desMat = if (kpCount != 0) {
+			require(rawDesMat.channels == 1)
+			if (rawDesMat.depth != CV_64F) {
+				val mat = new Mat(kpCount, size, CV_64FC1)
+				rawDesMat.convertTo(mat, CV_64F)
+				rawDesMat.deallocate()
+				mat
 			}
-			desMat.createBuffer[DoubleBuffer]()
-		} else null
+			else rawDesMat
+		} else rawDesMat
+		val buffer = if (kpCount != 0) desMat.createBuffer[DoubleBuffer]() else null
 		val desArr = Array.ofDim[Vector](kpCount)
 		for (d <- 0 until kpCount) {
 			val row = Array.ofDim[Double](size)
 			buffer.get(row, 0, size)
 			desArr(d) = Vectors.dense(row)
 		}
+		desMat.deallocate()
 		desArr
 	}
 
