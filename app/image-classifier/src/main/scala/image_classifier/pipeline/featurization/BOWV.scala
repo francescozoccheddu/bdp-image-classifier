@@ -8,6 +8,7 @@ import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.mllib.clustering.DistanceMeasureWrapper
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.ArrayType
 
@@ -16,6 +17,7 @@ private[featurization] object BOWV {
 	val defaultOutputCol: String = colName("data")
 	private val centerCol: String = resColName("center")
 	private val distanceCol: String = resColName("distance")
+	private val minDistanceCol: String = resColName("minDistance")
 
 	def createCodebook(data: DataFrame, inputCol: String, config: CodebookConfig): Seq[Vector] = {
 		data.schema.requireField(inputCol, VectorType)
@@ -33,11 +35,14 @@ private[featurization] object BOWV {
 		val assignedCenters = if (config.assignNearest) {
 			val centersBroadcast = data.sparkSession.sparkContext.broadcast(centers)
 			val distanceUdf = udf((feature: Vector, centerIndex: Int) => Vectors.sqdist(feature, centersBroadcast.value(centerIndex)))
+			val window = Window.partitionBy(centerCol)
 			val newCenters = model
 			  .transform(data)
 			  .withColumn(distanceCol, distanceUdf(col(inputCol), col(centerCol)))
-			  .groupBy(centerCol, inputCol)
-			  .min(distanceCol)
+			  .withColumn(minDistanceCol, min(distanceCol).over(window))
+			  .filter(col(distanceCol) === col(minDistanceCol))
+			  .groupBy(centerCol)
+			  .agg(first(inputCol).alias(inputCol))
 			  .select(inputCol)
 			  .collect
 			  .map(_.getAs[Vector](0))
