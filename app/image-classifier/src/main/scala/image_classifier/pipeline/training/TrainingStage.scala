@@ -1,6 +1,5 @@
 package image_classifier.pipeline.training
 
-import com.github.dwickern.macros.NameOf.nameOf
 import image_classifier.configuration.{Loader, TrainingAlgorithm, TrainingConfig}
 import image_classifier.pipeline.Columns.colName
 import image_classifier.pipeline.LoaderStage
@@ -65,17 +64,10 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 				  .setNumTrees(config.treeCount)
 				  .setSeed(config.seed)
 			case TrainingAlgorithm.MultilayerPerceptron =>
-				val labelsCount = if (config.labelsCount.isDefined) {
-					logger.info(s"Trusting '${nameOf(config.labelsCount)}'")
-					config.labelsCount.get
-				}
-				else featurizationStage.labelsCount
-				val featureSize = featurizationStage.codebookSize
-				require(config.labelsCount.forall(_ == labelsCount), s"${nameOf(config.labelsCount)} does not match labels count")
 				new MultilayerPerceptronClassifier()
 				  .setSeed(config.seed)
 				  .setMaxIter(config.maxIterations)
-				  .setLayers(featureSize +: config.hiddenLayers.toArray :+ labelsCount)
+				  .setLayers(featurizationStage.codebookSize +: config.hiddenLayers.toArray :+ featurizationStage.labelsCount)
 				  .setStepSize(config.stepSize)
 				  .setBlockSize(config.blockSize)
 		}

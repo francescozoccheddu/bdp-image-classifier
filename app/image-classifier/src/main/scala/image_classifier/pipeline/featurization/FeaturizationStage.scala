@@ -1,6 +1,5 @@
 package image_classifier.pipeline.featurization
 
-import com.github.dwickern.macros.NameOf.nameOf
 import image_classifier.configuration.{CodebookConfig, DescriptorConfig, FeaturizationConfig, Loader}
 import image_classifier.pipeline.Columns.colName
 import image_classifier.pipeline.LoaderStage
@@ -8,33 +7,28 @@ import image_classifier.pipeline.data.DataStage
 import image_classifier.pipeline.featurization.FeaturizationStage.{defaultOutputCol, logger}
 import image_classifier.utils.DataTypeImplicits.DataTypeExtension
 import image_classifier.utils.FileUtils
-import image_classifier.utils.OptionImplicits.OptionExtension
 import org.apache.log4j.Logger
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vector
-import org.apache.spark.sql.functions.{col, countDistinct, explode, udf}
+import org.apache.spark.sql.functions.{col, countDistinct, udf}
 import org.apache.spark.sql.types.{BooleanType, IntegerType}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 private[pipeline] final class FeaturizationStage(loader: Option[Loader[FeaturizationConfig]], val dataStage: DataStage, val outputCol: String = defaultOutputCol)(implicit spark: SparkSession, fileUtils: FileUtils)
   extends LoaderStage[DataFrame, FeaturizationConfig]("Featurization", loader)(fileUtils) {
 
-	private lazy val computedLabelsCount: Int = if (canTrustConfig && config.codebook.labelsCount.isDefined) {
-		logger.info(s"Trusting '${nameOf(config.codebook.labelsCount)}'")
-		config.codebook.labelsCount.get
-	} else {
-		logger.warn(s"Computing labels count. This may take a while. Please consider specifying it manually where needed.")
-		val count = result.select(countDistinct(dataStage.labelCol)).first.getLong(0).toInt
-		logger.info(s"Labels count is $count")
-		count
-	}
-
-	private var codebookSizeOpt: Option[Int] = None
-
-	def codebookSize: Int = codebookSizeOpt.getOr(() => {
+	lazy val labelsCount: Int =
 		result
-		codebookSizeOpt.get
-	})
+		  .select(countDistinct(dataStage.labelCol))
+		  .first
+		  .getLong(0)
+		  .toInt
+
+	lazy val codebookSize: Int =
+		result
+		  .first
+		  .getAs[Vector](outputCol)
+		  .size
 
 	override protected def make(): DataFrame = {
 		val describedData = describe(config.descriptor, dataStage.result).cache
@@ -53,29 +47,12 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 	}
 
 	private def createCodebook(config: CodebookConfig, data: DataFrame): Seq[Vector] = {
-		logger.info(s"Creating a codebook of size ${config.size} out of ${"%.3f".format(config.sampleFraction * 100)}% of data")
+		logger.info("Creating codebook")
 		val training = data
 		  .filter(!col(dataStage.isTestCol))
-		  .withColumn(outputCol, explode(col(outputCol)))
 		  .repartition(spark.sparkContext.defaultParallelism)
-		val sample =
-			if (config.stratifiedSampling) {
-				val fractions = (0 until config.labelsCount.getOr(() => labelsCount)).map((_, config.sampleFraction)).toMap
-				training.stat.sampleBy(dataStage.labelCol, fractions, config.sampleSeed.toLong)
-			} else
-				training.sample(config.sampleFraction, config.sampleSeed)
-		val codebook = BOWV.createCodebook(sample, outputCol, config)
-		codebookSizeOpt = Some(codebook.length)
-		codebook
+		BOWV.createCodebook(training, outputCol, dataStage.labelCol, config)
 	}
-
-	def labelsCount: Int =
-		if (canTrustConfig && dataStage.wasMade)
-			dataStage.config.labelsCount
-		else
-			computedLabelsCount
-
-	private def canTrustConfig: Boolean = wasMade || loadMode.alwaysDoesMake
 
 	protected override def validate(result: DataFrame): Unit = {
 		val schema = result.schema
