@@ -6,7 +6,7 @@ import image_classifier.utils.DataTypeImplicits._
 import org.apache.spark.ml.clustering.KMeans
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.{Vector, Vectors}
-import org.apache.spark.mllib.clustering.NearestNeighbor
+import org.apache.spark.mllib.clustering.DistanceMeasureWrapper
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.ArrayType
@@ -50,18 +50,16 @@ private[featurization] object BOWV {
 
 	def compute(data: DataFrame, codebook: Seq[Vector], inputCol: String, outputCol: String = defaultOutputCol): DataFrame = {
 		data.schema.requireField(inputCol, ArrayType(VectorType))
-		val joiner = Joiner(codebook.toArray)
-		val joinUdf = udf(joiner.apply: Array[Vector] => Vector)
-		data.withColumn(outputCol, joinUdf(col(inputCol)))
-	}
-
-	private final case class Joiner(codebook: Array[Vector]) {
-
-		private val nn: NearestNeighbor = NearestNeighbor(codebook)
-
-		def apply(features: Array[Vector]): Vector =
-			Histogram.compute(features.map(nn.predict), codebook.length)
-
+		val context = data.sparkSession.sparkContext
+		val codebookBroadcast = context.broadcast(DistanceMeasureWrapper.withNorm(codebook.toArray))
+		val statisticsBroadcast = context.broadcast(DistanceMeasureWrapper.computeStatisticsDistributedly(context, codebookBroadcast))
+		val codebookSize = codebook.length
+		val nnUdf = udf((features: Array[Vector]) =>
+			features.map(f => DistanceMeasureWrapper.findClosestDistributedly(DistanceMeasureWrapper.withNorm(f), statisticsBroadcast, codebookBroadcast))
+		)
+		val hgUdf = udf((indices: Array[Int]) => Histogram.compute(indices, codebookSize))
+		data.withColumn(outputCol, nnUdf(col(inputCol)))
+		  .withColumn(outputCol, hgUdf(col(outputCol)))
 	}
 
 }
