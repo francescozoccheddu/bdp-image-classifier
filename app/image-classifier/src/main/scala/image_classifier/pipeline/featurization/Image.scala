@@ -6,8 +6,12 @@ import org.bytedeco.javacpp.opencv_imgproc.{INTER_AREA, resize}
 
 private[featurization] object Image {
 
-	def decode(data: Array[Byte]): Mat =
-		imdecode(new Mat(data, false), IMREAD_GRAYSCALE)
+	def decode(data: Array[Byte]): Mat = {
+		val rawMat = new Mat(data, false)
+		val mat = imdecode(rawMat, IMREAD_GRAYSCALE)
+		rawMat.deallocate()
+		mat
+	}
 
 	def limitSize(mat: Mat, maxSize: Int): Mat = {
 		require(maxSize >= 4 && maxSize <= 8192)
@@ -15,7 +19,10 @@ private[featurization] object Image {
 		if (size > maxSize) {
 			val scale = maxSize.toDouble / size.toDouble
 			val dest = new Mat
+			val nativeSize = new Size()
 			resize(mat, dest, new Size(), scale, scale, INTER_AREA)
+			nativeSize.deallocate()
+			mat.deallocate()
 			dest
 		} else
 			mat
