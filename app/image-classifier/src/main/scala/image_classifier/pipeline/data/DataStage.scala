@@ -2,10 +2,10 @@ package image_classifier.pipeline.data
 
 import scala.util.Random
 import image_classifier.configuration.{DataConfig, LoadMode, Loader}
-import image_classifier.pipeline.Columns.{colName, resColName}
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.data.DataStage._
-import image_classifier.utils.DataTypeImplicits.DataTypeExtension
+import image_classifier.pipeline.utils.Columns.{colName, resColName}
+import image_classifier.pipeline.utils.DataTypeImplicits.DataTypeExtension
 import image_classifier.utils.FileUtils
 import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.{abs, col}

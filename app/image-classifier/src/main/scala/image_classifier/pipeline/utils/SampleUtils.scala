@@ -1,12 +1,12 @@
-package image_classifier.utils
+package image_classifier.pipeline.utils
 
 import image_classifier.configuration.SampleConfig
-import image_classifier.utils.DataTypeImplicits.DataTypeExtension
+import image_classifier.pipeline.utils.DataTypeImplicits.DataTypeExtension
 import org.apache.log4j.Logger
 import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.{DataFrame, Row}
 
-private[image_classifier] object SampleUtils {
+private[pipeline] object SampleUtils {
 
 	private val logger: Logger = Logger.getLogger(getClass)
 

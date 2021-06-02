@@ -1,10 +1,10 @@
 package image_classifier.pipeline.training
 
 import image_classifier.configuration.{Loader, TrainingAlgorithm, TrainingConfig}
-import image_classifier.pipeline.Columns.colName
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.featurization.FeaturizationStage
 import image_classifier.pipeline.training.TrainingStage._
+import image_classifier.pipeline.utils.Columns.colName
 import image_classifier.utils.FileUtils
 import org.apache.log4j.Logger
 import org.apache.spark.ml.classification.{Classifier, _}

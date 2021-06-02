@@ -1,11 +1,11 @@
 package image_classifier.pipeline.featurization
 
 import image_classifier.configuration.{CodebookConfig, DescriptorConfig, FeaturizationConfig, Loader}
-import image_classifier.pipeline.Columns.colName
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.data.DataStage
 import image_classifier.pipeline.featurization.FeaturizationStage.{defaultOutputCol, logger}
-import image_classifier.utils.DataTypeImplicits.DataTypeExtension
+import image_classifier.pipeline.utils.Columns.colName
+import image_classifier.pipeline.utils.DataTypeImplicits.DataTypeExtension
 import image_classifier.utils.FileUtils
 import org.apache.log4j.Logger
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType

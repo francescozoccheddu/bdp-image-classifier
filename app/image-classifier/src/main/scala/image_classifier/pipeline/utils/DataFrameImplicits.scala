@@ -1,8 +1,8 @@
-package image_classifier.utils
+package image_classifier.pipeline.utils
 
 import org.apache.spark.sql.DataFrame
 
-private[image_classifier] object DataFrameImplicits {
+private[pipeline] object DataFrameImplicits {
 
 	implicit final class DataFrameExtension(df: DataFrame) {
 
