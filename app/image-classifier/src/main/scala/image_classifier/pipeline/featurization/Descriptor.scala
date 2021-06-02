@@ -23,8 +23,6 @@ private[featurization] final case class Descriptor(config: DescriptorConfig) {
 		describe(resizedImg)
 	}
 
-	override def finalize(): Unit = detector.deallocate()
-
 	private def describe(image: Mat): Seq[Vector] = {
 		val size = detector.descriptorSize
 		val kpv = new KeyPointVector
@@ -54,6 +52,8 @@ private[featurization] final case class Descriptor(config: DescriptorConfig) {
 		desMat.deallocate()
 		desArr
 	}
+
+	override def finalize(): Unit = detector.deallocate()
 
 }
 

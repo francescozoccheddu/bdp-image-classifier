@@ -30,6 +30,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 			case TrainingAlgorithm.DecisionTree => DecisionTreeClassificationModel
 			case TrainingAlgorithm.LogisticRegression => LogisticRegressionModel
 			case TrainingAlgorithm.NaiveBayes => NaiveBayesModel
+			case TrainingAlgorithm.NearestNeighbor => NaiveNearestNeighborModel
 		}
 		model.read.load(FileUtils.resolve(file, dataPath)).asInstanceOf[ModelType]
 	}
@@ -70,6 +71,8 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 				  .setLayers(featurizationStage.codebookSize +: config.hiddenLayers.toArray :+ featurizationStage.labelsCount)
 				  .setStepSize(config.stepSize)
 				  .setBlockSize(config.blockSize)
+			case TrainingAlgorithm.NearestNeighbor =>
+				new NaiveNearestNeighbor()
 		}
 		val training = featurizationStage
 		  .result

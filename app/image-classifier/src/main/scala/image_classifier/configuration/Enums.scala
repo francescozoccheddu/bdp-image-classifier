@@ -23,6 +23,7 @@ object TrainingAlgorithm extends Enumeration {
 	val GradientBoosted: configuration.TrainingAlgorithm.Value = Value("gbt")
 	val MultilayerPerceptron: configuration.TrainingAlgorithm.Value = Value("mlp")
 	val LinearSupportVector: configuration.TrainingAlgorithm.Value = Value("lsv")
+	val NearestNeighbor: configuration.TrainingAlgorithm.Value = Value("nn")
 
 }
 

@@ -61,14 +61,6 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 		finally IOUtils.closeStream(stream)
 	}
 
-	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
-		case Some((true, _)) => localFs
-		case Some((false, _)) => hdfs
-		case _ => throw new IllegalArgumentException
-	}
-
-	private def toPath(path: String): Path = new Path(workingDir, path)
-
 	def glob(glob: String): Seq[String] =
 		getFs(glob).globStatus(toPath(glob)).map(_.getPath.toString)
 
@@ -80,6 +72,14 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 			}
 		tempFiles.clear()
 	}
+
+	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
+		case Some((true, _)) => localFs
+		case Some((false, _)) => hdfs
+		case _ => throw new IllegalArgumentException
+	}
+
+	private def toPath(path: String): Path = new Path(workingDir, path)
 
 }
 
@@ -106,6 +106,11 @@ private[image_classifier] object FileUtils {
 
 	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
 
+	def toSimpleLocalPath(path: String): String = getIsLocalAndRest(path) match {
+		case Some((true, rest)) => rest
+		case _ => throw new IllegalArgumentException
+	}
+
 	private def getIsLocalAndRest(path: String): Option[(Boolean, String)] = {
 		val uri = try URI.create(path)
 		catch {
@@ -131,11 +136,6 @@ private[image_classifier] object FileUtils {
 		}
 		else
 			None
-	}
-
-	def toSimpleLocalPath(path: String): String = getIsLocalAndRest(path) match {
-		case Some((true, rest)) => rest
-		case _ => throw new IllegalArgumentException
 	}
 
 }
