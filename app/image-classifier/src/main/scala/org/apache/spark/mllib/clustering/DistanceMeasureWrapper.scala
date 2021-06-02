@@ -7,22 +7,24 @@ import org.apache.spark.mllib.linalg.{Vectors => OldVectors}
 
 object DistanceMeasureWrapper {
 
+	type DistanceVector = VectorWithNorm
+
 	private val instance: EuclideanDistanceMeasure = new EuclideanDistanceMeasure
 
-	def findClosestDistributedly(point: VectorWithNorm, statistics: Broadcast[Array[Double]], test: Broadcast[Array[VectorWithNorm]]): Int =
+	def findClosestDistributedly(point: DistanceVector, statistics: Broadcast[Array[Double]], test: Broadcast[Array[DistanceVector]]): Int =
 		instance.findClosest(test.value, statistics.value, point)._1
 
-	def findClosest(point: VectorWithNorm, statistics: Array[Double], test: Array[VectorWithNorm]): Int =
+	def findClosest(point: DistanceVector, statistics: Array[Double], test: Array[DistanceVector]): Int =
 		instance.findClosest(test, statistics, point)._1
 
-	def computeStatistics(test: Array[VectorWithNorm]): Array[Double] =
+	def computeStatistics(test: Array[DistanceVector]): Array[Double] =
 		instance.computeStatistics(test)
 
-	def computeStatisticsDistributedly(sparkContext: SparkContext, test: Broadcast[Array[VectorWithNorm]]): Array[Double] =
+	def computeStatisticsDistributedly(sparkContext: SparkContext, test: Broadcast[Array[DistanceVector]]): Array[Double] =
 		instance.computeStatisticsDistributedly(sparkContext, test)
 
-	def withNorm(vectors: Array[NewVector]): Array[VectorWithNorm] = vectors.map(withNorm)
+	def withNorm(vectors: Array[NewVector]): Array[DistanceVector] = vectors.map(withNorm)
 
-	def withNorm(vector: NewVector): VectorWithNorm = new VectorWithNorm(OldVectors.fromML(vector))
+	def withNorm(vector: NewVector): DistanceVector = new VectorWithNorm(OldVectors.fromML(vector))
 
 }
