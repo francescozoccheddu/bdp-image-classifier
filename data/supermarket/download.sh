@@ -13,7 +13,7 @@ cd "$OUTPUT_DIR"
 
 wget "https://iplab.dmi.unict.it/MLC2018/dataset.zip" -O .dataset.zip -nv --show-progress
 
-echo "-- Extracting dataset (this may take some minutes)"
+echo "-- Extracting dataset"
 
 unzip -q -o .dataset.zip
 rm -f .dataset.zip
@@ -33,7 +33,6 @@ function move {
 	do
 		INPUT=${OUTPUTS[$LABEL]}
 		mkdir -p "images/$2/$LABEL"
-		#mv -t "images/$2/$LABEL" $INPUT
 		mv -t images/$2/$LABEL $INPUT
 	done
 }
