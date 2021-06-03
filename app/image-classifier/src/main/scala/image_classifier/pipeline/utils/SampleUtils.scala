@@ -28,11 +28,12 @@ private[pipeline] object SampleUtils {
 			logger.info("Data is empty")
 			return data
 		}
-		val trimmedCounts = {
-			val minCount = counts.values.min
-			counts.mapValues(c => config.maxCountPerClass.toDouble min c * config.maxFractionPerClass min minCount * config.maxMaxMinFractionPerClass)
-		}
 		val scaledCounts = {
+			val trimmedCounts = {
+				val limitedCounts = counts.mapValues(c => config.maxCountPerClass.toDouble min c * config.maxFractionPerClass)
+				val minCount = limitedCounts.values.min
+				limitedCounts.mapValues(_ min minCount * config.maxMaxMinFractionPerClass)
+			}
 			val trimmedTotal = trimmedCounts.values.sum
 			val scale = ((config.maxCount.toDouble min config.maxFraction * total) / trimmedTotal) min 1.0
 			trimmedCounts.mapValues(_ * scale)
