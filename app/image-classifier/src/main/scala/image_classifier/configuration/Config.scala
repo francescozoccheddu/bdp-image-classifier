@@ -157,31 +157,43 @@ final case class TrainingConfig(
                                  elasticNetParam: Double = TrainingConfig.defaultElasticNetParam,
                                  treeCount: Int = TrainingConfig.defaultTreeCount,
                                  hiddenLayers: Seq[Int] = TrainingConfig.defaultHiddenLayers,
-                                 blockSize: Int = TrainingConfig.defaultBlockSize,
                                  stepSize: Double = TrainingConfig.defaultStepSize,
+                                 convergenceTolerance: Double = TrainingConfig.defaultConvergenceTolerance,
+                                 depth: Int = TrainingConfig.defaultDepth,
+                                 maxBins: Int = TrainingConfig.defaultMaxBins,
+                                 minInfoGain: Double = TrainingConfig.defaultMinInfoGain,
+                                 factorSize: Int = TrainingConfig.defaultFactorSize,
                                  seed: Int = TrainingConfig.defaultSeed
                                ) extends LoadableConfig {
 
 	requireIn(nameOf(maxIterations), maxIterations, 1, 10000)
-	requireIn(nameOf(blockSize), blockSize, 4, 8192)
-	requireIn(nameOf(elasticNetParam), elasticNetParam, 0, 1)
-	requirePositive(nameOf(stepSize), stepSize)
 	requireNonNegative(nameOf(regParam), regParam)
-	requireNonNegative(nameOf(treeCount), treeCount)
+	requireIn(nameOf(elasticNetParam), elasticNetParam, 0, 1)
+	requireIn(nameOf(treeCount), treeCount, 1, 10000)
 	hiddenLayers.foreach(requirePositive(nameOf(hiddenLayers), _))
+	requirePositive(nameOf(stepSize), stepSize)
+	requireNonNegative(nameOf(convergenceTolerance), convergenceTolerance)
+	requireIn(nameOf(depth), depth, 2, 10000)
+	requireIn(nameOf(maxBins), maxBins, 2, 10000)
+	requireNonNegative(nameOf(minInfoGain), minInfoGain)
+	requirePositive(nameOf(factorSize), factorSize)
 
 }
 
 object TrainingConfig {
 
 	val defaultAlgorithm: configuration.TrainingAlgorithm.Value = TrainingAlgorithm.NaiveBayes
-	val defaultMaxIterations: Int = 10
-	val defaultRegParam: Double = 0.3
-	val defaultElasticNetParam: Double = 0.8
-	val defaultTreeCount: Int = 4
+	val defaultMaxIterations: Int = 100
+	val defaultRegParam: Double = 0
+	val defaultElasticNetParam: Double = 0
+	val defaultTreeCount: Int = 20
 	val defaultHiddenLayers: Seq[Int] = Seq.empty
-	val defaultBlockSize: Int = 128
-	val defaultStepSize: Double = 0.001
+	val defaultStepSize: Double = 0.03
+	val defaultConvergenceTolerance: Double = 1e-6
+	val defaultMaxBins: Int = 32
+	val defaultDepth: Int = 5
+	val defaultMinInfoGain: Double = 0
+	val defaultFactorSize: Int = 8
 
 	def defaultSeed: Int = Random.nextInt
 
