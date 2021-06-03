@@ -44,7 +44,7 @@ private[pipeline] object SampleUtils {
 			val approxCount = math.round(scaledTotal)
 			logger.info(s"Sampling ${"%.2f".format(approxPercent)}% of data, $total to ~$approxCount samples")
 		}
-		val fractions = counts.transform((l, c) => scaledCounts(l) / c min 1.0)
+		val fractions = counts.transform((l, c) => (scaledCounts(l) / c) min 1.0)
 		val sample = data.stat.sampleBy(labelCol, fractions, config.seed)
 		data.unpersist
 		sample
