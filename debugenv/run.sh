@@ -38,7 +38,7 @@ fi
 
 echo "-- Running"
 
-"$SPARK_HOME/bin/spark-submit" --master $MASTER "$1" "$2"
+"$SPARK_HOME/bin/spark-submit" --master $MASTER --driver-memory 4G "$1" "$2"
 
 if [[ $RES != 0 ]]; then
 	echo "-- Stopping Hadoop daemons"
