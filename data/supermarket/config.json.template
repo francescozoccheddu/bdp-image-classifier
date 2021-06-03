@@ -51,10 +51,10 @@
 			"size": 400,
 			"assignNearest": true,
 			"imageSample": {
-				"maxCount": 30
+				"maxCountPerClass": 100
 			},
 			"featureSample": {
-				"maxCount": 2000
+				"maxCountPerClass": 5000
 			}
 		}
     }
