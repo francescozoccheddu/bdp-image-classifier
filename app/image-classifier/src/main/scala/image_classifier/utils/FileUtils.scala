@@ -1,23 +1,24 @@
 package image_classifier.utils
 
 import scala.collection.mutable
+import scala.reflect.runtime.universe.TypeTag
 import scala.util.Try
 import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
-import java.nio.file.{InvalidPathException, Paths}
-import image_classifier.utils.FileUtils.logger
-import org.apache.hadoop.fs.{FileSystem, LocalFileSystem, Path}
-import org.apache.hadoop.io.IOUtils
+import image_classifier.utils.FileUtils.{isValidPath, logger}
+import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.io.{IOUtils, SequenceFile}
 import org.apache.log4j.Logger
 import org.apache.spark.scheduler.{SparkListener, SparkListenerApplicationEnd}
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 private[image_classifier] final class FileUtils(val workingDir: String)(implicit spark: SparkSession) {
 
 	logger.info("New instance")
 
-	require(FileUtils.isValidLocalPath(workingDir))
+	require(isValidPath(workingDir))
+	private val workingPath: Path = new Path(workingDir)
 
 	private val sparkListener: SparkListener = new SparkListener {
 
@@ -28,27 +29,37 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 	spark.sparkContext.addSparkListener(sparkListener)
 
 	private val tempFiles: mutable.MutableList[String] = mutable.MutableList[String]()
-	private val hdfs: FileSystem = FileSystem.get(spark.sparkContext.hadoopConfiguration)
-	private val localFs: LocalFileSystem = FileSystem.getLocal(spark.sparkContext.hadoopConfiguration)
 
 	def addTempFile(file: String): Unit = {
 		logger.info(s"Adding temp file '$file'")
 		tempFiles += resolve(file)
 	}
 
-	def resolve(file: String): String = FileUtils.resolve(workingDir, file)
-
 	def makeDirs(dir: String): Boolean = getFs(dir).mkdirs(toPath(dir))
 
-	private def getFs(path: String): FileSystem = FileUtils.getIsLocalAndRest(path) match {
-		case Some((true, _)) => localFs
-		case Some((false, _)) => hdfs
-		case _ => throw new IllegalArgumentException
+	def createSequenceFileWriter(file: String, keyClass: Class[_], valueClass: Class[_]): SequenceFile.Writer =
+		SequenceFile.createWriter(
+			spark.sparkContext.hadoopConfiguration,
+			SequenceFile.Writer.file(toPath(file)),
+			SequenceFile.Writer.keyClass(keyClass),
+			SequenceFile.Writer.valueClass(valueClass))
+
+	def loadSequenceFile[Key, Value](file: String, keyCol: String, valueCol: String)(implicit keyClassTag: TypeTag[Key], valueClassTag: TypeTag[Value]): DataFrame = {
+		import spark.implicits._
+		spark.sparkContext.sequenceFile[Key, Value](
+			resolve(file),
+			keyClassTag.mirror.runtimeClass(keyClassTag.tpe).asInstanceOf[Class[Key]],
+			valueClassTag.mirror.runtimeClass(valueClassTag.tpe).asInstanceOf[Class[Value]])
+		  .toDF(keyCol, valueCol)
 	}
 
-	private def toPath(path: String): Path = new Path(workingDir, path)
-
 	def exists(path: String): Boolean = getFs(path).exists(toPath(path))
+
+	private def getFs(path: String): FileSystem = FileSystem.get(URI.create(resolve(path)), spark.sparkContext.hadoopConfiguration)
+
+	def resolve(file: String): String = toPath(file).toString
+
+	private def toPath(path: String): Path = new Path(workingPath, path)
 
 	def writeString(file: String, string: String): Unit = writeBytes(file, string.getBytes)
 
@@ -94,48 +105,8 @@ private[image_classifier] object FileUtils {
 
 	def resolve(context: String, path: String): String = new Path(context, path).toString
 
-	def isValidLocalPath(path: String): Boolean = getIsLocalAndRest(path) match {
-		case Some((true, _)) => true
-		case _ => false
-	}
-
-	def isValidHDFSPath(path: String): Boolean = getIsLocalAndRest(path) match {
-		case Some((false, _)) => true
-		case _ => false
-	}
-
-	def isValidPath(path: String): Boolean = getIsLocalAndRest(path).isDefined
-
-	private def getIsLocalAndRest(path: String): Option[(Boolean, String)] = {
-		val uri = try URI.create(path)
-		catch {
-			case _: IllegalArgumentException => null
-		}
-		val (scheme, rest) = (if (uri.getScheme != null) uri.getScheme else "", uri.getAuthority + uri.getPath)
-		val ok = try {
-			Paths.get(rest)
-			true
-		} catch {
-			case _: InvalidPathException => false
-		}
-		if (ok) {
-			val isLocal = scheme.trim.toLowerCase match {
-				case "file" | "" => Some(true)
-				case "hdfs" => Some(false)
-				case _ => None
-			}
-			if (isLocal.isDefined)
-				Some((isLocal.get, rest))
-
-			else None
-		}
-		else
-			None
-	}
-
-	def toSimpleLocalPath(path: String): String = getIsLocalAndRest(path) match {
-		case Some((true, rest)) => rest
-		case _ => throw new IllegalArgumentException
-	}
+	def isValidPath(path: String): Boolean = Try {
+		URI.create(path)
+	}.isSuccess
 
 }

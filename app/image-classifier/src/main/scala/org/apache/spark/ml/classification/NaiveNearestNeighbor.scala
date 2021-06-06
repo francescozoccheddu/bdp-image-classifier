@@ -58,10 +58,6 @@ private[classification] final class NaiveNearestNeighborModel(override val uid: 
 	override def predictRaw(features: Vector): Vector =
 		Vectors.sparse(numClasses, Array(predictLabel(features)), Array(1.0))
 
-	override def raw2prediction(rawPrediction: Vector): Double = rawPrediction.asInstanceOf[SparseVector].indices(0)
-
-	override def predict(features: Vector): Double = predictLabel(features)
-
 	def predictLabel(features: Vector): Int = {
 		var minDist = Double.PositiveInfinity
 		var minI = 0
@@ -76,6 +72,10 @@ private[classification] final class NaiveNearestNeighborModel(override val uid: 
 		}
 		trainLabelsBroadcast.value(minI)
 	}
+
+	override def raw2prediction(rawPrediction: Vector): Double = rawPrediction.asInstanceOf[SparseVector].indices(0)
+
+	override def predict(features: Vector): Double = predictLabel(features)
 
 	override def write: MLWriter = new NaiveNearestNeighborModel.NaiveNearestNeighborModelWriter(this)
 
