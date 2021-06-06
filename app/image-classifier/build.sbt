@@ -3,7 +3,7 @@ scalaVersion := "2.12.13"
 
 fork := true
 
-val sparkVersion: String = "3.1.1"
+val sparkVersion: String = "3.1.2"
 
 libraryDependencies ++= Seq(
 	"org.apache.spark" %% "spark-core" % sparkVersion % "provided",

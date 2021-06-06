@@ -7,7 +7,6 @@ import image_classifier.pipeline.data.DataStage._
 import image_classifier.pipeline.utils.Columns.{colName, resColName}
 import image_classifier.pipeline.utils.DataTypeImplicits.DataTypeExtension
 import image_classifier.utils.FileUtils
-import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.{abs, col}
 import org.apache.spark.sql.types.{BinaryType, BooleanType, IntegerType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -15,7 +14,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val labelCol: String, val isTestCol: String, val imageCol: String)(implicit spark: SparkSession, fileUtils: FileUtils)
   extends LoaderStage[DataFrame, DataConfig]("Data", loader)(fileUtils) {
 
-	private val merger: Merger = new Merger()(spark)
+	private val merger: Merger = new Merger()(fileUtils)
 
 	def this(loader: Option[Loader[DataConfig]])(implicit spark: SparkSession, fileUtils: FileUtils) = this(loader, defaultLabelCol, defaultIsTestCol, defaultImageCol)(spark, fileUtils)
 
@@ -49,8 +48,6 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val 
 	protected override def load(): DataFrame = load(file)
 
 	private def load(file: String): DataFrame = {
-		if (!FileUtils.isValidHDFSPath(file))
-			logger.warn("Loading from a local path hampers parallelization")
 		merger.load(file, keyCol, dataCol)
 		  .select(
 			  col(dataCol).alias(imageCol),
@@ -94,7 +91,6 @@ private[pipeline] object DataStage {
 
 	private val keyCol: String = resColName("key")
 	private val dataCol: String = resColName("data")
-	private val logger: Logger = Logger.getLogger(getClass)
 
 	private def encode(files: Seq[(Int, String)], testFraction: Double, testSeed: Int): Seq[(Int, String)] = {
 		val count = files.length * testFraction

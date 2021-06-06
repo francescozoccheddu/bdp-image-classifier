@@ -63,8 +63,6 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 	}
 
 	override protected def load(): DataFrame = {
-		if (!FileUtils.isValidHDFSPath(file))
-			logger.warn("Loading from a local path hampers parallelization")
 		spark.read.format("parquet").load(file).cache
 	}
 

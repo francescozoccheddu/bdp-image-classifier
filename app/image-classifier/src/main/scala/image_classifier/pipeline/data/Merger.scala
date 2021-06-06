@@ -2,14 +2,13 @@ package image_classifier.pipeline.data
 
 import image_classifier.pipeline.data.Merger.logger
 import image_classifier.utils.FileUtils
-import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{BytesWritable, IOUtils, IntWritable, SequenceFile}
 import org.apache.log4j.Logger
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.DataFrame
 
-private[data] final class Merger(implicit spark: SparkSession) {
+private[data] final class Merger(implicit fileUtils: FileUtils) {
 
-	def mergeFiles(files: Seq[(Int, String)], outputFile: String)(implicit fileUtils: FileUtils): Unit =
+	def mergeFiles(files: Seq[(Int, String)], outputFile: String): Unit =
 		mergeBytes(files.map { case (k, v) => (k, fileUtils.readBytes(v)) }, outputFile)
 
 	def mergeBytes(bytes: Seq[(Int, Array[Byte])], outputFile: String): Unit = {
@@ -18,11 +17,7 @@ private[data] final class Merger(implicit spark: SparkSession) {
 		try {
 			val key = new IntWritable
 			val value = new BytesWritable
-			writer = SequenceFile.createWriter(
-				spark.sparkContext.hadoopConfiguration,
-				SequenceFile.Writer.file(new Path(outputFile)),
-				SequenceFile.Writer.keyClass(key.getClass),
-				SequenceFile.Writer.valueClass(value.getClass))
+			writer = fileUtils.createSequenceFileWriter(outputFile, key.getClass, value.getClass)
 			for ((k, v) <- bytes) {
 				key.set(k)
 				value.set(v, 0, v.length)
@@ -37,9 +32,8 @@ private[data] final class Merger(implicit spark: SparkSession) {
 	}
 
 	def load(file: String, keyCol: String, dataCol: String): DataFrame = {
-		import spark.implicits._
 		logger.info(s"Loading merged files from '$file'")
-		spark.sparkContext.sequenceFile[Int, Array[Byte]](file).toDF(keyCol, dataCol)
+		fileUtils.loadSequenceFile[Int, Array[Byte]](file, keyCol, dataCol)
 	}
 
 }

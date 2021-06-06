@@ -11,7 +11,7 @@ object Launcher {
 
 	def run(configFile: String): Unit = {
 		logger.info(s"Launched with config file '$configFile'")
-		val absConfigFile = FileUtils.resolve(System.getProperty("user.dir"), configFile)
+		val absConfigFile = FileUtils.resolve("file://" + System.getProperty("user.dir"), configFile)
 		val workingDir = FileUtils.parent(absConfigFile)
 		SparkInstance.execute(spark => {
 			implicit val fileUtils = new FileUtils(workingDir)(spark)
