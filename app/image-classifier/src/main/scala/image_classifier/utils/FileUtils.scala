@@ -1,6 +1,7 @@
 package image_classifier.utils
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
 import scala.util.Try
 import java.net.URI
@@ -8,8 +9,9 @@ import java.nio.ByteBuffer
 import java.nio.channels.Channels
 import image_classifier.utils.FileUtils.{isValidPath, logger}
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.hadoop.io.{IOUtils, SequenceFile}
+import org.apache.hadoop.io.{IOUtils, SequenceFile, Writable}
 import org.apache.log4j.Logger
+import org.apache.spark.WritableConverterWrapper.WritableConverter
 import org.apache.spark.scheduler.{SparkListener, SparkListenerApplicationEnd}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
@@ -37,29 +39,19 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 
 	def makeDirs(dir: String): Boolean = getFs(dir).mkdirs(toPath(dir))
 
-	def createSequenceFileWriter(file: String, keyClass: Class[_], valueClass: Class[_]): SequenceFile.Writer =
+	def createSequenceFileWriter(file: String, keyClass: Class[_ <: Writable], valueClass: Class[_ <: Writable]): SequenceFile.Writer =
 		SequenceFile.createWriter(
 			spark.sparkContext.hadoopConfiguration,
 			SequenceFile.Writer.file(toPath(file)),
 			SequenceFile.Writer.keyClass(keyClass),
 			SequenceFile.Writer.valueClass(valueClass))
 
-	def loadSequenceFile[Key, Value](file: String, keyCol: String, valueCol: String)(implicit keyClassTag: TypeTag[Key], valueClassTag: TypeTag[Value]): DataFrame = {
+	def loadSequenceFile[Key, Value](file: String, keyCol: String, valueCol: String)(implicit ktt: TypeTag[Key], vtt: TypeTag[Value], kct: ClassTag[Key], vct: ClassTag[Value], kvc: () => WritableConverter[Key], vvc: () => WritableConverter[Value]): DataFrame = {
 		import spark.implicits._
-		spark.sparkContext.sequenceFile[Key, Value](
-			resolve(file),
-			keyClassTag.mirror.runtimeClass(keyClassTag.tpe).asInstanceOf[Class[Key]],
-			valueClassTag.mirror.runtimeClass(valueClassTag.tpe).asInstanceOf[Class[Value]])
-		  .toDF(keyCol, valueCol)
+		spark.sparkContext.sequenceFile[Key, Value](resolve(file)).toDF(keyCol, valueCol)
 	}
 
 	def exists(path: String): Boolean = getFs(path).exists(toPath(path))
-
-	private def getFs(path: String): FileSystem = FileSystem.get(URI.create(resolve(path)), spark.sparkContext.hadoopConfiguration)
-
-	def resolve(file: String): String = toPath(file).toString
-
-	private def toPath(path: String): Path = new Path(workingPath, path)
 
 	def writeString(file: String, string: String): Unit = writeBytes(file, string.getBytes)
 
@@ -91,6 +83,12 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 			}
 		tempFiles.clear()
 	}
+
+	private def getFs(path: String): FileSystem = FileSystem.get(URI.create(resolve(path)), spark.sparkContext.hadoopConfiguration)
+
+	def resolve(file: String): String = toPath(file).toString
+
+	private def toPath(path: String): Path = new Path(workingPath, path)
 
 }
 
