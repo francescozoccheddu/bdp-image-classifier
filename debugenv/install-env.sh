@@ -39,8 +39,8 @@ echo "--- Installing Hadoop 3.3.0"
 get https://downloads.apache.org/hadoop/common/hadoop-3.3.0/hadoop-3.3.0-aarch64.tar.gz $HADOOP_HOME
 
 # Install Spark 3.1.1 for Hadoop 3.2
-echo "--- Installing Spark 3.1.1"
-get https://downloads.apache.org/spark/spark-3.1.1/spark-3.1.1-bin-hadoop3.2.tgz $SPARK_HOME
+echo "--- Installing Spark 3.1.2"
+get https://downloads.apache.org/spark/spark-3.1.2/spark-3.1.2-bin-hadoop3.2.tgz $SPARK_HOME
 
 # Update profile
 echo "-- Extending ~/.profile with $ADDIT_PROF"
