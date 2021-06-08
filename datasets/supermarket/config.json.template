@@ -1,6 +1,6 @@
 {
   "data": {
-    "save": "hdfs://localhost:9000/image-classifier/data",
+    "save": "hdfs:///image-classifier/data",
     "make": {
       "trainingSet": [
         ["./images/train/0/*.jpg"],
@@ -41,7 +41,7 @@
     }
   },
   "featurization": {
-    "save": "hdfs://localhost:9000/image-classifier/features",
+    "save": "hdfs:///image-classifier/features",
     "make": {
 		"descriptor": {
 			"algorithm": "sift",

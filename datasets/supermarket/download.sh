@@ -11,7 +11,7 @@ echo "-- Downloading dataset into '$OUTPUT_DIR'"
 mkdir -p "$OUTPUT_DIR"
 cd "$OUTPUT_DIR"
 
-wget "https://iplab.dmi.unict.it/MLC2018/dataset.zip" -O .dataset.zip -nv --show-progress
+curl --output .dataset.zip "https://iplab.dmi.unict.it/MLC2018/dataset.zip"
 
 echo "-- Extracting dataset"
 
