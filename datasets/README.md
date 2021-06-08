@@ -6,7 +6,7 @@ Here is a list of datasets that you can try:
 
 | Name               | Size  | Images | Classes | Source                              |
 | :----------------: | :---: | :----: | :-----: | :---------------------------------: |
-| supermarket        | 275MB | 13300  | 16      | https://iplab.dmi.unict.it/MLC2018/ |
+| supermarket        | 275MB | 13360  | 16      | https://iplab.dmi.unict.it/MLC2018/ |
 
 ## Downloading a dataset
 

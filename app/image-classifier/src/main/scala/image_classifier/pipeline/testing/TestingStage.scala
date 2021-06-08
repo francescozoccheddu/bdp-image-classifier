@@ -50,11 +50,9 @@ private[testing] object TestingStage {
 		val printer = new Printer
 		printer.addSection("Summary")
 		printer.addPercent("Accuracy", metrics.accuracy)
-		printer.addPercent("Hamming loss", metrics.hammingLoss)
 		printer.addPercent("F-Measure", metrics.weightedFMeasure)
 		printer.addPercent("Precision", metrics.weightedPrecision)
-		printer.addPercent("Recall", metrics.weightedRecall)
-		printer.addPercent("True positives", metrics.weightedTruePositiveRate)
+		printer.addPercent("True positives (Recall)", metrics.weightedTruePositiveRate)
 		printer.addPercent("False positives", metrics.weightedFalsePositiveRate)
 		printer.add("Confusion matrix", metrics.confusionMatrix.toString)
 		for (l <- metrics.labels) {
@@ -62,8 +60,7 @@ private[testing] object TestingStage {
 			printer.addSection(s"Class '${labels.map(_ (i)).getOrElse(i.toString)}'")
 			printer.addPercent("F-Measure", metrics.fMeasure(l))
 			printer.addPercent("Precision", metrics.precision(l))
-			printer.addPercent("Recall", metrics.recall(l))
-			printer.addPercent("True positives", metrics.truePositiveRate(l))
+			printer.addPercent("True positives (Recall)", metrics.truePositiveRate(l))
 			printer.addPercent("False positives", metrics.falsePositiveRate(l))
 		}
 		printer.get
