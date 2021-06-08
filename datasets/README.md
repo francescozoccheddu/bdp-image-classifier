@@ -4,9 +4,10 @@
 
 Here is a list of datasets that you can try:
 
-| Name               | Size  | Images | Classes | Source                              |
-| :----------------: | :---: | :----: | :-----: | :---------------------------------: |
-| supermarket        | 275MB | 13360  | 16      | https://iplab.dmi.unict.it/MLC2018/ |
+| Name               | Size  | Images | Classes | Source                                                  |
+| :----------------: | :---: | :----: | :-----: | :-----------------------------------------------------: |
+| supermarket        | 275MB | 13360  | 16      | https://iplab.dmi.unict.it/MLC2018/                     |
+| indoor             | 275MB | 13360  | 16      | https://www.kaggle.com/itsahmad/indoor-scenes-cvpr-2019 |
 
 ## Downloading a dataset
 

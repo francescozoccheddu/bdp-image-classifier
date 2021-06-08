@@ -42,7 +42,7 @@ private[featurization] object BOWV {
 		  .setK(config.size)
 		  .setMaxIter(config.maxIterations)
 		  .setTol(config.convergenceTolerance)
-		  .setSeed(config.seed)
+		  .setSeed(config.actualSeed)
 		  .setInitSteps(config.initSteps)
 		  .setFeaturesCol(inputCol)
 		  .setPredictionCol(centerCol)

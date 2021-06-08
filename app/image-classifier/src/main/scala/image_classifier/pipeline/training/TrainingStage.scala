@@ -49,7 +49,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 				  .setAggregationDepth(config.depth)
 			case TrainingAlgorithm.DecisionTree =>
 				new DecisionTreeClassifier()
-				  .setSeed(config.seed)
+				  .setSeed(config.actualSeed)
 				  .setMaxBins(config.maxBins)
 				  .setMaxDepth(config.depth)
 				  .setMinInfoGain(config.minInfoGain)
@@ -58,7 +58,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 				  .setMaxIter(config.maxIterations)
 				  .setRegParam(config.regParam)
 				  .setFactorSize(config.factorSize)
-				  .setSeed(config.seed)
+				  .setSeed(config.actualSeed)
 				  .setStepSize(config.stepSize)
 				  .setTol(config.convergenceTolerance)
 			case TrainingAlgorithm.GradientBoosted =>
@@ -67,7 +67,7 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 				  .setStepSize(config.stepSize)
 				  .setMaxBins(config.maxBins)
 				  .setMaxDepth(config.depth)
-				  .setSeed(config.seed)
+				  .setSeed(config.actualSeed)
 				  .setMinInfoGain(config.minInfoGain)
 			case TrainingAlgorithm.LinearSupportVector =>
 				new LinearSVC()
@@ -78,13 +78,13 @@ private[pipeline] final class TrainingStage(loader: Option[Loader[TrainingConfig
 			case TrainingAlgorithm.RandomForest =>
 				new RandomForestClassifier()
 				  .setNumTrees(config.treeCount)
-				  .setSeed(config.seed)
+				  .setSeed(config.actualSeed)
 				  .setMaxBins(config.maxBins)
 				  .setMaxDepth(config.depth)
 				  .setMinInfoGain(config.minInfoGain)
 			case TrainingAlgorithm.MultilayerPerceptron =>
 				new MultilayerPerceptronClassifier()
-				  .setSeed(config.seed)
+				  .setSeed(config.actualSeed)
 				  .setMaxIter(config.maxIterations)
 				  .setLayers(featurizationStage.codebookSize +: config.hiddenLayers.toArray :+ featurizationStage.labelsCount)
 				  .setStepSize(config.stepSize)

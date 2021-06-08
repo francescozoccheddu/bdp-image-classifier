@@ -2,64 +2,81 @@
   "data": {
     "save": "hdfs:///image-classifier/data",
     "make": {
-      "trainingSet": [
-        ["./images/train/0/*.jpg"],
-        ["./images/train/1/*.jpg"],
-        ["./images/train/2/*.jpg"],
-        ["./images/train/3/*.jpg"],
-        ["./images/train/4/*.jpg"],
-        ["./images/train/5/*.jpg"],
-        ["./images/train/6/*.jpg"],
-        ["./images/train/7/*.jpg"],
-        ["./images/train/8/*.jpg"],
-        ["./images/train/9/*.jpg"],
-        ["./images/train/10/*.jpg"],
-        ["./images/train/11/*.jpg"],
-        ["./images/train/12/*.jpg"],
-        ["./images/train/13/*.jpg"],
-        ["./images/train/14/*.jpg"],
-        ["./images/train/15/*.jpg"]
+      "dataSet": [
+        [
+          "./images/0/*.jpg"
+        ],
+        [
+          "./images/1/*.jpg"
+        ],
+        [
+          "./images/2/*.jpg"
+        ],
+        [
+          "./images/3/*.jpg"
+        ],
+        [
+          "./images/4/*.jpg"
+        ],
+        [
+          "./images/5/*.jpg"
+        ],
+        [
+          "./images/6/*.jpg"
+        ],
+        [
+          "./images/7/*.jpg"
+        ],
+        [
+          "./images/8/*.jpg"
+        ],
+        [
+          "./images/9/*.jpg"
+        ],
+        [
+          "./images/10/*.jpg"
+        ],
+        [
+          "./images/11/*.jpg"
+        ],
+        [
+          "./images/12/*.jpg"
+        ],
+        [
+          "./images/13/*.jpg"
+        ],
+        [
+          "./images/14/*.jpg"
+        ],
+        [
+          "./images/15/*.jpg"
+        ]
       ],
-	  "testSet": [
-        ["./images/test/0/*.jpg"],
-        ["./images/test/1/*.jpg"],
-        ["./images/test/2/*.jpg"],
-        ["./images/test/3/*.jpg"],
-        ["./images/test/4/*.jpg"],
-        ["./images/test/5/*.jpg"],
-        ["./images/test/6/*.jpg"],
-        ["./images/test/7/*.jpg"],
-        ["./images/test/8/*.jpg"],
-        ["./images/test/9/*.jpg"],
-        ["./images/test/10/*.jpg"],
-        ["./images/test/11/*.jpg"],
-        ["./images/test/12/*.jpg"],
-        ["./images/test/13/*.jpg"],
-        ["./images/test/14/*.jpg"],
-        ["./images/test/15/*.jpg"]
-      ]
+      "testSample": {
+        "maxFractionPerClass": 0.2
+      }
     }
   },
   "featurization": {
     "save": "hdfs:///image-classifier/features",
     "make": {
-		"descriptor": {
-			"algorithm": "sift",
-			"featureCount": 200
-		},
-		"codebook": {
-			"size": 400,
-			"assignNearest": true,
-			"imageSample": {
-				"maxCountPerClass": 100
-			},
-			"featureSample": {
-				"maxCountPerClass": 5000
-			}
-		}
+      "descriptor": {
+        "algorithm": "sift",
+        "featureCount": 200
+      },
+      "codebook": {
+        "size": 400,
+        "assignNearest": true,
+        "imageSample": {
+          "maxCountPerClass": 100
+        },
+        "featureSample": {
+          "maxCountPerClass": 5000
+        }
+      }
     }
-},
-"training": {
+  },
+  "training": {
     "make": {
       "algorithm": "nn"
     }

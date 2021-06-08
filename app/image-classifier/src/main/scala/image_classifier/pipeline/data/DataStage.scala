@@ -1,11 +1,11 @@
 package image_classifier.pipeline.data
 
-import scala.util.Random
-import image_classifier.configuration.{DataConfig, LoadMode, Loader}
+import image_classifier.configuration.{DataConfig, LoadMode, Loader, SampleConfig}
 import image_classifier.pipeline.LoaderStage
 import image_classifier.pipeline.data.DataStage._
 import image_classifier.pipeline.utils.Columns.{colName, resColName}
 import image_classifier.pipeline.utils.DataTypeImplicits.DataTypeExtension
+import image_classifier.pipeline.utils.SampleUtils
 import image_classifier.utils.FileUtils
 import org.apache.spark.sql.functions.{abs, col}
 import org.apache.spark.sql.types.{BinaryType, BooleanType, IntegerType}
@@ -35,7 +35,7 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val 
 		}
 		val outputFile = save.getOrElse(config.tempFile)
 		val sources = Array.ofDim[Option[Seq[(Int, String)]]](3)
-		sources(0) = config.dataSet.map(encodeFiles(_, config.testFraction, config.splitSeed, config.stratified))
+		sources(0) = config.dataSet.map(encodeFiles(_, config.testSample))
 		sources(1) = config.trainingSet.map(encodeFiles(_, false))
 		sources(2) = config.testSet.map(encodeFiles(_, true))
 		if (save.isEmpty)
@@ -45,7 +45,24 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val 
 		load(outputFile)
 	}
 
-	protected override def load(): DataFrame = load(file)
+	private def encodeFiles(classFiles: Seq[Seq[String]], isTest: Boolean): Seq[(Int, String)] =
+		explodeFiles(classFiles)
+		  .map(p => encode(p, isTest))
+
+	private def explodeFiles(classFiles: Seq[Seq[String]]): Seq[(Int, String)] =
+		resolveFiles(classFiles)
+		  .flatMap(zip => zip._1.map((zip._2, _)))
+
+	private def resolveFiles(classFiles: Seq[Seq[String]]): Seq[(Seq[String], Int)] =
+		classFiles
+		  .map(_.flatMap(fileUtils.glob))
+		  .zipWithIndex
+
+	private def encodeFiles(classFiles: Seq[Seq[String]], testSample: SampleConfig): Seq[(Int, String)] =
+		SampleUtils
+		  .split(classFiles.map(_.flatMap(fileUtils.glob)), testSample)
+		  .zipWithIndex
+		  .flatMap { case ((test, train), label) => encode(test, label, true) ++ encode(train, label, false) }
 
 	private def load(file: String): DataFrame = {
 		merger.load(file, keyCol, dataCol)
@@ -55,31 +72,7 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val 
 			  (abs(col(keyCol)) - 1).alias(labelCol))
 	}
 
-	private def resolveFiles(classFiles: Seq[Seq[String]]): Seq[(Seq[String], Int)] =
-		classFiles
-		  .map(_.flatMap(fileUtils.glob))
-		  .zipWithIndex
-
-	private def explodeFiles(classFiles: Seq[Seq[String]]): Seq[(Int, String)] =
-		resolveFiles(classFiles)
-		  .flatMap(zip => zip._1.map((zip._2, _)))
-
-	private def encodeFiles(classFiles: Seq[Seq[String]], isTest: Boolean): Seq[(Int, String)] =
-		explodeFiles(classFiles)
-		  .map(p => encode(p, isTest))
-
-	private def encodeFiles(classFiles: Seq[Seq[String]], testFraction: Double, testSeed: Int): Seq[(Int, String)] =
-		encode(explodeFiles(classFiles), testFraction, testSeed)
-
-	private def encodeFiles(classFiles: Seq[Seq[String]], testFraction: Double, testSeed: Int, stratified: Boolean): Seq[(Int, String)] =
-		if (stratified)
-			encodeFilesStratified(classFiles, testFraction, testSeed)
-		else
-			encodeFiles(classFiles, testFraction, testSeed)
-
-	private def encodeFilesStratified(classFiles: Seq[Seq[String]], testFraction: Double, testSeed: Int): Seq[(Int, String)] =
-		resolveFiles(classFiles)
-		  .flatMap(zip => encode(zip._1.map((zip._2, _)), testFraction, testSeed))
+	protected override def load(): DataFrame = load(file)
 
 }
 
@@ -92,20 +85,16 @@ private[pipeline] object DataStage {
 	private val keyCol: String = resColName("key")
 	private val dataCol: String = resColName("data")
 
-	private def encode(files: Seq[(Int, String)], testFraction: Double, testSeed: Int): Seq[(Int, String)] = {
-		val count = files.length * testFraction
-		new Random(testSeed)
-		  .shuffle(files)
-		  .zipWithIndex
-		  .map(p => encode(p._1, p._2 < count))
-	}
+	private def encode(paths: Iterable[String], label: Int, isTest: Boolean): Iterable[(Int, String)] =
+		paths.map(encode(_, label, isTest))
 
-	private def encode(file: (Int, String), isTest: Boolean): (Int, String) = {
-		val (label, path) = file
+	private def encode(path: String, label: Int, isTest: Boolean): (Int, String) =
 		if (isTest)
 			(-label - 1, path)
 		else
 			(label + 1, path)
-	}
+
+	private def encode(file: (Int, String), isTest: Boolean): (Int, String) =
+		encode(file._2, file._1, isTest)
 
 }
