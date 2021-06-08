@@ -17,10 +17,13 @@ private[featurization] final case class Descriptor(config: DescriptorConfig) {
 		}
 	}
 
-	def apply(data: Array[Byte]): Seq[Vector] = {
-		val img = Image.decode(data)
+	def apply(data: Array[Byte], useImageIO: Boolean): Seq[Vector] = {
+		val img = Image.decode(data, useImageIO)
 		val resizedImg = Image.limitSize(img, config.maxSize)
-		describe(resizedImg)
+		if (resizedImg.rows > 0 && resizedImg.cols > 0)
+			describe(resizedImg)
+		else
+			Nil
 	}
 
 	private def describe(image: Mat): Seq[Vector] = {

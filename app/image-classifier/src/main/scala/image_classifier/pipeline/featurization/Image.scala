@@ -1,16 +1,42 @@
 package image_classifier.pipeline.featurization
 
-import org.bytedeco.javacpp.opencv_core.{Mat, Size}
+import java.awt.image.{BufferedImage, DataBufferByte}
+import java.io.ByteArrayInputStream
+import javax.imageio.ImageIO
+import org.bytedeco.javacpp.BytePointer
+import org.bytedeco.javacpp.opencv_core.{CV_8UC1, Mat, Size}
 import org.bytedeco.javacpp.opencv_imgcodecs.{IMREAD_GRAYSCALE, imdecode}
 import org.bytedeco.javacpp.opencv_imgproc.{INTER_AREA, resize}
 
 private[featurization] object Image {
 
-	def decode(data: Array[Byte]): Mat = {
-		val rawMat = new Mat(data, false)
-		val mat = imdecode(rawMat, IMREAD_GRAYSCALE)
-		rawMat.deallocate()
+	def decode(data: Array[Byte], useImageIO: Boolean): Mat = {
+		val mat = if (useImageIO)
+			decodeWithImageIO(data)
+		else {
+			val rawMat = new Mat(data, false)
+			val mat = imdecode(rawMat, IMREAD_GRAYSCALE)
+			rawMat.deallocate()
+			mat
+		}
 		mat
+	}
+
+	private def decodeWithImageIO(data: Array[Byte]): Mat = {
+		val array = new ByteArrayInputStream(data)
+		val image = {
+			val original = ImageIO.read(array)
+			if (original.getType == BufferedImage.TYPE_BYTE_GRAY) original
+			else {
+				val greyscale = new BufferedImage(original.getWidth, original.getHeight, BufferedImage.TYPE_BYTE_GRAY)
+				val graphics = greyscale.getGraphics
+				graphics.drawImage(image, 0, 0, null)
+				graphics.dispose()
+				greyscale
+			}
+		}
+		val pointer = new BytePointer(image.getRaster.getDataBuffer.asInstanceOf[DataBufferByte].getData: _*)
+		new Mat(image.getHeight, image.getWidth, CV_8UC1, pointer)
 	}
 
 	def limitSize(mat: Mat, maxSize: Int): Mat = {

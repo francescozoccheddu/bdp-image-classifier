@@ -10,7 +10,7 @@ import image_classifier.utils.FileUtils
 import org.apache.log4j.Logger
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vector
-import org.apache.spark.sql.functions.{col, countDistinct, udf}
+import org.apache.spark.sql.functions.{col, countDistinct, size, udf}
 import org.apache.spark.sql.types.{BooleanType, IntegerType}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
@@ -42,8 +42,10 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 	private def describe(config: DescriptorConfig, data: DataFrame): DataFrame = {
 		logger.info("Extracting features")
 		val descriptor = Descriptor(config)
-		val describe = udf(descriptor.apply: Array[Byte] => Seq[Vector])
-		data.withColumn(outputCol, describe(col(dataStage.imageCol)))
+		val describe = udf(descriptor.apply(_, config.useImageIO))
+		data
+		  .withColumn(outputCol, describe(col(dataStage.imageCol)))
+		  .filter(size(col(outputCol)) > 0)
 	}
 
 	private def createCodebook(config: CodebookConfig, data: DataFrame): Seq[Vector] = {
