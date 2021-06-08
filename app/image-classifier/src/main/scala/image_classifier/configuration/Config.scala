@@ -55,6 +55,7 @@ object DescriptorConfig {
 	val defaultFeatureCount: Int = 50
 	val defaultHessianThreshold: Double = 100
 	val defaultMaxSize: Int = 1024
+	val defaultUseImageIO: Boolean = false
 
 }
 
@@ -136,7 +137,8 @@ final case class DescriptorConfig(
                                    sigma: Double = DescriptorConfig.defaultSigma,
                                    hessianThreshold: Double = DescriptorConfig.defaultHessianThreshold,
                                    octaveCount: Int = DescriptorConfig.defaultOctaveCount,
-                                   maxSize: Int = DescriptorConfig.defaultMaxSize
+                                   maxSize: Int = DescriptorConfig.defaultMaxSize,
+                                   useImageIO: Boolean = DescriptorConfig.defaultUseImageIO
                                  ) {
 
 	requireIn(nameOf(featureCount), featureCount, 1, 100000)

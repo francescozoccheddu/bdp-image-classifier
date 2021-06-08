@@ -46,8 +46,6 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 		tempFiles += resolve(file)
 	}
 
-	def resolve(file: String): String = file.path.toString
-
 	def makeDirs(dir: String): Boolean = dir.run { case (path, fs) => fs.mkdirs(path) }
 
 	def createSequenceFileWriter(file: String, keyClass: Class[_ <: Writable], valueClass: Class[_ <: Writable]): SequenceFile.Writer =
@@ -61,6 +59,8 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 		import spark.implicits._
 		spark.sparkContext.sequenceFile[Key, Value](resolve(file)).toDF(keyCol, valueCol)
 	}
+
+	def resolve(file: String): String = file.path.toString
 
 	def exists(path: String): Boolean = path.run { case (path, fs) => fs.exists(path) }
 
