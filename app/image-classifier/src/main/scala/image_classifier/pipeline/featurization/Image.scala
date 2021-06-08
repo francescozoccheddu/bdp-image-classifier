@@ -30,7 +30,7 @@ private[featurization] object Image {
 			else {
 				val greyscale = new BufferedImage(original.getWidth, original.getHeight, BufferedImage.TYPE_BYTE_GRAY)
 				val graphics = greyscale.getGraphics
-				graphics.drawImage(image, 0, 0, null)
+				graphics.drawImage(original, 0, 0, null)
 				graphics.dispose()
 				greyscale
 			}
