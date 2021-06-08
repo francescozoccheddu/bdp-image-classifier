@@ -3,7 +3,7 @@
 # Environment installer
 
 USR=`whoami`
-IC_HOME=`realpath ~/.ic_env`
+IC_HOME=`realpath ~/.image-classifier-debug-env`
 ADDIT_PROF="$IC_HOME/profile"
 HADOOP_HOME="$IC_HOME/hadoop"
 SPARK_HOME="$IC_HOME/spark"
@@ -22,7 +22,7 @@ function get {
 		echo "Directory already exists. Skipping."
 		return
 	fi
-	wget "$1" -O .temp.tgz -nv --show-progress
+	curl --output .temp.tgz "$1"
 	mkdir .temp
 	tar xf .temp.tgz -C .temp
 	rm -f .temp.tgz
@@ -63,8 +63,8 @@ export PATH=\"\$PATH:\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin\"
 export SPARK_HOME=\"$SPARK_HOME\"
 export PATH=\"\$PATH:\$SPARK_HOME/bin:\$SPARK_HOME/sbin\"
 " > "$ADDIT_PROF"
-sed -i "/ic_env/d" ~/.profile 
-echo ". \"$ADDIT_PROF\" # ic_env profile" >> ~/.profile
+sed -i '/# image-classifier-debug-env profile/d' ~/.profile 
+echo ". \"$ADDIT_PROF\" # image-classifier-debug-env profile" >> ~/.profile
 . ~/.profile
 
 # Setup Hadoop
