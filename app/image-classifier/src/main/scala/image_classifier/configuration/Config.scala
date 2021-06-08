@@ -20,8 +20,6 @@ final case class DataConfig private[configuration](
                                                     testSample: SampleConfig = DataConfig.defaultTestSample
                                                   ) extends LoadableConfig {
 
-	requireFile(nameOf(tempFile), tempFile)
-
 	def labelsCount: Int = dataSet.map(_.length).getOrElse(0) max trainingSet.map(_.length).getOrElse(0) max testSet.map(_.length).getOrElse(0)
 
 }
@@ -204,11 +202,7 @@ final case class TestingConfig(
                                 save: O[String] = None,
                                 labels: O[Seq[String]] = None,
                                 print: Boolean = TestingConfig.defaultPrint
-                              ) {
-
-	save.foreach(requireFile(nameOf(save), _))
-
-}
+                              )
 
 object TestingConfig {
 

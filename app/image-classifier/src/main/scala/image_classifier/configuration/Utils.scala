@@ -52,9 +52,6 @@ private[configuration] object Utils {
 	def requireNonEmpty(name: String, value: TraversableOnce[_]): Unit =
 		require(value.nonEmpty, s"'$name' cannot be empty")
 
-	def requireFile(name: String, value: String): Unit =
-		require(FileUtils.isValidPath(value), s"'$name' must be a valid file path")
-
 	def requireDep(name: String, value: Option[_], dependencyName: String, dependencyValue: Option[_]): Unit =
 		require(value.isEmpty || dependencyValue.isDefined, s"'$name' requires '$dependencyName'")
 

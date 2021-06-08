@@ -1,13 +1,13 @@
 package image_classifier.utils
 
 import scala.collection.mutable
+import scala.language.implicitConversions
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
 import scala.util.Try
-import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
-import image_classifier.utils.FileUtils.{isValidPath, logger}
+import image_classifier.utils.FileUtils.logger
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.io.{IOUtils, SequenceFile, Writable}
 import org.apache.log4j.Logger
@@ -17,9 +17,18 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 
 private[image_classifier] final class FileUtils(val workingDir: String)(implicit spark: SparkSession) {
 
+	private implicit class PathExtension(string: String) {
+
+		val path: Path = new Path(workingPath, string)
+
+		def run[T](func: (Path, FileSystem) => T): T = func(path, fs)
+
+		def fs: FileSystem = path.getFileSystem(spark.sparkContext.hadoopConfiguration)
+
+	}
+
 	logger.info("New instance")
 
-	require(isValidPath(workingDir))
 	private val workingPath: Path = new Path(workingDir)
 
 	private val sparkListener: SparkListener = new SparkListener {
@@ -37,12 +46,14 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 		tempFiles += resolve(file)
 	}
 
-	def makeDirs(dir: String): Boolean = getFs(dir).mkdirs(toPath(dir))
+	def resolve(file: String): String = file.path.toString
+
+	def makeDirs(dir: String): Boolean = dir.run { case (path, fs) => fs.mkdirs(path) }
 
 	def createSequenceFileWriter(file: String, keyClass: Class[_ <: Writable], valueClass: Class[_ <: Writable]): SequenceFile.Writer =
 		SequenceFile.createWriter(
 			spark.sparkContext.hadoopConfiguration,
-			SequenceFile.Writer.file(toPath(file)),
+			SequenceFile.Writer.file(file.path),
 			SequenceFile.Writer.keyClass(keyClass),
 			SequenceFile.Writer.valueClass(valueClass))
 
@@ -51,12 +62,12 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 		spark.sparkContext.sequenceFile[Key, Value](resolve(file)).toDF(keyCol, valueCol)
 	}
 
-	def exists(path: String): Boolean = getFs(path).exists(toPath(path))
+	def exists(path: String): Boolean = path.run { case (path, fs) => fs.exists(path) }
 
 	def writeString(file: String, string: String): Unit = writeBytes(file, string.getBytes)
 
 	def writeBytes(file: String, bytes: Array[Byte]): Unit = {
-		val stream = getFs(file).create(toPath(file), true)
+		val stream = file.run { case (path, fs) => fs.create(path, true) }
 		try {
 			val channel = Channels.newChannel(stream)
 			try IOUtils.writeFully(channel, ByteBuffer.wrap(bytes))
@@ -67,27 +78,23 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 	def readString(file: String): String = new String(readBytes(file))
 
 	def readBytes(file: String): Array[Byte] = {
-		val stream = getFs(file).open(toPath(file))
+		val stream = file.run { case (path, fs) => fs.open(path) }
 		try IOUtils.readFullyToByteArray(stream)
 		finally IOUtils.closeStream(stream)
 	}
 
-	private def getFs(path: String): FileSystem = FileSystem.get(URI.create(resolve(path)), spark.sparkContext.hadoopConfiguration)
-
-	def resolve(file: String): String = toPath(file).toString
-
-	private def toPath(path: String): Path = new Path(workingPath, path)
-
 	def glob(glob: String): Seq[String] =
-		getFs(glob).globStatus(toPath(glob)).map(_.getPath.toString)
+		glob.run { case (path, fs) => fs.globStatus(path).map(_.getPath.toString) }
 
 	private def clearTempFiles(): Unit = {
 		logger.info(s"Clearing ${tempFiles.length} temp files")
 		for (file <- tempFiles)
 			Try {
-				getFs(file).delete(toPath(file), false)
+				file.run { case (path, fs) => fs.delete(path, false)
+				}
+				tempFiles.clear()
 			}
-		tempFiles.clear()
+
 	}
 
 }
@@ -102,9 +109,5 @@ private[image_classifier] object FileUtils {
 	}
 
 	def resolve(context: String, path: String): String = new Path(context, path).toString
-
-	def isValidPath(path: String): Boolean = Try {
-		URI.create(path)
-	}.isSuccess
 
 }
