@@ -48,12 +48,6 @@ case `uname -m` in
 	exit 1
     ;;
 esac
-if [ `uname -m` == 'x86_64' ]; then 
-	echo "64"; 
-else 
-	echo "32"; 
-fi
-
 get "$JDK_URL" $JAVA_HOME
 
 # Install Hadoop 3.2.2
