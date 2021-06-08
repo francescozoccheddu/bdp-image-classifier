@@ -72,6 +72,12 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 		finally IOUtils.closeStream(stream)
 	}
 
+	private def getFs(path: String): FileSystem = FileSystem.get(URI.create(resolve(path)), spark.sparkContext.hadoopConfiguration)
+
+	def resolve(file: String): String = toPath(file).toString
+
+	private def toPath(path: String): Path = new Path(workingPath, path)
+
 	def glob(glob: String): Seq[String] =
 		getFs(glob).globStatus(toPath(glob)).map(_.getPath.toString)
 
@@ -83,12 +89,6 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 			}
 		tempFiles.clear()
 	}
-
-	private def getFs(path: String): FileSystem = FileSystem.get(URI.create(resolve(path)), spark.sparkContext.hadoopConfiguration)
-
-	def resolve(file: String): String = toPath(file).toString
-
-	private def toPath(path: String): Path = new Path(workingPath, path)
 
 }
 

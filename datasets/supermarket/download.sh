@@ -1,28 +1,30 @@
 #!/bin/bash
 
-# Data downloader
+# 'supermarket' dataset downloader
 
-OUTPUT_DIR=`realpath "${1:-dataset}"`
+OUTPUT_DIR="${1:-dataset}"
+mkdir -p "$OUTPUT_DIR"
 THIS_FILE=`realpath "$0"`
 THIS_DIR=`dirname "$THIS_FILE"`
 
-echo "-- Downloading dataset into '$OUTPUT_DIR'"
+echo "-- Downloading 'supermarket' dataset into '`realpath "$OUTPUT_DIR"`'"
 
-mkdir -p "$OUTPUT_DIR"
 cd "$OUTPUT_DIR"
 
-curl --output .dataset.zip "https://iplab.dmi.unict.it/MLC2018/dataset.zip"
+curl -o .dataset.zip "https://iplab.dmi.unict.it/MLC2018/dataset.zip"
 
 echo "-- Extracting dataset"
 
 unzip -q -o .dataset.zip
 rm -f .dataset.zip
 
+mv "images" ".images"
+
 function move {
 	declare -A OUTPUTS
-	LINES=`tr -d "\r" < "$1"`
-	read -a LABELS <<< `(cut -d "," -f6 | xargs) <<< "$LINES"`
-	read -a INPUTS <<< `(cut -d "," -f1 | xargs) <<< "$LINES"`
+	SOURCE=`tr -d '\r' < "$1"`
+	read -a LABELS <<< `(cut -d "," -f6 | xargs) <<< "$SOURCE"`
+	read -a INPUTS <<< `(cut -d "," -f1 | xargs) <<< "$SOURCE"`
 	for I in "${!LABELS[@]}"; 
 	do
 		LABEL=${LABELS[$I]}
@@ -32,15 +34,14 @@ function move {
 	for LABEL in "${!OUTPUTS[@]}"
 	do
 		INPUT=${OUTPUTS[$LABEL]}
-		mkdir -p "images/$2/$LABEL"
-		mv -t images/$2/$LABEL $INPUT
+		mkdir -p "images/$LABEL"
+		mv -t "images/$LABEL" $INPUT
 	done
 }
 
-mv "images" ".images"
-move "training_list.csv" "train"
-move "validation_list.csv" "test"
-rm -rf ".images"
+move "training_list.csv"
+move "validation_list.csv"
+rm -r -f ".images"
 rm -f "training_list.csv" "validation_list.csv" "testing_list_blind.csv" "README.txt"
 cp "$THIS_DIR/config.json.template" "config.json"
 

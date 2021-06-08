@@ -7,6 +7,7 @@ import image_classifier.configuration.ImageFeatureAlgorithm.ImageFeatureAlgorith
 import image_classifier.configuration.TrainingAlgorithm.TrainingAlgorithm
 import image_classifier.configuration.Utils._
 import image_classifier.utils.FileUtils
+import image_classifier.utils.OptionImplicits.OptionExtension
 import org.apache.log4j.Logger
 
 private[image_classifier] sealed trait LoadableConfig
@@ -16,12 +17,9 @@ final case class DataConfig private[configuration](
                                                     dataSet: O[Seq[Seq[String]]] = None,
                                                     trainingSet: O[Seq[Seq[String]]] = None,
                                                     testSet: O[Seq[Seq[String]]] = None,
-                                                    testFraction: Double = JointDataConfig.defaultTestFraction,
-                                                    splitSeed: Int = JointDataConfig.defaultSplitSeed,
-                                                    stratified: Boolean = JointDataConfig.defaultStratified
+                                                    testSample: SampleConfig = DataConfig.defaultTestSample
                                                   ) extends LoadableConfig {
 
-	requireIn(nameOf(testFraction), testFraction, 0, 1)
 	requireFile(nameOf(tempFile), tempFile)
 
 	def labelsCount: Int = dataSet.map(_.length).getOrElse(0) max trainingSet.map(_.length).getOrElse(0) max testSet.map(_.length).getOrElse(0)
@@ -31,6 +29,7 @@ final case class DataConfig private[configuration](
 object DataConfig {
 
 	val defaultTempFile: String = "hdfs://localhost:9000/image-classifier/temp_data"
+	val defaultTestSample: SampleConfig = SampleConfig(maxFractionPerClass = 0.2)
 
 }
 
@@ -38,8 +37,7 @@ object JointDataConfig {
 
 	val defaultStratified: Boolean = true
 	val defaultTestFraction: Double = 0.2
-
-	def defaultSplitSeed: Int = Random.nextInt
+	val defaultSplitSeed: Option[Int] = Some(0)
 
 }
 
@@ -71,8 +69,7 @@ object CodebookConfig {
 	val defaultInitSteps: Int = 2
 	val defaultImageSample: SampleConfig = SampleConfig()
 	val defaultFeatureSample: SampleConfig = SampleConfig()
-
-	def defaultSeed: Int = Random.nextInt
+	val defaultSeed: Option[Int] = Some(0)
 
 }
 
@@ -83,8 +80,7 @@ object SampleConfig {
 	val defaultMaxFraction: Double = 1
 	val defaultMaxFractionPerClass: Double = 1
 	val defaultMaxMaxMinFractionPerClass: Double = Double.PositiveInfinity
-
-	def defaultSeed: Int = Random.nextInt
+	val defaultSeed: Option[Int] = Some(0)
 
 }
 
@@ -94,14 +90,16 @@ final case class SampleConfig(
                                maxFraction: Double = SampleConfig.defaultMaxFraction,
                                maxFractionPerClass: Double = SampleConfig.defaultMaxFractionPerClass,
                                maxMaxMinFractionPerClass: Double = SampleConfig.defaultMaxMaxMinFractionPerClass,
-                               seed: Int = SampleConfig.defaultSeed
+                               seed: Option[Int] = SampleConfig.defaultSeed
                              ) {
 
 	requirePositive(nameOf(maxCount), maxCount)
 	requirePositive(nameOf(maxCountPerClass), maxCountPerClass)
 	requireIn(nameOf(maxFraction), maxFraction, 0, 1, false)
 	requireIn(nameOf(maxFractionPerClass), maxFractionPerClass, 0, 1, false)
-	requireIn(nameOf(maxMaxMinFractionPerClass), maxFractionPerClass, 1, Double.PositiveInfinity)
+	requireMin(nameOf(maxMaxMinFractionPerClass), maxMaxMinFractionPerClass, 1)
+
+	lazy val actualSeed: Int = seed.getOr(Random.nextInt)
 
 	def canSkip: Boolean =
 		maxCount == Int.MaxValue &&
@@ -116,11 +114,13 @@ final case class CodebookConfig(
                                  assignNearest: Boolean = CodebookConfig.defaultAssignNearest,
                                  maxIterations: Int = CodebookConfig.defaultMaxIterations,
                                  convergenceTolerance: Double = CodebookConfig.defaultConvergenceTolerance,
-                                 seed: Int = CodebookConfig.defaultSeed,
+                                 seed: Option[Int] = CodebookConfig.defaultSeed,
                                  initSteps: Int = CodebookConfig.defaultInitSteps,
                                  imageSample: SampleConfig = CodebookConfig.defaultImageSample,
                                  featureSample: SampleConfig = CodebookConfig.defaultFeatureSample
                                ) {
+
+	lazy val actualSeed: Int = seed.getOr(Random.nextInt)
 
 	requireIn(nameOf(size), size, 10, 100000)
 	requireIn(nameOf(maxIterations), maxIterations, 1, 100)
@@ -163,8 +163,10 @@ final case class TrainingConfig(
                                  maxBins: Int = TrainingConfig.defaultMaxBins,
                                  minInfoGain: Double = TrainingConfig.defaultMinInfoGain,
                                  factorSize: Int = TrainingConfig.defaultFactorSize,
-                                 seed: Int = TrainingConfig.defaultSeed
+                                 seed: Option[Int] = TrainingConfig.defaultSeed
                                ) extends LoadableConfig {
+
+	lazy val actualSeed: Int = seed.getOr(Random.nextInt)
 
 	requireIn(nameOf(maxIterations), maxIterations, 1, 10000)
 	requireNonNegative(nameOf(regParam), regParam)
@@ -194,8 +196,7 @@ object TrainingConfig {
 	val defaultDepth: Int = 5
 	val defaultMinInfoGain: Double = 0
 	val defaultFactorSize: Int = 8
-
-	def defaultSeed: Int = Random.nextInt
+	val defaultSeed: Option[Int] = Some(0)
 
 }
 
