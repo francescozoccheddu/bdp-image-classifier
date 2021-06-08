@@ -32,11 +32,33 @@ function get {
 
 # Install OpenJDK 8
 echo "-- Installing OpenJDK 8"
-get https://builds.openlogic.com/downloadJDK/openlogic-openjdk/8u262-b10/openlogic-openjdk-8u262-b10-linux-x64.tar.gz $JAVA_HOME
+case `uname -m` in
 
-# Install Hadoop 3.3.0
-echo "--- Installing Hadoop 3.3.0"
-get https://downloads.apache.org/hadoop/common/hadoop-3.3.0/hadoop-3.3.0-aarch64.tar.gz $HADOOP_HOME
+  "x86_64")
+    JDK_URL="https://builds.openlogic.com/downloadJDK/openlogic-openjdk/8u262-b10/openlogic-openjdk-8u262-b10-linux-x64.tar.gz"
+    ;;
+
+  "i386")
+    JDK_URL="https://builds.openlogic.com/downloadJDK/openlogic-openjdk/8u262-b10/openlogic-openjdk-8u262-b10-linux-x32.tar.gz"
+    ;;
+
+  *)
+    echo "Unknown architecture. Only x86 and x64 is supported."
+	echo "-- Failed"
+	exit 1
+    ;;
+esac
+if [ `uname -m` == 'x86_64' ]; then 
+	echo "64"; 
+else 
+	echo "32"; 
+fi
+
+get "$JDK_URL" $JAVA_HOME
+
+# Install Hadoop 3.2.2
+echo "--- Installing Hadoop 3.2.2"
+get https://downloads.apache.org/hadoop/common/hadoop-3.2.2/hadoop-3.2.2.tar.gz $HADOOP_HOME
 
 # Install Spark 3.1.1 for Hadoop 3.2
 echo "--- Installing Spark 3.1.2"

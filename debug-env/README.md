@@ -1,9 +1,6 @@
 # Debug environment
 
-Bash scrips to setup a local [Spark](https://spark.apache.org/) 3.1.2 installation on [Hadoop](https://hadoop.apache.org/) 3.3.0 with YARN, **for debugging pursposes only**.
-
-Tested on Ubuntu 21.04. 
-Requires standard POSIX utilities, `curl`, `tar`, `whoami`, `bash` and an Internet connection.
+Bash scrips to setup a local [Spark](https://spark.apache.org/) 3.1.2 installation on [Hadoop](https://hadoop.apache.org/) 3.2.2 with YARN, **for debugging pursposes only**.
 
 ## Setup SSH
 

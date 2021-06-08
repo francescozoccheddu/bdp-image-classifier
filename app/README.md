@@ -2,7 +2,7 @@
 
 ## Building
 
-Building the app requires [SBT](https://www.scala-sbt.org/). See [this](https://www.scala-sbt.org/download.html) for more information.
+Building the app requires [SBT](https://www.scala-sbt.org/). See the [installation page](https://www.scala-sbt.org/download.html) for more information.
 
 To build and assembly the app into a JAR, run `assembly.sh`.
 
