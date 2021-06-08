@@ -64,6 +64,8 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val 
 		  .zipWithIndex
 		  .flatMap { case ((test, train), label) => encode(test, label, true) ++ encode(train, label, false) }
 
+	protected override def load(): DataFrame = load(file)
+
 	private def load(file: String): DataFrame = {
 		merger.load(file, keyCol, dataCol)
 		  .select(
@@ -71,8 +73,6 @@ private[pipeline] final class DataStage(loader: Option[Loader[DataConfig]], val 
 			  (col(keyCol) < 0).alias(isTestCol),
 			  (abs(col(keyCol)) - 1).alias(labelCol))
 	}
-
-	protected override def load(): DataFrame = load(file)
 
 }
 
@@ -88,13 +88,13 @@ private[pipeline] object DataStage {
 	private def encode(paths: Iterable[String], label: Int, isTest: Boolean): Iterable[(Int, String)] =
 		paths.map(encode(_, label, isTest))
 
-	private def encode(file: (Int, String), isTest: Boolean): (Int, String) =
-		encode(file._2, file._1, isTest)
-
 	private def encode(path: String, label: Int, isTest: Boolean): (Int, String) =
 		if (isTest)
 			(-label - 1, path)
 		else
 			(label + 1, path)
+
+	private def encode(file: (Int, String), isTest: Boolean): (Int, String) =
+		encode(file._2, file._1, isTest)
 
 }

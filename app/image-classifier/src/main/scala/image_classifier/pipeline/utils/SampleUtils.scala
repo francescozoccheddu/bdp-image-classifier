@@ -64,8 +64,11 @@ private[pipeline] object SampleUtils {
 		val scaledCounts = {
 			val trimmedCounts = {
 				val limitedCounts = counts.mapValues(c => config.maxCountPerClass.toDouble min c * config.maxFractionPerClass)
-				val minCount = limitedCounts.values.min
-				limitedCounts.mapValues(_ min minCount * config.maxMaxMinFractionPerClass)
+				if (config.maxMaxMinFractionPerClass.isPosInfinity) limitedCounts
+				else {
+					val minCount = limitedCounts.values.min
+					limitedCounts.mapValues(_ min minCount * config.maxMaxMinFractionPerClass)
+				}
 			}
 			val trimmedTotal = trimmedCounts.values.sum
 			val scale = ((config.maxCount.toDouble min config.maxFraction * total) / trimmedTotal) min 1.0

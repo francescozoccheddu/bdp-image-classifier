@@ -57,8 +57,6 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
 
 	def wasLoaded: Boolean = loaded
 
-	def wasMade: Boolean = hasResult && !loaded
-
 	protected def loadImpl(): Result = {
 		logger.info(s"Stage '$name': Loading '$file'")
 		val result = load()
@@ -71,24 +69,14 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
 
 	protected def exists(file: String): Boolean = fileUtils.exists(file)
 
+	def wasMade: Boolean = hasResult && !loaded
+
 	protected def makeImpl(): Result = {
 		logger.info(s"Stage '$name': Making")
 		val result = make()
 		validate(result)
 		result
 	}
-
-	protected def saveImpl(result: Result): Unit = {
-		logger.info(s"Stage '$name': Saving to '$file'")
-		fileUtils.makeDirs(FileUtils.parent(file))
-		save(result)
-	}
-
-	protected def load(): Result
-
-	protected def make(): Result
-
-	protected def save(result: Result): Unit
 
 	private def loadIfExistsImpl(): Option[Result] =
 		if (exists(file))
@@ -104,6 +92,18 @@ private[pipeline] abstract class LoaderStage[Result, Config <: LoadableConfig](n
 		save(result)
 		result
 	}
+
+	protected def saveImpl(result: Result): Unit = {
+		logger.info(s"Stage '$name': Saving to '$file'")
+		fileUtils.makeDirs(FileUtils.parent(file))
+		save(result)
+	}
+
+	protected def load(): Result
+
+	protected def make(): Result
+
+	protected def save(result: Result): Unit
 
 }
 
