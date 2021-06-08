@@ -20,7 +20,7 @@ You may also want to run `source ~/.profile` to be able to manually run Spark wi
 
 ## Run an application
 
-Run `run.sh `*`<ASSEMBLY> <CONFIG>`*, like this:
+Run <code>run.sh *ASSEMBLY* *CONFIG*</code>, like this:
 ```bash
 data/supermaket/download.sh dataset
 debug-env/run.sh app/assembly.jar dataset/config.json
