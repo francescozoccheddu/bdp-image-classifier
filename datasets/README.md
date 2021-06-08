@@ -10,9 +10,9 @@ Here is a list of datasets that you can try:
 
 ## Downloading a dataset
 
-Run *`<DATASET_NAME>`*`/download.sh "`*`<OUTPUT_DIRECTORY>`*`"`, like this:
+Run <code>*DATASET_NAME*/download.sh "*OUTPUT_DIRECTORY*"</code>, like this:
 ```bash
 supermarket/download.sh supermarket
 ```
-The script will download the dataset and provide you a ready-to-use *`<OUTPUT_DIRECTORY>`*`/config.json` config file, that you can pass to the classifier app.  
+The script will download the dataset and provide you a ready-to-use <code>*OUTPUT_DIRECTORY*/config.json</code> config file, that you can pass to the classifier app.  
 You may want to edit it for better tuning of the parameters.
