@@ -13,6 +13,7 @@ import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.functions.{col, countDistinct, size, udf}
 import org.apache.spark.sql.types.{BooleanType, IntegerType}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+import org.bytedeco.javacpp.{opencv_core, Loader => OpenCVLoader}
 
 private[pipeline] final class FeaturizationStage(loader: Option[Loader[FeaturizationConfig]], val dataStage: DataStage, val outputCol: String = defaultOutputCol)(implicit spark: SparkSession, fileUtils: FileUtils)
   extends LoaderStage[DataFrame, FeaturizationConfig]("Featurization", loader)(fileUtils) {
@@ -41,6 +42,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 
 	private def describe(config: DescriptorConfig, data: DataFrame): DataFrame = {
 		logger.info("Extracting features")
+		OpenCVLoader.load(classOf[opencv_core])
 		val descriptor = Descriptor(config)
 		val describe = udf(descriptor.apply(_, config.useImageIO))
 		data
