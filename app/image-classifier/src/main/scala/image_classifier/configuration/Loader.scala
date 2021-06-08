@@ -3,7 +3,6 @@ package image_classifier.configuration
 import com.github.dwickern.macros.NameOf.nameOf
 import image_classifier.configuration.LoadMode.{LoadMode, _}
 import image_classifier.configuration.Utils.O
-import image_classifier.utils.FileUtils
 
 final case class Loader[Type <: LoadableConfig] private[configuration](
                                                                         private[configuration] val make: O[Type] = None,
@@ -29,8 +28,6 @@ final case class Loader[Type <: LoadableConfig] private[configuration](
 		case (Some(_), None, Some(_), None) => LoadMode.MakeAndSave
 		case _ => throw new MatchError((make, load, save, loadAndSave))
 	}
-
-	require(file.forall(FileUtils.isValidPath), "Not a valid path")
 
 	override def toString: String = s"<$hrMode>"
 
@@ -58,9 +55,6 @@ object Loader {
 	def loadOrMake[Type <: LoadableConfig](file: String, config: Type): Loader[Type] =
 		create(LoadOrMake, Some(file), Some(config))
 
-	def make[Type <: LoadableConfig](config: Type): Loader[Type] =
-		create(Make, None, Some(config))
-
 	def create[Type <: LoadableConfig](mode: LoadMode, file: O[String], config: O[Type]): Loader[Type] = mode match {
 		case Make => Loader(config, None, None, None)
 		case MakeAndSave => Loader(config, None, file, None)
@@ -68,5 +62,8 @@ object Loader {
 		case LoadOrMake => Loader(config, file, None, None)
 		case Load => Loader(None, file, None, None)
 	}
+
+	def make[Type <: LoadableConfig](config: Type): Loader[Type] =
+		create(Make, None, Some(config))
 
 }

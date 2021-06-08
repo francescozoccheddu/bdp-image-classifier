@@ -88,13 +88,13 @@ private[pipeline] object DataStage {
 	private def encode(paths: Iterable[String], label: Int, isTest: Boolean): Iterable[(Int, String)] =
 		paths.map(encode(_, label, isTest))
 
+	private def encode(file: (Int, String), isTest: Boolean): (Int, String) =
+		encode(file._2, file._1, isTest)
+
 	private def encode(path: String, label: Int, isTest: Boolean): (Int, String) =
 		if (isTest)
 			(-label - 1, path)
 		else
 			(label + 1, path)
-
-	private def encode(file: (Int, String), isTest: Boolean): (Int, String) =
-		encode(file._2, file._1, isTest)
 
 }
