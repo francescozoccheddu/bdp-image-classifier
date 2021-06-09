@@ -1,0 +1,46 @@
+{
+  "data": {
+    "save": "hdfs:///image-classifier/data",
+    "make": {
+      "dataSet": [
+        ["./images/buildings/*.jpg"],
+        ["./images/forest/*.jpg"],
+        ["./images/glacier/*.jpg"],
+        ["./images/mountain/*.jpg"],
+        ["./images/sea/*.jpg"],
+        ["./images/street/*.jpg"]
+      ],
+      "testSample": {
+        "maxFractionPerClass": 0.2
+      }
+    }
+  },
+  "featurization": {
+    "save": "hdfs:///image-classifier/features",
+    "make": {
+      "descriptor": {
+        "algorithm": "sift",
+        "maxFeatureCount": 200,
+        "minFeatureCount": 20
+      },
+      "codebook": {
+        "size": 400,
+        "assignNearest": true,
+        "imageSample": {
+          "maxCountPerClass": 100
+        },
+        "featureSample": {
+          "maxCountPerClass": 5000
+        }
+      }
+    }
+  },
+  "training": {
+    "make": {
+      "algorithm": "nn"
+    }
+  },
+  "testing": {
+    "labels": ["Buildings", "Forest", "Glacier", "Mountain", "Sea", "Street"]
+  }
+}

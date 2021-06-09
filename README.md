@@ -5,7 +5,7 @@ Simple image classifier with Bag-of-Visual-Words model, written in [Scala](https
 
 > **NOTE:**   
 All of the scripts have been tested in Ubuntu 21.04 on a x64 machine.  
-They should work in most popular x86 or x64 Linux distributions, as they only require standard POSIX utilities, `curl`, `whoami`, `python3`, `pip3`, `unzip`, `tar`, `ssh`, `realpath`, Bash version 4 and an Internet connection.
+They should work in most popular x86 or x64 Linux distributions, as they only require standard POSIX utilities, `curl`, `whoami`, `python3`, `pip3`, `unzip`, `tar`, `ssh`, `realpath`, `rsync`, Bash version 4 and an Internet connection.
 
 ## Application
 
