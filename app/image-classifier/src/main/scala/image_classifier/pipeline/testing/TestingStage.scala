@@ -54,7 +54,7 @@ private[testing] object TestingStage {
 		printer.addPercent("Precision", metrics.weightedPrecision)
 		printer.addPercent("True positives (Recall)", metrics.weightedTruePositiveRate)
 		printer.addPercent("False positives", metrics.weightedFalsePositiveRate)
-		printer.add("Confusion matrix", metrics.confusionMatrix.toString)
+		printer.add("Confusion matrix", metrics.confusionMatrix.toString(1000, 1000))
 		for (l <- metrics.labels) {
 			val i = l.toInt
 			printer.addSection(s"Class '${labels.map(_ (i)).getOrElse(i.toString)}'")
