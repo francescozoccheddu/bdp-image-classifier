@@ -16,7 +16,10 @@ private[featurization] object Image {
 		else {
 			val opencvMat = decodeWithOpenCV(data)
 			if (opencvMat.rows > 0 && opencvMat.cols > 0) opencvMat
-			else decodeWithImageIO(data)
+			else {
+				opencvMat.deallocate()
+				decodeWithImageIO(data)
+			}
 		}
 		mat
 	}
