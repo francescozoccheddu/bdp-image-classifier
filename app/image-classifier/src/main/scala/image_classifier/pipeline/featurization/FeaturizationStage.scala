@@ -49,6 +49,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 		data
 		  .withColumn(outputCol, describe(col(dataStage.imageCol)))
 		  .filter(size(col(outputCol)) >= config.minFeatureCount)
+		  .repartition(spark.sparkContext.defaultParallelism)
 	}
 
 	private def createCodebook(config: CodebookConfig, data: DataFrame): Seq[Vector] = {

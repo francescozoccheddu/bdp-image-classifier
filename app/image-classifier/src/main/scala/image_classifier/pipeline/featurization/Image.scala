@@ -14,11 +14,17 @@ private[featurization] object Image {
 		val mat = if (useImageIO)
 			decodeWithImageIO(data)
 		else {
-			val rawMat = new Mat(data, false)
-			val mat = imdecode(rawMat, IMREAD_GRAYSCALE)
-			rawMat.deallocate()
-			mat
+			val opencvMat = decodeWithOpenCV(data)
+			if (opencvMat.rows > 0 && opencvMat.cols > 0) opencvMat
+			else decodeWithImageIO(data)
 		}
+		mat
+	}
+
+	private def decodeWithOpenCV(data: Array[Byte]): Mat = {
+		val rawMat = new Mat(data, false)
+		val mat = imdecode(rawMat, IMREAD_GRAYSCALE)
+		rawMat.deallocate()
 		mat
 	}
 
