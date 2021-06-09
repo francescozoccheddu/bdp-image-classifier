@@ -33,6 +33,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 
 	override protected def make(): DataFrame = {
 		val describedData = describe(config.descriptor, dataStage.result).cache
+		logger.info(s"Succesfully described ${describedData.count} images")
 		val codebook = createCodebook(config.codebook, describedData)
 		logger.info("Computing BOVW")
 		val bowv = BOWV.compute(describedData, codebook, outputCol).cache
@@ -47,7 +48,7 @@ private[pipeline] final class FeaturizationStage(loader: Option[Loader[Featuriza
 		val describe = udf(descriptor.apply(_, config.useImageIO))
 		data
 		  .withColumn(outputCol, describe(col(dataStage.imageCol)))
-		  .filter(size(col(outputCol)) > 0)
+		  .filter(size(col(outputCol)) >= config.minFeatureCount)
 	}
 
 	private def createCodebook(config: CodebookConfig, data: DataFrame): Seq[Vector] = {

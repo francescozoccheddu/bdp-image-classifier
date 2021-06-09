@@ -11,9 +11,9 @@ private[featurization] final case class Descriptor(config: DescriptorConfig) {
 
 	lazy val detector: Feature2D = {
 		config.algorithm match {
-			case ImageFeatureAlgorithm.Sift => SIFT.create(config.featureCount, config.octaveLayerCount, config.contrastThreshold, config.edgeThreshold, config.sigma)
+			case ImageFeatureAlgorithm.Sift => SIFT.create(config.maxFeatureCount, config.octaveLayerCount, config.contrastThreshold, config.edgeThreshold, config.sigma)
 			case ImageFeatureAlgorithm.Surf => SURF.create(config.hessianThreshold, config.octaveCount, config.octaveLayerCount, false, false)
-			case ImageFeatureAlgorithm.Orb => ORB.create(config.featureCount, 1.2f, 8, config.edgeThreshold.toInt, 0, 2, ORB.HARRIS_SCORE, 31, 20)
+			case ImageFeatureAlgorithm.Orb => ORB.create(config.maxFeatureCount, 1.2f, 8, config.edgeThreshold.toInt, 0, 2, ORB.HARRIS_SCORE, 31, 20)
 		}
 	}
 
@@ -33,7 +33,7 @@ private[featurization] final case class Descriptor(config: DescriptorConfig) {
 		val maskMat = new Mat
 		detector.detectAndCompute(image, maskMat, kpv, rawDesMat)
 		maskMat.deallocate()
-		val kpCount = kpv.size.toInt min config.featureCount
+		val kpCount = kpv.size.toInt min config.maxFeatureCount
 		kpv.deallocate()
 		val desMat = if (kpCount != 0) {
 			require(rawDesMat.channels == 1)
