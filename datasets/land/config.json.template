@@ -35,18 +35,14 @@
     "make": {
       "descriptor": {
         "algorithm": "sift",
-        "maxFeatureCount": 50,
-        "minFeatureCount": 10
+        "maxFeatureCount": 200,
+        "minFeatureCount": 50
       },
       "codebook": {
-        "size": 400,
-        "assignNearest": true,
-        "imageSample": {
-          "maxCountPerClass": 100
-        },
-        "featureSample": {
-          "maxCountPerClass": 5000
-        }
+        "size": 700,
+		"maxIterations": 20,
+		"initSteps": 3,
+        "assignNearest": true
       }
     }
   },
