@@ -40,15 +40,15 @@ then
     exit 1
 fi
 
-SSH_OUTPUT="key"
-SSH_TAG=" # image-classifier-key"
-ssh-keygen -q -t rsa -P "" -f "$SSH_OUTPUT"
-touch ~/.ssh/authorized_keys
-sed -i "/$SSH_TAG/d" ~/.ssh/authorized_keys
-tr -d "\n" < "$SSH_OUTPUT.pub" >> ~/.ssh/authorized_keys
+SSH_TAG="-image-classifier-debug-env"
+sed -i "/$SSH_TAG/d" ~/.ssh/authorized_keys >& /dev/null
+if [ ! -f ~/.ssh/id_rsa || ! -f ~/.ssh/id_rsa.pub ]; then
+	rm -f ~/.ssh/id_rsa ~/.ssh/id_rsa.pub
+	ssh-keygen -q -t rsa -P "" -f ~/.ssh/id_rsa
+fi
+tr -d "\n" < ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
 echo "$SSH_TAG" >> ~/.ssh/authorized_keys
 chmod 0600 ~/.ssh/authorized_keys
-rm -f "$SSH_OUTPUT" "$SSH_OUTPUT.pub"
 
 # Install OpenJDK 8
 echo "-- Installing OpenJDK 8"

@@ -11,6 +11,6 @@ rm -rf "$IC_HOME"
 
 echo "-- Restoring ~/.profile"
 sed -i "/# image-classifier-debug-env profile/d" ~/.profile 
-sed -i "/# image-classifier-key"/d" ~/.ssh/authorized_keys
+sed -i "/image-classifier-debug-env/d" ~/.ssh/authorized_keys >& /dev/null
 
 echo "-- Done"
