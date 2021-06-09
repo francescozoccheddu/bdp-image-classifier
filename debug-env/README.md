@@ -1,14 +1,6 @@
 # Debug environment
 
-Bash scrips to setup a local [Spark](https://spark.apache.org/) 3.1.2 installation on [Hadoop](https://hadoop.apache.org/) 3.2.2 with YARN, **for debugging pursposes only**.
-
-## Setup SSH
-
-Allows SSH connections to `localhost`. 
-
-Run `setup-ssh.sh` and enter your password when requested.
-
-**This step must only be done once**.
+Bash scrips to setup a local [Spark](https://spark.apache.org/) 3.1.2 installation on [Hadoop](https://hadoop.apache.org/) 3.2.2, **for debugging pursposes only**.
 
 ## Install the environment
 

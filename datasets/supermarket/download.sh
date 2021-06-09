@@ -22,7 +22,7 @@ mv "images" ".images"
 
 function move {
 	declare -A OUTPUTS
-	SOURCE=`tr -d '\r' < "$1"`
+	SOURCE=`tr -d "\r" < "$1"`
 	read -a LABELS <<< `(cut -d "," -f6 | xargs) <<< "$SOURCE"`
 	read -a INPUTS <<< `(cut -d "," -f1 | xargs) <<< "$SOURCE"`
 	for I in "${!LABELS[@]}"; 
