@@ -52,10 +52,11 @@ object DescriptorConfig {
 	val defaultContrastThreshold: Double = 0.04
 	val defaultEdgeThreshold: Int = 30
 	val defaultSigma: Double = 1.6
-	val defaultFeatureCount: Int = 50
+	val defaultMaxFeatureCount: Int = 50
 	val defaultHessianThreshold: Double = 100
 	val defaultMaxSize: Int = 1024
 	val defaultUseImageIO: Boolean = false
+	val defaultMinFeatureCount: Int = 1
 
 }
 
@@ -130,7 +131,7 @@ final case class CodebookConfig(
 
 final case class DescriptorConfig(
                                    algorithm: ImageFeatureAlgorithm = DescriptorConfig.defaultAlgorithm,
-                                   featureCount: Int = DescriptorConfig.defaultFeatureCount,
+                                   maxFeatureCount: Int = DescriptorConfig.defaultMaxFeatureCount,
                                    octaveLayerCount: Int = DescriptorConfig.defaultOctaveLayerCount,
                                    contrastThreshold: Double = DescriptorConfig.defaultContrastThreshold,
                                    edgeThreshold: Double = DescriptorConfig.defaultEdgeThreshold,
@@ -138,15 +139,17 @@ final case class DescriptorConfig(
                                    hessianThreshold: Double = DescriptorConfig.defaultHessianThreshold,
                                    octaveCount: Int = DescriptorConfig.defaultOctaveCount,
                                    maxSize: Int = DescriptorConfig.defaultMaxSize,
+                                   minFeatureCount: Int = DescriptorConfig.defaultMinFeatureCount,
                                    useImageIO: Boolean = DescriptorConfig.defaultUseImageIO
                                  ) {
 
-	requireIn(nameOf(featureCount), featureCount, 1, 100000)
+	requireIn(nameOf(maxFeatureCount), maxFeatureCount, 1, 100000)
 	requireIn(nameOf(octaveLayerCount), octaveLayerCount, 1, 16)
 	requireIn(nameOf(contrastThreshold), contrastThreshold, 0, 1000)
 	requireIn(nameOf(edgeThreshold), edgeThreshold, 0, 1000)
 	requireIn(nameOf(maxSize), maxSize, 64, 8192)
 	requireIn(nameOf(sigma), sigma, 0, 16, false)
+	requireIn(nameOf(minFeatureCount), minFeatureCount, 1, maxFeatureCount)
 
 }
 

@@ -81,7 +81,8 @@
     "make": {
       "descriptor": {
         "algorithm": "sift",
-        "featureCount": 50
+        "maxFeatureCount": 50,
+        "minFeatureCount": 10
       },
       "codebook": {
         "size": 400,
