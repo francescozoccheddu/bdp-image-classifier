@@ -10,6 +10,7 @@ echo "-- Removing $IC_HOME"
 rm -rf "$IC_HOME"
 
 echo "-- Restoring ~/.profile"
-sed -i '/# image-classifier-debug-env profile/d' ~/.profile 
+sed -i "/# image-classifier-debug-env profile/d" ~/.profile 
+sed -i "/# image-classifier-key"/d" ~/.ssh/authorized_keys
 
 echo "-- Done"

@@ -30,6 +30,26 @@ function get {
 	rm -rf .temp
 }
 
+# Setup SSH
+echo "-- Setting up SSH"
+
+if ! command -v ssh-keygen &> /dev/null
+then
+    echo "SSH is required. Install it and try again."
+    echo "-- Failed"
+    exit 1
+fi
+
+SSH_OUTPUT="key"
+SSH_TAG=" # image-classifier-key"
+ssh-keygen -q -t rsa -P "" -f "$SSH_OUTPUT"
+touch ~/.ssh/authorized_keys
+sed -i "/$SSH_TAG/d" ~/.ssh/authorized_keys
+tr -d "\n" < "$SSH_OUTPUT.pub" >> ~/.ssh/authorized_keys
+echo "$SSH_TAG" >> ~/.ssh/authorized_keys
+chmod 0600 ~/.ssh/authorized_keys
+rm -f "$SSH_OUTPUT" "$SSH_OUTPUT.pub"
+
 # Install OpenJDK 8
 echo "-- Installing OpenJDK 8"
 ARCH=`uname -m`
@@ -79,7 +99,7 @@ export PATH=\"\$PATH:\$HADOOP_HOME/bin:\$HADOOP_HOME/sbin\"
 export SPARK_HOME=\"$SPARK_HOME\"
 export PATH=\"\$PATH:\$SPARK_HOME/bin:\$SPARK_HOME/sbin\"
 " > "$ADDIT_PROF"
-sed -i '/# image-classifier-debug-env profile/d' ~/.profile 
+sed -i "/# image-classifier-debug-env profile/d" ~/.profile 
 echo ". \"$ADDIT_PROF\" # image-classifier-debug-env profile" >> ~/.profile
 . ~/.profile
 
