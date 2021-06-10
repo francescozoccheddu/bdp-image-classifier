@@ -6,86 +6,42 @@
 
 # Commons
 
-if [ -z "${BASH_VERSINFO}" ] || [ -z "${BASH_VERSINFO[0]}" ] || [ ${BASH_VERSINFO[0]} -lt 4 ]; then echo "Bash version 4 or later is required."; exit 1; fi
+HELP_DESC="Install a local Spark environment for debugging purposes"
+ARGS_NAME=(INSTALL_DIR)
+ARGS_HELP=("the installation directory")
+ARGS_DEF=("env")
 
-CANCELED=false
+. `dirname "$0"`/../.commons.sh
 
-function log {
-	echo "-- $1"
-}
+INSTALL_DIR_REL="${ARGS[INSTALL_DIR]}"
+INSTALL_DIR=`realpath "$INSTALL_DIR_REL"`
+ENV_DIR="$INSTALL_DIR/.image-classifier-debug-env"
 
-function die {
-	echo "$1"
-	uninstall
-	exit 1
-}
+req whoami
+req ssh-keygen
+req curl
+req tar
 
-function fail {
-	echo "$1"
-	uninstall
-	log "Failed"
-	exit 1
-}
-
-function req {
-	command -v $1 &> /dev/null || die "$1 is required. $2"
-}
-
-function uninstall {
-	rm -rf "$ENV_DIR"
-	rm -f "$INSTALL_DIR/run.sh" "$INSTALL_DIR/uninstall.sh"
-}
-
-function cancel {
-	if [ "$CANCELED" = false ]; then
-		CANCELED=true
-		fail "Canceled"
+function cleanup {
+	if [ -f "$ENV_DIR/ssh_tag" ]; then
+		sed -i "/`< "$ENV_DIR/ssh_tag"`/d" ~/.ssh/authorized_keys >& /dev/null
 	fi
+	rm -rf "$ENV_DIR"
+	rm -f "$INSTALL_DIR/uninstall.sh" "$INSTALL_DIR/run.sh"
+	rmdir --ignore-fail-on-non-empty "$INSTALL_DIR"
 }
-
-trap cancel SIGHUP SIGINT SIGTERM
-
-# Input
-
-ARGDEF_INSTALL_DIR="env"
-
-function help {
-	echo "Setup a local Spark installation for debugging purposes. Usage:"
-	echo "$0 [-h|<INSTALL_DIR>]"
-	echo "Options:"
-	echo "    -h            prints this help message"
-	echo "    INSTALL_DIR   the installation directory (defaults to '$ARGDEF_INSTALL_DIR')"
-	exit
-}
-
-while getopts ":h" OPT; do
-   case $OPT in
-      h) help;;
-   esac
-done
-
-[ "$#" -le 1 ] || die "Expected 0 or 1 arguments but got $#. Run $0 -h for help."
-
-ARG_INSTALL_DIR=${1:-$ARGDEF_INSTALL_DIR}
 
 # Paths
 
-req realpath
+log "Installing environment in '$INSTALL_DIR_REL'"
 
-INSTALL_DIR=`realpath "$ARG_INSTALL_DIR"`
-log "Installing environment in '$INSTALL_DIR'"
-mkdir -p "$INSTALL_DIR"
-THIS_DIR=`dirname "$0"`
-cp "$THIS_DIR/.run.sh.template" "$INSTALL_DIR/run.sh"
-cp "$THIS_DIR/.uninstall.sh.template" "$INSTALL_DIR/uninstall.sh"
-cd "$INSTALL_DIR"
-chmod +x "run.sh" "uninstall.sh"
+mkdir -p "$ENV_DIR"
 
-# Environment variables
+cp "$SDIR/../.commons.sh" "$ENV_DIR/.commons.sh" || die "Cannot find the '.commons.sh' script. Did you move the script?"
+cp "$SDIR/.run.sh.template" "$INSTALL_DIR/run.sh" || die "Cannot find the 'run.sh' script template. Did you move the script?"
+cp "$SDIR/.uninstall.sh.template" "$INSTALL_DIR/uninstall.sh" || die "Cannot find the 'uninstall.sh' script template. Did you move the script?"
+chmod +x "$INSTALL_DIR/run.sh" "$INSTALL_DIR/uninstall.sh" "$ENV_DIR/.commons.sh"
 
-req whoami
-
-ENV_DIR="$INSTALL_DIR/.image-classifier-debug-env"
 HADOOP_HOME="$ENV_DIR/hadoop"
 HADOOP_CONF_DIR="$HADOOP_HOME/etc/hadoop"
 HADOOP_BIN_DIR="$HADOOP_HOME/bin"
@@ -122,8 +78,6 @@ export HDFS_SECONDARYNAMENODE_USER=\"$USR\"
 
 # Setup SSH
 
-req ssh-keygen
-
 log "Setting up SSH"
 
 if [ -f "$ENV_DIR/ssh_tag" ]; then
@@ -135,32 +89,29 @@ SSH_TAG="-image-classifier-debug-env-localhost-key-$SSH_UUID"
 sed -i "/$SSH_TAG/d" ~/.ssh/authorized_keys >& /dev/null
 if [ ! -f ~/.ssh/id_rsa ] || [ ! -f ~/.ssh/id_rsa.pub ]; then
 	rm -f ~/.ssh/id_rsa ~/.ssh/id_rsa.pub
-	ssh-keygen -q -t rsa -P "" -f ~/.ssh/id_rsa
+	ssh-keygen -q -t rsa -P "" -f ~/.ssh/id_rsa || die "Failed to generate a SSH key."
 fi
 tr -d "\n" < ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
-echo "$SSH_TAG" >> ~/.ssh/authorized_keys
-echo "$SSH_TAG" > "$ENV_DIR/ssh_tag"
+echo "$SSH_TAG" >> ~/.ssh/authorized_keys || "Failed to write '~/.ssh/authorized_keys'."
+printf "%s" "$SSH_TAG" > "$ENV_DIR/ssh_tag"
 chmod 0600 ~/.ssh/authorized_keys
 
 # Install packages
-
-req curl
-req tar
 
 function get {
 	if [ -d "$2" ]; then
 		echo "Directory already exists. Skipping."
 		return
 	fi
-	curl --output .temp.tgz "$1" || fail "Download failed."
-	mkdir .temp
-	tar xf .temp.tgz -C .temp || fail "Extraction failed."
-	rm -f .temp.tgz
-	mv .temp/* "$2"
-	rm -rf .temp
+	local TMP_DIR="$ENV_DIR/.temp"
+	local TMP_TGZ="$ENV_DIR/.temp.tgz"
+	curl --output "$TMP_TGZ" "$1" || die "Download failed."
+	mkdir "$TMP_DIR"
+	tar xf "$TMP_TGZ" -C "$TMP_DIR" || die "Extraction failed."
+	rm -f "$TMP_TGZ"
+	mv "$TMP_DIR"/* "$2"
+	rm -rf "$TMP_DIR"
 }
-
-mkdir -p "$ENV_DIR"
 
 # Install OpenJDK 8
 
@@ -183,7 +134,6 @@ case "$ARCH" in
     ;;
 esac
 get "$JDK_URL" $JAVA_HOME
-
 
 # Install Hadoop 3.2.2
 
@@ -251,5 +201,3 @@ chmod -R a+rwx "$ENV_DIR"
 
 log "Formatting HDFS"
 echo "Y" | "$HADOOP_BIN_DIR/hdfs" namenode -format >& /dev/null
-
-log "Done"
