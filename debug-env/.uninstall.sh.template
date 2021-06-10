@@ -1,0 +1,73 @@
+#!/bin/bash
+
+###############################
+#### Uninstall environment ####
+###############################
+
+# Commons
+
+if [ -z "${BASH_VERSINFO}" ] || [ -z "${BASH_VERSINFO[0]}" ] || [ ${BASH_VERSINFO[0]} -lt 4 ]; then echo "Bash version 4 or later is required."; exit 1; fi
+
+function log {
+	echo "-- $1"
+}
+
+function die {
+	echo "$1"
+	exit 1
+}
+
+function fail {
+	echo "$1"
+	log "Failed"
+	exit 1
+}
+
+function cancel {
+	if [ "$CANCELED" = false ]; then
+		CANCELED=true
+		fail "Canceled"
+	fi
+}
+
+trap cancel SIGHUP SIGINT SIGTERM
+
+# Input
+
+function help {
+	echo "Uninstall the debug environment in this script's folder. Usage:"
+	echo "$0 [-h]"
+	echo "Options:"
+	echo "    -h            prints this help message"
+	exit
+}
+
+while getopts ":h" OPT; do
+   case $OPT in
+      h) help;;
+   esac
+done
+
+[ "$#" -eq 0 ] || die "Expected 0 arguments but got $#. Run $0 -h for help."
+
+# Paths
+
+THIS_DIR=`dirname "$0"`
+ENV_DIR="$THIS_DIR/.image-classifier-debug-env"
+[ -d "$ENV_DIR" ] || die "Cannot find '$ENV_DIR'. Did you move the script?"
+
+# Uninstall
+
+log "Uninstalling environment in '$THIS_DIR'"
+
+SSH_TAG=`< "$ENV_DIR/ssh_tag"` || fail "Cannot find '$ENV_DIR/ssh_tag'."
+rm -rf "$ENV_DIR"
+rm -f "$THIS_DIR/run.sh" "$THIS_DIR/uninstall.sh"
+if [ "`ls -A \"$THIS_DIR\"`" ]; then
+	echo "'$THIS_DIR' will not be deleted as it is not empty."
+else
+	rm -rf "$THIS_DIR"
+fi
+sed -i "/$SSH_TAG/d" ~/.ssh/authorized_keys >& /dev/null
+
+log "Done"

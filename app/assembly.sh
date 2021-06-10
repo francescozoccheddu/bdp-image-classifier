@@ -1,23 +1,31 @@
 #!/bin/bash
 
-# App assembler
+##############################
+######## Assembly app ########
+##############################
 
-OUTPUT=`realpath "${1:-assembly.jar}"`
+# Commons
 
-echo "-- Assembling '$OUTPUT'"
+HELP_DESC="Assembly the classifier app into an executable JAR package"
+ARGS_NAME=(OUTPUT_FILE)
+ARGS_HELP=("the output JAR")
+ARGS_DEF=("assembly.jar")
 
-if ! command -v sbt &> /dev/null
-then
-    echo "SBT is required. See 'https://www.scala-sbt.org/download.html' for more information."
-    echo "-- Failed"
-    exit 1
-fi
+. `dirname "$0"`/../.commons.sh
 
-THIS_FILE=`realpath "$0"`
-APP_DIR=`dirname "$THIS_FILE"`/image-classifier
-INTERM="$APP_DIR/.intermediate_assembly.jar"
+OUTPUT_FILE=${ARGS[OUTPUT_FILE]}
+
+req sbt "See 'https://www.scala-sbt.org/download.html' for more information."
+
+# Paths
+
+APP_DIR="$SDIR/image-classifier"
+OUTPUT_FILE_TMP="$APP_DIR/.intermediate_assembly.jar"
+reqd "$APP_DIR" "Did you move the script?"
+
+# Assembly 
+
+log "Assembling '$OUTPUT_FILE'"
 cd "$APP_DIR"
-sbt --error "set assembly / assemblyOutputPath := file(\"$INTERM\")" assembly || { echo "-- Failed"; exit 1; }
-mv -f "$INTERM" "$OUTPUT"
-
-echo "-- Done"
+sbt --error "set assembly / assemblyOutputPath := file(\"$OUTPUT_FILE_TMP\")" assembly || die "Compilation failed."
+mv -f "$OUTPUT_FILE_TMP" "$OUTPUT_FILE"

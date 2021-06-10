@@ -21,4 +21,4 @@ To setup a local Spark installation for debugging purposes only, see the [`debug
 
 ## Cloud deployment
 
-To setup a cloud cluster, see the [`cloud/`](cloud/) directory and [`cloud/README.md`](cloud/README.md).
+To setup an [AWS EMR](https://aws.amazon.com/emr/) cluster, see the [`cloud/`](cloud/) directory and [`cloud/README.md`](cloud/README.md).

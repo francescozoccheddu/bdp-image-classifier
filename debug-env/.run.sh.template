@@ -1,0 +1,75 @@
+#!/bin/bash
+
+##############################
+##### Run classifier app #####
+##############################
+
+# Commons
+
+if [ -z "${BASH_VERSINFO}" ] || [ -z "${BASH_VERSINFO[0]}" ] || [ ${BASH_VERSINFO[0]} -lt 4 ]; then echo "Bash version 4 or later is required."; exit 1; fi
+
+function log {
+	echo "-- $1"
+}
+
+function die {
+	echo "$1"
+	exit 1
+}
+
+function fail {
+	echo "$1"
+	log "Failed"
+	exit 1
+}
+
+function cancel {
+	if [ "$CANCELED" = false ]; then
+		CANCELED=true
+		fail "Canceled"
+	fi
+}
+
+trap cancel SIGHUP SIGINT SIGTERM
+
+# Input
+
+function help {
+	echo "Run the classifier app on the debug environment. Usage:"
+	echo "$0 (-h|<ASSEMBLY_FILE <CONFIG_FILE>)"
+	echo "Options:"
+	echo "    -h                prints this help message"
+	echo "    <ASSEMBLY_FILE>   the app's JAR file"
+	echo "    <CONFIG_FILE>     the JSON configuration file"
+	exit
+}
+
+while getopts ":h" OPT; do
+   case $OPT in
+      h) help;;
+   esac
+done
+
+[ "$#" -eq 2 ] || die "Expected 2 arguments but got $#. Run $0 -h for help."
+
+ARG_ASSEMBLY_FILE=$1
+ARG_CONFIG_FILE=$2
+
+# Paths
+
+THIS_DIR=`dirname "$0"`
+ENV_DIR="$THIS_DIR/.image-classifier-debug-env"
+[ -d "$ENV_DIR" ] || die "Cannot find '$ENV_DIR'. Did you move the script?"
+
+# Run
+
+log "Starting Hadoop daemons"
+"$ENV_DIR/hadoop/sbin/start-dfs.sh" >& /dev/null
+
+log "Running from config '$ARG_CONFIG_FILE'"
+"$ENV_DIR/spark/bin/spark-submit" --master local[*] --driver-memory 4G "$ARG_ASSEMBLY_FILE" "$ARG_CONFIG_FILE"
+
+log "Stopping Hadoop dameons"
+"$ENV_DIR/hadoop/sbin/stop-dfs.sh" >& /dev/null
+
+log "Done"
