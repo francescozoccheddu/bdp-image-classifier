@@ -35,7 +35,7 @@ function _ic_commons_cleanup {
 }
 
 function die {
-	echo "$1"
+	echo "$1" 1>&2
 	_ic_commons_cleanup
 	exit 1
 }
@@ -73,6 +73,7 @@ req realpath
 
 _IC_COMMONS_THIS_FILE=`realpath "$0"`
 SDIR=`dirname "$_IC_COMMONS_THIS_FILE"`
+SDIR_REL=`dirname "$0"`
 
 function _ic_commons_help {
 	echo "$HELP_DESC. Usage:"
@@ -108,6 +109,7 @@ function _ic_commons_help {
 		fi
 		printf "\n"
 	done
+	trap '' EXIT
 	exit
 }
 

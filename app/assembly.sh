@@ -20,12 +20,11 @@ req sbt "See 'https://www.scala-sbt.org/download.html' for more information."
 # Paths
 
 APP_DIR="$SDIR/image-classifier"
-OUTPUT_FILE_TMP="$APP_DIR/.intermediate_assembly.jar"
 reqd "$APP_DIR" "Did you move the script?"
+OUTPUT_FILE_TMP="$APP_DIR/.intermediate_assembly.jar"
 
 # Assembly 
 
 log "Assembling '$OUTPUT_FILE'"
-cd "$APP_DIR"
-sbt --error "set assembly / assemblyOutputPath := file(\"$OUTPUT_FILE_TMP\")" assembly || die "Compilation failed."
+( cd "$APP_DIR"; sbt --error "set assembly / assemblyOutputPath := file(\"$OUTPUT_FILE_TMP\")" assembly ) || die "Compilation failed."
 mv -f "$OUTPUT_FILE_TMP" "$OUTPUT_FILE"
