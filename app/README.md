@@ -8,7 +8,7 @@ To build and assembly the app into a JAR, run <code>assembly.sh *OUTPUT_FILE*</c
 
 ## Pre-built JAR
 
-You can also use the prebuilt `assembly_x64.jar` for x64 architectures.
+You can also download the prebuilt JAR for x64 architectures, by running <code>download-x64.sh *OUTPUT_FILE*</code>.
 
 ## Running
 
