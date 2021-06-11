@@ -12,10 +12,9 @@ ARGS_HELP=("the output JAR")
 ARGS_DEF=("assembly.jar")
 
 . `dirname "$0"`/../.commons.sh
+req sbt "See 'https://www.scala-sbt.org/download.html' for more information."
 
 OUTPUT_FILE=${ARGS[OUTPUT_FILE]}
-
-req sbt "See 'https://www.scala-sbt.org/download.html' for more information."
 
 # Paths
 
