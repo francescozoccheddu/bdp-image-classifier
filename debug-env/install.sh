@@ -88,7 +88,7 @@ if [ ! -f ~/.ssh/id_rsa ] || [ ! -f ~/.ssh/id_rsa.pub ]; then
 	ssh-keygen -q -t rsa -P "" -f ~/.ssh/id_rsa || die "Failed to generate a SSH key."
 fi
 tr -d "\n" < ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
-echo "$SSH_TAG" >> ~/.ssh/authorized_keys || "Failed to write '~/.ssh/authorized_keys'."
+echo "$SSH_TAG" >> ~/.ssh/authorized_keys || die "Failed to write '~/.ssh/authorized_keys'."
 printf "%s" "$SSH_TAG" > "$ENV_DIR/ssh_tag"
 chmod 0600 ~/.ssh/authorized_keys
 
