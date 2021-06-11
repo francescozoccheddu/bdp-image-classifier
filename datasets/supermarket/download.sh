@@ -1,22 +1,21 @@
 #!/bin/bash
 
-# 'supermarket' dataset downloader
+###############################
+## Download supermarket data ##
+###############################
 
-OUTPUT_DIR="${1:-dataset}"
-mkdir -p "$OUTPUT_DIR"
-THIS_FILE=`realpath "$0"`
-THIS_DIR=`dirname "$THIS_FILE"`
+# Commons
 
-echo "-- Downloading 'supermarket' dataset into '`realpath "$OUTPUT_DIR"`'"
+DATASET_URL="https://iplab.dmi.unict.it/MLC2018/dataset.zip"
 
-cd "$OUTPUT_DIR"
+function cleanup {
+	rm -r -f ".images"
+	rm -f "training_list.csv" "validation_list.csv" "testing_list_blind.csv" "README.txt"
+}
 
-curl -o .dataset.zip "https://iplab.dmi.unict.it/MLC2018/dataset.zip"
+. `dirname "$0"`/../.commons.sh
 
-echo "-- Extracting dataset"
-
-unzip -q -o .dataset.zip
-rm -f .dataset.zip
+# Prepare
 
 mv "images" ".images"
 
@@ -41,10 +40,3 @@ function move {
 
 move "training_list.csv"
 move "validation_list.csv"
-rm -r -f ".images"
-rm -f "training_list.csv" "validation_list.csv" "testing_list_blind.csv" "README.txt"
-cp "$THIS_DIR/config.json.template" "config.json"
-
-echo "-- Done"
-echo "Use the following configuration file:"
-echo `realpath "config.json"`

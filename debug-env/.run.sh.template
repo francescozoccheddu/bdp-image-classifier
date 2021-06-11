@@ -22,7 +22,8 @@ CONFIG_FILE=${ARGS[CONFIG_FILE]}
 ENV_DIR="$SDIR/$ENV_DIR_NAME"
 reqd "$ENV_DIR" "Did you move the script?"
 
-function cleanup {
+function fin_cleanup {
+	log "Stopping Hadoop daemons"
 	"$ENV_DIR/hadoop/sbin/stop-dfs.sh" >& /dev/null
 }
 
@@ -33,6 +34,3 @@ log "Starting Hadoop daemons"
 
 log "Running from config '$CONFIG_FILE'"
 "$ENV_DIR/spark/bin/spark-submit" --master local[*] --driver-memory 4G "$ASSEMBLY_FILE" "$CONFIG_FILE"
-
-log "Stopping Hadoop daemons"
-"$ENV_DIR/hadoop/sbin/stop-dfs.sh" >& /dev/null

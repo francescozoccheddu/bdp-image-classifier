@@ -12,17 +12,13 @@ ARGS_HELP=("the installation directory")
 ARGS_DEF=("env")
 
 . `dirname "$0"`/../.commons.sh
+reqs whoami ssh-keygen curl tar
 
 INSTALL_DIR_REL="${ARGS[INSTALL_DIR]}"
 INSTALL_DIR=`realpath "$INSTALL_DIR_REL"`
 ENV_DIR="$INSTALL_DIR/.image-classifier-debug-env"
 
-req whoami
-req ssh-keygen
-req curl
-req tar
-
-function cleanup {
+function fail_cleanup {
 	if [ -f "$ENV_DIR/ssh_tag" ]; then
 		sed -i "/`< "$ENV_DIR/ssh_tag"`/d" ~/.ssh/authorized_keys >& /dev/null
 	fi

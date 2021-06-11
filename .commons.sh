@@ -13,24 +13,39 @@ function log {
 	echo "-- $1"
 }
 
+function fin_cleanup { :; }
+function fail_cleanup { :; }
+function fail_nocanc_cleanup { :; }
+function succ_cleanup { :; }
+function fin_nocanc_cleanup { :; }
+
 function _ic_commons_exit {
 	local RES=$?
 	if [ "$RES" -eq "0" ]; then
+		succ_cleanup
 		log "Done"
 	else
+		if [ "$_IC_COMMONS_CLEANEDUP" = false ]; then
+			fail_nocanc_cleanup
+		fi
+		fail_cleanup
 		log "Failed"
 	fi
+	if [ "$_IC_COMMONS_CLEANEDUP" = false ]; then
+		fin_nocanc_cleanup
+	fi
+	fin_cleanup
 	exit $?
 }
 
 trap _ic_commons_exit EXIT
 
-function cleanup { :; }
+function canc_cleanup { :; }
 
 function _ic_commons_cleanup {
 	if [ "$_IC_COMMONS_CLEANEDUP" = false ]; then
 		_IC_COMMONS_CLEANEDUP=true
-		cleanup
+		canc_cleanup
 	fi	
 }
 
