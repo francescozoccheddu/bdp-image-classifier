@@ -7,6 +7,9 @@ Simple image classifier with Bag-of-Visual-Words model, written in [Scala](https
 All of the scripts have been tested in Ubuntu 21.04 on a x64 machine.  
 They should work in most popular x86 or x64 Linux distributions, as they only require standard POSIX utilities, `curl`, `whoami`, `python3`, `pip3`, `unzip`, `tar`, `ssh-keygen`, `realpath`, Bash version 4 and an Internet connection.
 
+> **NOTE:**   
+Each script depends on local resources whose paths are expressed relative to the script original location, so **you should not change the file structure** for the scripts to work.
+
 ## Components
 
 ### Application
@@ -19,7 +22,7 @@ To download a dataset, see the [`datasets/`](datasets/) directory and [`datasets
 
 ### Debug environment
 
-To setup a local Spark installation for debugging purposes only, see the [`debug-env/`](debug-env/) directory and [`debug-env/README.md`](debug-env/README.md).
+To setup a local [Spark](https://spark.apache.org/) installation for debugging purposes only, see the [`debug-env/`](debug-env/) directory and [`debug-env/README.md`](debug-env/README.md).
 
 ### Cloud deployment
 

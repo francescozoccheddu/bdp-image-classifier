@@ -7,6 +7,5 @@
 /app/image-classifier/target
 /app/image-classifier/project/*
 !/app/image-classifier/project/plugins.sbt
-/app/image-classifier/src/main/scala/image_classifier/Testbench.scala
 *.jar
 !/app/assembly-x64.jar
