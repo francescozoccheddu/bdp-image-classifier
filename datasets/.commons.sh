@@ -6,6 +6,8 @@
 
 # Commons
 
+if [ "`basename \"$0\"`" = ".commons.sh" ]; then echo "You should not invoke this script directly. See README.md for help."; exit 1; fi
+
 DATASET_NAME=$(basename $(dirname "$0"))
 
 HELP_DESC="Download the '$DATASET_NAME' dataset"

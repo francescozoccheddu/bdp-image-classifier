@@ -5,6 +5,7 @@
 #############################
 
 if [ -z "${BASH_VERSINFO}" ] || [ -z "${BASH_VERSINFO[0]}" ] || [ ${BASH_VERSINFO[0]} -lt 4 ]; then echo "Bash version 4 or later is required."; exit 1; fi
+if [ "`basename \"$0\"`" = ".commons.sh" ]; then echo "You should not invoke this script directly. See README.md for help."; exit 1; fi
 
 _IC_COMMONS_CANCELED=false
 _IC_COMMONS_CLEANEDUP=false
