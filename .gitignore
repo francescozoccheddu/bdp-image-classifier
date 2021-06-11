@@ -8,4 +8,3 @@
 /app/image-classifier/project/*
 !/app/image-classifier/project/plugins.sbt
 *.jar
-!/app/assembly-x64.jar
