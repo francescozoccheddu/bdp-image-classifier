@@ -1,24 +1,17 @@
 # Debug environment
 
-Bash scrips to setup a local [Spark](https://spark.apache.org/) 3.1.2 installation on [Hadoop](https://hadoop.apache.org/) 3.2.2, **for debugging pursposes only**.  
-The environment will be installed into `~/.image-classifier-debug-env`. `~/.profile` will be edited.
+Bash scrips to setup a local [Spark](https://spark.apache.org/) 3.1.2 installation on [Hadoop](https://hadoop.apache.org/) 3.2.2, **for debugging pursposes only**. 
 
 ## Install the environment
 
-Run `install.sh`.
-
-You may also want to run `source ~/.profile` to be able to manually run Spark without restarting the current bash shell.
+Run <code>install.sh *INSTALL_DIR*</code>.
 
 ## Run an application
 
-Run <code>run.sh *ASSEMBLY* *CONFIG*</code>, like this:
-```bash
-data/supermaket/download.sh dataset
-debug-env/run.sh app/assembly.jar dataset/config.json
-```
+Run <code>*INSTALL_DIR*/run.sh *ASSEMBLY_FILE* *CONFIG_FILE*</code>.
 
 You may want to edit `run.sh` to change the Spark driver memory, which defaults to 4GB.
 
 ## Uninstall the environment
 
-Run `uninstall.sh`.
+Run <code>*INSTALL_DIR*/uninstall.sh</code>.
