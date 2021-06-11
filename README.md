@@ -34,7 +34,8 @@ You can try the classifier like this:
 ```bash
 git clone https://github.com/francescozoccheddu/big-data-project.git
 cd big-data-project
+app/download-x64.sh
 datasets/supermarket/download.sh
 debug-env/install.sh
-env/run.sh app/assembly-x64.jar dataset/config.json
+env/run.sh assembly-x64.jar dataset/config.json
 ```
