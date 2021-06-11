@@ -13,4 +13,4 @@ You can also download the prebuilt JAR for the x64 architecture, by running <cod
 ## Running
 
 The app takes the JSON config file path as the only parameter.  
-Note that the output JAR does not contain Spark dependencies, so it needs to be run via `spark-submit` (or `run.sh` from [`debug-env/`](debug-env/)).
+Note that the output JAR does not contain Spark dependencies, so it needs to be run via `spark-submit` (or `run.sh` from [`debug-env/`](../debug-env/)).
