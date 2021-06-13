@@ -8,3 +8,4 @@
 /app/image-classifier/project/*
 !/app/image-classifier/project/plugins.sbt
 *.jar
+/cloud/.aws-cli

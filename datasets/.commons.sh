@@ -18,8 +18,8 @@ ARGS_DEF=("dataset")
 . `dirname "$0"`/../../.commons.sh
 reqs curl unzip
 
-reqf "$SDIR/config.json.template" "Did you move the script?"
-reqf "$SDIR/config-emr.json.template" "Did you move the script?"
+reqf "$SDIR/.config.json.template" "Did you move the script?"
+reqf "$SDIR/.config-emr.json.template" "Did you move the script?"
 
 # Paths
 
@@ -40,7 +40,7 @@ function fail_cleanup {
 	rm -f "$TMP"
 }
 
-curl -o "$TMP" "$DATASET_URL" || die "Download failed."
+curl -o "$TMP" -L "$DATASET_URL" || die "Download failed."
 
 # Extract
 
@@ -57,8 +57,8 @@ function fail_cleanup {
 
 function succ_cleanup {
 	cleanup
-	cp "$SDIR/config.json.template" "config.json"
-	cp "$SDIR/config-emr.json.template" "config-emr.json"
+	cp "$SDIR/.config.json.template" "config.json"
+	cp "$SDIR/.config-emr.json.template" "config-emr.json"
 
 	echo "Use the following configuration file:"
 	echo `realpath "config.json"`
