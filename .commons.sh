@@ -26,19 +26,20 @@ function _ic_commons_exit {
 	local RES=$?
 	_IC_EXITED=true
 	if [ "$RES" -eq "0" ]; then
+		local FAILED=false
 		succ_cleanup
-		log "Done"
 	else
+		local FAILED=true
 		if [ "$_IC_COMMONS_CANCELED" = false ]; then
 			fail_nocanc_cleanup
 		fi
 		fail_cleanup
-		log "Failed"
 	fi
 	if [ "$_IC_COMMONS_CANCELED" = false ]; then
 		fin_nocanc_cleanup
 	fi
 	fin_cleanup
+	if [ "$FAILED" = false ]; then log "Done"; else log "Failed"; fi
 	exit $?
 }
 
