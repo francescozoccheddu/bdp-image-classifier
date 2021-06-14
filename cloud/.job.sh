@@ -1,14 +1,14 @@
 #!/bin/bash
 
+# Exit on error
+set -e -v -x
+
 # Check EMR
 USR="hadoop"
 [ "`whoami`" = "$USR" ] || { echo "Expected '$USR' user"; exit 1; }
 . /etc/os-release
 [ "$ID" = "amzn" ] || { echo "Expected an Amazon Linux distribution"; exit 1; }
 [ "$#" -eq "1" ] || { echo "Expected 1 argument but got $#"; exit 1; }
-
-# Exit on error
-set -e -v -x
 
 # Retrieve repository
 DIR="/home/$USR/image-classifier"
