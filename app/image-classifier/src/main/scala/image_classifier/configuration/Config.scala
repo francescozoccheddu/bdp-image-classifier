@@ -26,7 +26,7 @@ final case class DataConfig private[configuration](
 
 object DataConfig {
 
-	val defaultTempFile: String = "hdfs://localhost:9000/image-classifier/temp_data"
+	val defaultTempFile: String = "hdfs:///image-classifier/temp_data"
 	val defaultTestSample: SampleConfig = SampleConfig(maxFractionPerClass = 0.2)
 
 }
