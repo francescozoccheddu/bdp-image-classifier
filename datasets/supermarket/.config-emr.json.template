@@ -1,6 +1,5 @@
 {
   "data": {
-    "save": "hdfs:///image-classifier/data",
     "make": {
       "dataSet": [
         ["./images/0/*.jpg"],
@@ -20,13 +19,13 @@
         ["./images/14/*.jpg"],
         ["./images/15/*.jpg"]
       ],
+	  "tempFile": "hdfs:///image-classifier/temp_data",
       "testSample": {
         "maxFractionPerClass": 0.2
       }
     }
   },
   "featurization": {
-    "save": "hdfs:///image-classifier/features",
     "make": {
       "descriptor": {
         "algorithm": "sift",
@@ -46,9 +45,12 @@
     }
   },
   "training": {
+	"save": "s3:///francescozoccheddu-big-data-project-image-classifier/model",
     "make": {
       "algorithm": "nn"
     }
   },
-  "testing": {}
+  "testing": {
+	"save": "s3:///francescozoccheddu-big-data-project-image-classifier/summary"
+  }
 }
