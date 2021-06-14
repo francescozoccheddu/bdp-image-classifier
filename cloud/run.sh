@@ -69,6 +69,14 @@ CLUSTER_NAME="francescozoccheddu-big-data-project-image-classifier"
 
 mkdir -p "$OUTPUT_DIR" || die "Failed to create the output directory."
 
+function cleandir {
+	rmdir --ignore-fail-on-non-empty "$INSTALL_DIR"
+}
+
+function fail_cleanup {
+	cleandir
+}
+
 # Create bucket
 
 S3="s3://francescozoccheddu-big-data-project-image-classifier"
@@ -77,11 +85,12 @@ log "Creating S3 bucket '$S3'"
 "$CLI" s3 mb "$S3" || die "Failed to create the bucket."
 
 function fin_cleanup {
+	cleandir
 	log "Deleting the bucket"
 	"$CLI" s3 rb "$S3" --force || die "Failed to delete the bucket."
 }
 
-# Uploading scripts
+# Upload scripts
 
 S3_CONF="$S3/configuration.json"
 S3_SCRIPT="$S3/job.sh" 
@@ -92,16 +101,20 @@ log "Uploading scripts"
 
 # Create cluster
 
+log "Creating the cluster"
+
 S3_LOGS="$S3/logs" 
 
-log "Creating the cluster"
 CLUSTER_ID=`"$CLI" create-cluster` || die "Failed to create the cluster."
 echo "Cluster created succesfully with ID '$CLUSTER_ID'"
 
 function fail_cleanup {
+	cleandir
 	log "Terminating the cluster"
 	"$CLI" emr terminate-clusters --cluster-ids "$CLUSTER_ID" || die "Failed to terminate the cluster."
 }
+
+# Wait for cluster termination
 
 echo "Waiting for the cluster to terminate its job..."
 echo "Type CTRL+C to abort."
@@ -110,9 +123,19 @@ echo "Type CTRL+C to abort."
 
 echo "The cluster has terminated its job."
 
-# Collecting results
+# Collect results
 
 log "Collecting results"
-"$CLI" s3 cp "$S3/model" "$OUTPUT_DIR/model" || die "Failed to download results."
-"$CLI" s3 cp "$S3/summary" "$OUTPUT_DIR/summary" || die "Failed to download results."
-"$CLI" s3 cp "$S3_LOGS" "$OUTPUT_DIR/logs" || die "Failed to download results."
+
+OUT_MODEL="$OUTPUT_DIR/model"
+OUT_SUMMARY="$OUTPUT_DIR/summary"
+OUT_LOGS="$OUTPUT_DIR/logs"
+
+function fail_cleanup {
+	rm -f "$OUT_MODEL" "$OUT_SUMMARY" "$OUT_LOGS"
+	cleandir
+}
+
+"$CLI" s3 cp "$S3/model" "$OUT_MODEL" || die "Failed to download results."
+"$CLI" s3 cp "$S3/summary" "$OUT_SUMMARY" || die "Failed to download results."
+"$CLI" s3 cp "$S3_LOGS" "$OUT_LOGS" || die "Failed to download results."
