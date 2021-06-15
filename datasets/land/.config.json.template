@@ -1,6 +1,5 @@
 {
   "data": {
-    "save": "hdfs:///image-classifier/data",
     "make": {
       "dataSet": [
         ["./images/agricultural/*.png"],
@@ -25,13 +24,13 @@
         ["./images/storagetanks/*.png"],
         ["./images/tenniscourt/*.png"]
       ],
+	  "tempFile": "hdfs:///image-classifier-temp-data",
       "testSample": {
         "maxFractionPerClass": 0.2
       }
     }
   },
   "featurization": {
-    "save": "hdfs:///image-classifier/features",
     "make": {
       "descriptor": {
         "algorithm": "sift",
@@ -47,11 +46,13 @@
     }
   },
   "training": {
+	"save": "./results/model",
     "make": {
       "algorithm": "nn"
     }
   },
   "testing": {
+	"save": "./results/summary",
     "labels": [
       "Agricultural",
       "Airplane",

@@ -1,6 +1,5 @@
 {
   "data": {
-    "save": "hdfs:///image-classifier/data",
     "make": {
       "dataSet": [
         ["./images/airport_inside/*.jpg"],
@@ -71,13 +70,13 @@
         ["./images/warehouse/*.jpg"],
         ["./images/winecellar/*.jpg"]
       ],
+	  "tempFile": "hdfs:///image-classifier-temp-data",
       "testSample": {
         "maxFractionPerClass": 0.2
       }
     }
   },
   "featurization": {
-    "save": "hdfs:///image-classifier/features",
     "make": {
       "descriptor": {
         "algorithm": "sift",
@@ -97,11 +96,13 @@
     }
   },
   "training": {
+	"save": "./results/model",
     "make": {
       "algorithm": "nn"
     }
   },
   "testing": {
+	"save": "./results/summary",
     "labels": [
       "Airport inside",
       "Artstudio",

@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Exit on error
+set -e
+
+# Check EMR
+USR="hadoop"
+[ "`whoami`" = "$USR" ] || { echo "Expected '$USR' user"; exit 1; }
+. /etc/os-release
+[ "$ID" = "amzn" ] || { echo "Expected an Amazon Linux distribution"; exit 1; }
+[ "$#" -eq "1" ] || { echo "Expected 1 argument but got $#"; exit 1; }
+
+function indent { 
+	sed 's/^/   /'
+}
+
+# Retrieve repository
+echo "-- Downloading repository from remote machine"
+mkdir -p "image-classifier" | indent
+cd "image-classifier" | indent
+TMP_ZIP=".repo.zip" | indent
+curl -o "$TMP_ZIP" -L -s "https://github.com/francescozoccheddu/big-data-project/archive/refs/heads/main.zip" | indent
+unzip -o -qq "$TMP_ZIP" | indent
+rm -f "$TMP_ZIP" | indent
+REPO="big-data-project-main"
+
+# Download assembly
+ASSEMBLY="assembly-x64.jar"
+echo "-- Downloading assembly from remote machine"
+"$REPO/app/download-x64.sh" "$ASSEMBLY" | indent
+
+# Download dataset
+DATASET="dataset"
+RESULTS="$DATASET/results"
+echo "-- Downloading dataset from remote machine"
+"$REPO/datasets/$1/download.sh" "$DATASET" | indent
+
+# Run
+echo "-- Running app from remote machine"
+spark-submit "$ASSEMBLY" "$DATASET" | tee "$RESULTS/log" | indent
+mv "$RESULTS" "/home/hadoop/image-classifier-results"

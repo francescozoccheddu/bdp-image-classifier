@@ -9,3 +9,4 @@
 !/app/image-classifier/project/plugins.sbt
 *.jar
 /cloud/.aws-cli
+/cloud/.key
