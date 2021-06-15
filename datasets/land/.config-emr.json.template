@@ -2,27 +2,27 @@
   "data": {
     "make": {
       "dataSet": [
-        ["./images/agricultural/*.png"],
-        ["./images/airplane/*.png"],
-        ["./images/baseballdiamond/*.png"],
-        ["./images/beach/*.png"],
-        ["./images/buildings/*.png"],
-        ["./images/chaparral/*.png"],
-        ["./images/denseresidential/*.png"],
-        ["./images/forest/*.png"],
-        ["./images/freeway/*.png"],
-        ["./images/golfcourse/*.png"],
-        ["./images/harbor/*.png"],
-        ["./images/intersection/*.png"],
-        ["./images/mediumresidential/*.png"],
-        ["./images/mobilehomepark/*.png"],
-        ["./images/overpass/*.png"],
-        ["./images/parkinglot/*.png"],
-        ["./images/river/*.png"],
-        ["./images/runway/*.png"],
-        ["./images/sparseresidential/*.png"],
-        ["./images/storagetanks/*.png"],
-        ["./images/tenniscourt/*.png"]
+        ["file:///home/hadoop/image-classifier/dataset/images/agricultural/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/airplane/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/baseballdiamond/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/beach/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/buildings/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/chaparral/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/denseresidential/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/forest/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/freeway/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/golfcourse/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/harbor/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/intersection/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/mediumresidential/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/mobilehomepark/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/overpass/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/parkinglot/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/river/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/runway/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/sparseresidential/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/storagetanks/*.png"],
+        ["file:///home/hadoop/image-classifier/dataset/images/tenniscourt/*.png"]
       ],
 	  "tempFile": "hdfs:///image-classifier/temp_data",
       "testSample": {
@@ -46,13 +46,13 @@
     }
   },
   "training": {
-	"save": "s3:///francescozoccheddu-big-data-project-image-classifier/model",
+	"save": "./model",
     "make": {
       "algorithm": "nn"
     }
   },
   "testing": {
-	"save": "s3:///francescozoccheddu-big-data-project-image-classifier/summary",
+	"save": "./summary",
 	"labels": [
       "Agricultural",
       "Airplane",
