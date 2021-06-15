@@ -58,34 +58,35 @@ else
 	chmod +x "$CLI"
 fi
 
-"$CLI" sts get-caller-identity >& /dev/null
-[ $? -eq "0" ] || die "AWS authentication failed. Is the access key correct?"
+UID=`"$CLI" sts get-caller-identity | cut -f1` || die "AWS authentication failed. Is the access key correct?"
 
 CLUSTER_NAME="francescozoccheddu-big-data-project-image-classifier"
 
 "$CLI" emr list-clusters --active | grep "^CLUSTERS" | cut -f4 | grep "^$CLUSTER_NAME$" && die "An active cluster already exists."
 
+echo "S3 and EMR resources will be allocated in region '$AWS_DEFAULT_REGION'."
+
 # Create output directory
 
 mkdir -p "$OUTPUT_DIR" || die "Failed to create the output directory."
 
-function cleandir {
+function cleardir {
 	rmdir --ignore-fail-on-non-empty "$INSTALL_DIR"
 }
 
-function fail_cleanup {
-	cleandir
+function fin_cleanup {
+	cleardir
 }
 
 # Create bucket
 
-S3="s3://francescozoccheddu-big-data-project-image-classifier"
+S3="s3://francescozoccheddu-big-data-project-image-classifier-$UID"
 
 log "Creating S3 bucket '$S3'"
 "$CLI" s3 mb "$S3" || die "Failed to create the bucket."
 
 function fin_cleanup {
-	cleandir
+	cleardir
 	log "Deleting the bucket"
 	"$CLI" s3 rb "$S3" --force || die "Failed to delete the bucket."
 }
@@ -103,13 +104,13 @@ log "Uploading scripts"
 
 log "Creating the cluster"
 
-S3_LOGS="$S3/logs" 
+S3_RES="$S3/results"
+S3_LOGS="$S3_RES/logs" 
 
 CLUSTER_ID=`"$CLI" create-cluster` || die "Failed to create the cluster."
 echo "Cluster created succesfully with ID '$CLUSTER_ID'"
 
 function fail_cleanup {
-	cleandir
 	log "Terminating the cluster"
 	"$CLI" emr terminate-clusters --cluster-ids "$CLUSTER_ID" || die "Failed to terminate the cluster."
 }
@@ -127,15 +128,9 @@ echo "The cluster has terminated its job."
 
 log "Collecting results"
 
-OUT_MODEL="$OUTPUT_DIR/model"
-OUT_SUMMARY="$OUTPUT_DIR/summary"
-OUT_LOGS="$OUTPUT_DIR/logs"
-
 function fail_cleanup {
-	rm -f "$OUT_MODEL" "$OUT_SUMMARY" "$OUT_LOGS"
-	cleandir
+	rm -f "$OUTPUT_DIR/model" "$OUTPUT_DIR/summary"
+	rm -rf "$OUTPUT_DIR/logs"
 }
 
-"$CLI" s3 cp "$S3/model" "$OUT_MODEL" || die "Failed to download results."
-"$CLI" s3 cp "$S3/summary" "$OUT_SUMMARY" || die "Failed to download results."
-"$CLI" s3 cp "$S3_LOGS" "$OUT_LOGS" || die "Failed to download results."
+"$CLI" s3 cp "$S3_RES" "$OUTPUT_DIR" --recursive || die "Failed to download results."
