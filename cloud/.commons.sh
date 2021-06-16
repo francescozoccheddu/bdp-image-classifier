@@ -118,10 +118,13 @@ function create_cluster {
 		--instance-type m4.large \
 		--instance-count $INSTANCE_COUNT \
 		$OPTS ) || die "Failed to create the cluster."
-	local SECURITY_GROUP_ID=`cloud/.aws-cli emr describe-cluster --cluster-id "$CLUSTER_ID" --query Cluster.Ec2InstanceAttributes.EmrManagedMasterSecurityGroup` || die "Failed to get the security group."
-	"$AWS" ec2 authorize-security-group-ingress --group-id "$SECURITY_GROUP_ID" --protocol tcp --port 22 --cidr 0.0.0.0/0 || die "Failed to authorize SSH inbound traffic."
-	"$AWS" ec2 authorize-security-group-ingress --group-id "$SECURITY_GROUP_ID" --protocol tcp --port 22 --cidr ::/0 || die "Failed to authorize SSH inbound traffic."
 	echo "Cluster created succesfully with ID '$CLUSTER_ID'."
+}
+
+function authorize_ssh {
+	_ICC_COMMONS_MY_IP=`curl http://checkip.amazonaws.com/` || die "Failed to get local machine IP."
+	local SECURITY_GROUP_ID=`"$_ICC_COMMONS_AWS" emr describe-cluster --cluster-id "$CLUSTER_ID" --query Cluster.Ec2InstanceAttributes.EmrManagedMasterSecurityGroup` || die "Failed to get the security group."
+	"$_ICC_COMMONS_AWS" ec2 authorize-security-group-ingress --group-id "$SECURITY_GROUP_ID" --protocol tcp --port 22 --cidr "$_ICC_COMMONS_MY_IP/32" || die "Failed to authorize SSH inbound traffic."
 }
 
 function terminate_cluster {
@@ -173,7 +176,7 @@ function delete_bucket {
 	"$_ICC_COMMONS_AWS" s3 rb "$BUCKET" --force || die "Failed to delete S3 bucket."
 }
 
-function fin_cleanup_ { # FIXME
+function fin_cleanup {
 	[ "$_ICC_COMMONS_CLUSTER_CREATED" = true ] && terminate_cluster
 	[ "$_ICC_COMMONS_KEY_CREATED" = true ] && delete_key
 	[ "$_ICC_COMMONS_BUCKET_CREATED" = true ] && delete_bucket
