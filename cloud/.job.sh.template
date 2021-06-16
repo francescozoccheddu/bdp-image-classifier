@@ -38,4 +38,5 @@ spark-submit "$ASSEMBLY" "$DATASET/config.json" | tee "$RESULTS/log"
 
 # Collect results
 cd "$RESULTS"
+hdfs fs -get "hdfs:///image-classifier"
 tar -czf "/home/hadoop/image-classifier-results.tgz" *
