@@ -88,13 +88,10 @@ private[image_classifier] final class FileUtils(val workingDir: String)(implicit
 
 	private def clearTempFiles(): Unit = {
 		logger.info(s"Clearing ${tempFiles.length} temp files")
-		for (file <- tempFiles)
-			Try {
-				file.run { case (path, fs) => fs.delete(path, false)
-				}
-				tempFiles.clear()
-			}
-
+		for (file <- tempFiles) Try {
+			file.run { case (path, fs) => fs.delete(path, false) }
+		}
+		tempFiles.clear()
 	}
 
 }
