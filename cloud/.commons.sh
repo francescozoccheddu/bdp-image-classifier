@@ -135,7 +135,7 @@ function revoke_ssh {
 	log "Revoking SSH inbound traffic authorization"
 	[ -n "$_ICC_COMMONS_MY_IP" ] || return
 	[ -n "$_ICC_COMMONS_SECURITY_GROUP_ID" ] || return
-	"$_ICC_COMMONS_AWS" ec2 authorize-security-group-ingress --group-id "$_ICC_COMMONS_SECURITY_GROUP_ID" --protocol tcp --port 22 --cidr "$_ICC_COMMONS_MY_IP/32" || die "Failed to revoke the SSH inbound traffic authorization."
+	"$_ICC_COMMONS_AWS" ec2 revoke-security-group-ingress --group-id "$_ICC_COMMONS_SECURITY_GROUP_ID" --protocol tcp --port 22 --cidr "$_ICC_COMMONS_MY_IP/32" || die "Failed to revoke the SSH inbound traffic authorization."
 }
 
 function terminate_cluster {
