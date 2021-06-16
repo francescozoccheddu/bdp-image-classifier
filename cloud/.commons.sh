@@ -110,7 +110,7 @@ function create_cluster {
 		--release-label emr-6.3.0 \
 		--name "$_ICC_COMMONS_CLUSTER_NAME" \
 		--configurations "file://$SDIR/.configuration.json" \
-		--instance-type m4.large \
+		--instance-type c5.xlarge \
 		--instance-count $INSTANCE_COUNT \
 		$OPTS ) 2> /dev/null || die "Failed to create the cluster."
 	echo "Cluster created succesfully with ID '$_ICC_COMMONS_CLUSTER_ID'."
