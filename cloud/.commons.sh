@@ -20,8 +20,8 @@ for I in ${!_ICC_COMMONS_DATASETS[@]}; do
 	fi
 	_ICC_COMMONS_DATASETS_LISTING="$_ICC_COMMONS_DATASETS_LISTING'${_ICC_COMMONS_DATASETS[$I]}'"
 done
-OPTS_DEF=("${_ICC_COMMONS_DATASETS[0]}" "" "" 3 "the output directory")
-OPTS_HELP=("the dataset to use, between $_ICC_COMMONS_DATASETS_LISTING" "the AWS access key ID (defaults to AWS_ACCESS_KEY_ID)" "the AWS secret access key (defaults to AWS_SECRET_ACCESS_KEY)" "the number of instances, between 2 and 10" "results")
+OPTS_DEF=("${_ICC_COMMONS_DATASETS[0]}" "" "" 3 "results")
+OPTS_HELP=("the dataset to use, between $_ICC_COMMONS_DATASETS_LISTING" "the AWS access key ID (defaults to AWS_ACCESS_KEY_ID)" "the AWS secret access key (defaults to AWS_SECRET_ACCESS_KEY)" "the number of instances, between 2 and 10" "the output directory")
 
 . `dirname "$0"`/../.commons.sh
 reqs curl
@@ -43,9 +43,7 @@ MODEL_NAME="model"
 SUMMARY_NAME="summary"
 LOG_NAME="log"
 EMR_LOG_NAME="emr-logs"
-RES_NAME="results"
 JOB_FILE="$SDIR/.job.sh.template"
-EMR_CONFIG_FILE="$SDIR/.configuration.json"
 
 mkdir -p "$OUTPUT_DIR" || die "Failed to create output directory '$OUTPUT_DIR'."
 
@@ -55,7 +53,7 @@ function fail_cleanup {
 	rmdir --ignore-fail-on-non-empty "$OUTPUT_DIR"
 }
 
-# AWS
+# _ICC_COMMONS_AWS
 
 export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-${ARGS[AWS_AK_ID]}}
 export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-${ARGS[AWS_AK_SECRET]}}
@@ -65,100 +63,138 @@ export AWS_DEFAULT_OUTPUT="text"
 [ -n "$AWS_ACCESS_KEY_ID" ] || dieh "Missing AWS access key ID. Set the 'AWS_ACCESS_KEY_ID' environment variable or use the -k option."
 [ -n "$AWS_SECRET_ACCESS_KEY" ] || dieh "Missing AWS secret access key. Set the 'AWS_SECRET_ACCESS_KEY' environment variable or use the -s option."
 
-
 log "Setting up the AWS CLI"
 
-AWS="$SDIR/.aws-cli"
-if [ -f "$AWS" ]; then 
-	echo "Reusing cached AWS AWS."
+_ICC_COMMONS_AWS="$SDIR/.aws-cli"
+if [ -f "$_ICC_COMMONS_AWS" ]; then 
+	echo "Reusing cached AWS CLI."
 else
-	curl -o "$AWS" -L "https://github.com/simnalamburt/awscliv2.appimage/releases/latest/download/aws-x86_64.AppImage" || die "Download failed."
-	chmod +x "$AWS"
+	curl -o "$_ICC_COMMONS_AWS" -L "https://github.com/simnalamburt/awscliv2.appimage/releases/latest/download/aws-x86_64.AppImage" || die "Download failed."
+	chmod +x "$_ICC_COMMONS_AWS"
 fi
 
-AWS_UID=`"$AWS" sts get-caller-identity | cut -f1` || die "AWS authentication failed. Is the access key correct?"
+_ICC_COMMONS_AWS_UID=`"$_ICC_COMMONS_AWS" sts get-caller-identity --query UserId` || die "AWS authentication failed. Is the access key correct?"
 
-NAME="francescozoccheddu-big-data-project-image-classifier"
-CLUSTER_NAME="$NAME"
-KEY_NAME="$NAME"
-KEY_FILE="$SDIR/.key"
-BUCKET_NAME="$NAME-$AWS_UID"
-BUCKET_AWS="s3://$BUCKET_NAME"
-BUCKET_HADOOP="s3:///$BUCKET_NAME"
+_ICC_COMMONS_NAME="francescozoccheddu-big-data-project-image-classifier"
+_ICC_COMMONS_CLUSTER_NAME="$_ICC_COMMONS_NAME"
+_ICC_COMMONS_KEY_NAME="$_ICC_COMMONS_NAME"
+_ICC_COMMONS_KEY_FILE="$SDIR/.key.pem"
+_ICC_COMMONS_BUCKET_NAME="$_ICC_COMMONS_NAME-$_ICC_COMMONS_AWS_UID"
+BUCKET="s3://$_ICC_COMMONS_BUCKET_NAME"
 RES_REMOTE="/home/hadoop/image-classifier-results"
+_ICC_COMMONS_REMOTE_USR="hadoop"
+HOME_REMOTE="/home/$_ICC_COMMONS_REMOTE_USR"
 
-"$AWS" emr list-clusters --active | grep "^CLUSTERS" | cut -f4 | grep "^$CLUSTER_NAME$" && die "An active cluster already exists."
+_ICC_COMMONS_ACTIVE_CLUSTERS=`"$_ICC_COMMONS_AWS" emr list-clusters --active --query Clusters[?Name=="'$_ICC_COMMONS_CLUSTER_NAME'"]`
+[ -n "$_ICC_COMMONS_ACTIVE_CLUSTERS" ] && die "An active cluster already exists."
 
 echo "All AWS resources will be allocated in region '$AWS_DEFAULT_REGION'."
 
+EMR_KEY=false
+EMR_LOG=false
+EMR_STEPS=""
+unset CLUSTER_ID
+
+_ICC_COMMONS_CLUSTER_CREATED=false
+_ICC_COMMONS_KEY_CREATED=false
+_ICC_COMMONS_BUCKET_CREATED=false
+
 function create_cluster {
-	log "Creating cluster '$CLUSTER_NAME'"
-	"$AWS" emr create-default-roles || die "Failed to create EMR default roles." 
+	log "Creating cluster '$_ICC_COMMONS_CLUSTER_NAME'"
+	_ICC_COMMONS_CLUSTER_CREATED=true
+	"$_ICC_COMMONS_AWS" emr create-default-roles || die "Failed to create EMR default roles." 
 	local OPTS=""
-	[ "$EMR_KEY" = true ] && OPTS="$OPTS --ec2-attributes KeyName=\"$KEY_NAME\""  
-	[ "$EMR_STEPS" = true ] && OPTS="$OPTS --auto-terminate --steps $EMR_STEPS"  
-	[ "$EMR_STEPS" = true ] || OPTS="$OPTS --no-auto-terminate"  
-	[ "$EMR_LOG" = true ] && OPTS="$OPTS --log-uri \"s3n://$BUCKET_NAME/$RES_NAME/$EMR_LOG_NAME\"" 
-	CLUSTER_ID=$("$AWS" create-cluster 
-		--applications Name=Spark 
-		--use-default-roles 
-		--release-label emr-6.3.0 
-		--name "$CLUSTER_NAME" 
-		--configurations "file://$SDIR/.configuration.json" 
-		--instance-type m4.large 
-		--instance-count $INSTANCE_COUNT
-		$OPTS
-		) || die "Failed to create the cluster."
+	[ "$EMR_KEY" = true ] && OPTS="$OPTS --ec2-attributes KeyName=\"$_ICC_COMMONS_KEY_NAME\""  
+	[ -n "$EMR_STEPS" ] && OPTS="$OPTS --auto-terminate --steps $EMR_STEPS"  
+	[ -n "$EMR_STEPS" ] || OPTS="$OPTS --no-auto-terminate"  
+	[ "$EMR_LOG" = true ] && OPTS="$OPTS --log-uri \"s3n://$_ICC_COMMONS_BUCKET_NAME/$RES_NAME/$EMR_LOG_NAME\"" 
+	CLUSTER_ID=$("$_ICC_COMMONS_AWS" emr create-cluster \
+		--query ClusterId \
+		--applications Name=Spark \
+		--use-default-roles \
+		--release-label emr-6.3.0 \
+		--name "$_ICC_COMMONS_CLUSTER_NAME" \
+		--configurations "file://$SDIR/.configuration.json" \
+		--instance-type m4.large \
+		--instance-count $INSTANCE_COUNT \
+		$OPTS ) || die "Failed to create the cluster."
+	local SECURITY_GROUP_ID=`cloud/.aws-cli emr describe-cluster --cluster-id "$CLUSTER_ID" --query Cluster.Ec2InstanceAttributes.EmrManagedMasterSecurityGroup` || die "Failed to get the security group."
+	"$AWS" ec2 authorize-security-group-ingress --group-id "$SECURITY_GROUP_ID" --protocol tcp --port 22 --cidr 0.0.0.0/0 || die "Failed to authorize SSH inbound traffic."
+	"$AWS" ec2 authorize-security-group-ingress --group-id "$SECURITY_GROUP_ID" --protocol tcp --port 22 --cidr ::/0 || die "Failed to authorize SSH inbound traffic."
 	echo "Cluster created succesfully with ID '$CLUSTER_ID'."
 }
 
 function terminate_cluster {
 	[ -n "$CLUSTER_ID" ] || return
 	log "Terminating the cluster"
-	"$AWS" emr terminate-clusters --cluster-ids "$CLUSTER_ID" || die "Failed to terminate the cluster."
+	"$_ICC_COMMONS_AWS" emr terminate-clusters --cluster-ids "$CLUSTER_ID" || die "Failed to terminate the cluster."
 }
 
-function wait_cluster {
+function wait_cluster_running {
+	[ -n "$CLUSTER_ID" ] || return
+	echo "Waiting for the cluster to start..."
+	echo "Type CTRL+C to abort."
+	"$_ICC_COMMONS_AWS" emr wait cluster-running --cluster-id "$CLUSTER_ID" || die "Cluster timed out."
+	echo "The cluster has started."
+}
+
+function wait_cluster_terminated {
 	[ -n "$CLUSTER_ID" ] || return
 	echo "Waiting for the cluster to terminate its job..."
 	echo "Type CTRL+C to abort."
-	"$AWS" emr wait cluster-terminated --cluster-id "$CLUSTER_ID" || die "Cluster timed out."
+	"$_ICC_COMMONS_AWS" emr wait cluster-terminated --cluster-id "$CLUSTER_ID" || die "Cluster timed out."
 	echo "The cluster has terminated its job."
 }
 
-function _icc_commons_delete_key {
-	"$AWS" ec2 delete-key-pair --key-name "$KEY_NAME" || die "Failed to delete EC2 key pair."
-	rm -f "$KEY_FILE"
-}
-
 function create_key {
-	log "Creating EC2 key pair '$KEY_NAME'"
-	_icc_commons_delete_key
-	"$AWS" ec2 create-key-pair --key-name "$KEY_NAME" > "$KEY_FILE" || die "Failed to create EC2 key pair."
+	log "Creating EC2 key pair '$_ICC_COMMONS_KEY_NAME'"
+	"$_ICC_COMMONS_AWS" ec2 delete-key-pair --key-name "$_ICC_COMMONS_KEY_NAME" >& /dev/null
+	rm -f "$_ICC_COMMONS_KEY_FILE"
+	_ICC_COMMONS_KEY_CREATED=true
+	"$_ICC_COMMONS_AWS" ec2 create-key-pair --key-name "$_ICC_COMMONS_KEY_NAME" --query "KeyMaterial" > "$_ICC_COMMONS_KEY_FILE" || die "Failed to create EC2 key pair."
+	chmod 400 "$_ICC_COMMONS_KEY_FILE"
 }
 
 function delete_key {
 	log "Deleting EC2 key pair"
-	_icc_commons_delete_key
-}
-
-function _icc_commons_delete_bucket {
-	"$AWS" s3 rb "$BUCKET_AWS" --force || die "Failed to delete S3 bucket."
+	"$_ICC_COMMONS_AWS" ec2 delete-key-pair --key-name "$_ICC_COMMONS_KEY_NAME" || die "Failed to delete EC2 key pair."
+	rm -f "$_ICC_COMMONS_KEY_FILE"
 }
 
 function create_bucket {
-	log "Creating S3 bucket '$BUCKET_NAME'"
-	_icc_commons_delete_bucket
-	"$AWS" s3 mb "$BUCKET_AWS" || die "Failed to create S3 bucket."
+	log "Creating S3 bucket '$_ICC_COMMONS_BUCKET_NAME'"
+	"$_ICC_COMMONS_AWS" s3 rb "$BUCKET" --force >& /dev/null
+	_ICC_COMMONS_BUCKET_CREATED=true
+	"$_ICC_COMMONS_AWS" s3 mb "$BUCKET" || die "Failed to create S3 bucket."
 }
 
 function delete_bucket {
 	log "Deleting S3 bucket"
-	_icc_commons_delete_bucket
+	"$_ICC_COMMONS_AWS" s3 rb "$BUCKET" --force || die "Failed to delete S3 bucket."
 }
 
-function fin_cleanup {
-	terminate_cluster
-	_icc_commons_delete_bucket
-	_icc_commons_delete_key
+function fin_cleanup_ { # FIXME
+	[ "$_ICC_COMMONS_CLUSTER_CREATED" = true ] && terminate_cluster
+	[ "$_ICC_COMMONS_KEY_CREATED" = true ] && delete_key
+	[ "$_ICC_COMMONS_BUCKET_CREATED" = true ] && delete_bucket
+}
+
+function cluster_ssh {
+	"$_ICC_COMMONS_AWS" emr ssh --cluster-id "$CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --command "$1" || die "Failed to run command on remote machine."
+}
+
+function cluster_dl {
+	"$_ICC_COMMONS_AWS" emr get --cluster-id "$CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "$2" || die "Download from remote machine failed."
+}
+
+function cluster_ul {
+	"$_ICC_COMMONS_AWS" emr put --cluster-id "$CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "$2" || die "Upload to remote machine failed."
+}
+
+function bucket_ul {
+	"$_ICC_COMMONS_AWS" s3 cp "$1" "$BUCKET/$2" || die "Upload to S3 bucket failed."
+}
+
+function bucket_dl_rec {
+	"$_ICC_COMMONS_AWS" s3 cp "$BUCKET/$1" "$2" --recursive || die "Download from S3 bucket failed."
 }
