@@ -9,6 +9,8 @@
 HELP_DESC="Create an EMR cluster, run the app, then destroy the cluster (create a temporary EC2 key-pair and use SSH to communicate)"
 . `dirname "$0"`/.commons.sh
 
+# Job
+
 create_key
 
 EMR_KEY=true
