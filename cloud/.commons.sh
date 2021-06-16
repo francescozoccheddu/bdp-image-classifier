@@ -199,11 +199,11 @@ function cluster_ssh {
 }
 
 function cluster_dl {
-	"$_ICC_COMMONS_AWS" emr get --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "$2" | tail -n +2 || die "Download from remote machine failed."
+	"$_ICC_COMMONS_AWS" emr get --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "$2" > /dev/null || die "Download from remote machine failed."
 }
 
 function cluster_ul {
-	"$_ICC_COMMONS_AWS" emr put --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "$2" | tail -n +2 || die "Upload to remote machine failed."
+	"$_ICC_COMMONS_AWS" emr put --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "$2" > /dev/null || die "Upload to remote machine failed."
 }
 
 function bucket_ul {

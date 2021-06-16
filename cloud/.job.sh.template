@@ -23,18 +23,18 @@ REPO="big-data-project-main"
 # Download assembly
 ASSEMBLY="assembly-x64.jar"
 echo "-- Downloading assembly from remote machine"
-"$REPO/app/download-x64.sh" "$ASSEMBLY" > /dev/null
+"$REPO/app/download-x64.sh" "$ASSEMBLY" >& /dev/null
 
 # Download dataset
 DATASET="dataset"
 RESULTS="$DATASET/results"
 mkdir -p "$RESULTS"
 echo "-- Downloading dataset from remote machine"
-"$REPO/datasets/$1/download.sh" "$DATASET" > /dev/null
+"$REPO/datasets/$1/download.sh" "$DATASET" >& /dev/null
 
 # Run
 echo "-- Running app from remote machine"
-spark-submit "$ASSEMBLY" "$DATASET" | tee "$RESULTS/log" 
+spark-submit "$ASSEMBLY" "$DATASET/config.json" | tee "$RESULTS/log" 
 
 # Collect results
 cd "$RESULTS"
