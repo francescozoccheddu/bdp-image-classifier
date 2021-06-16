@@ -47,7 +47,7 @@ mkdir -p "$OUTPUT_DIR" || die "Failed to create output directory '$OUTPUT_DIR'."
 
 function fail_cleanup {
 	rm -rf "$OUTPUT_DIR/model" "$OUTPUT_DIR/summary" "$OUTPUT_DIR/log" "$OUTPUT_DIR/summary.crc" "$OUTPUT_DIR/model.crc" "$RES_TEMP_TGZ"
-	rmdir --ignore-fail-on-non-empty "$OUTPUT_DIR"
+	rmdir --ignore-fail-on-non-empty "$OUTPUT_DIR" >& /dev/null
 }
 
 # AWS CLI
@@ -82,7 +82,7 @@ RES_REMOTE="/home/hadoop/image-classifier-results.tgz"
 _ICC_COMMONS_REMOTE_USR="hadoop"
 HOME_REMOTE="/home/$_ICC_COMMONS_REMOTE_USR"
 
-_ICC_COMMONS_ACTIVE_CLUSTERS=`"$_ICC_COMMONS_AWS" emr list-clusters --active --query Clusters[?Name=="'$_ICC_COMMONS_CLUSTER_NAME'"]`
+_ICC_COMMONS_ACTIVE_CLUSTERS=`"$_ICC_COMMONS_AWS" emr list-clusters --query Clusters[?Name=="'$_ICC_COMMONS_CLUSTER_NAME'"] --cluster-states STARTING BOOTSTRAPPING RUNNING WAITING`
 [ -n "$_ICC_COMMONS_ACTIVE_CLUSTERS" ] && die "An active cluster already exists."
 
 echo "All AWS resources will be allocated in region '$AWS_DEFAULT_REGION'."
@@ -135,7 +135,7 @@ function revoke_ssh {
 	log "Revoking SSH inbound traffic authorization"
 	[ -n "$_ICC_COMMONS_MY_IP" ] || return
 	[ -n "$_ICC_COMMONS_SECURITY_GROUP_ID" ] || return
-	"$_ICC_COMMONS_AWS" ec2 revoke-security-group-ingress --group-id "$_ICC_COMMONS_SECURITY_GROUP_ID" --protocol tcp --port 22 --cidr "$_ICC_COMMONS_MY_IP/32" || die "Failed to revoke the SSH inbound traffic authorization."
+	"$_ICC_COMMONS_AWS" ec2 revoke-security-group-ingress --group-id "$_ICC_COMMONS_SECURITY_GROUP_ID" --protocol tcp --port 22 --cidr "$_ICC_COMMONS_MY_IP/32" > /dev/null || die "Failed to revoke the SSH inbound traffic authorization."
 }
 
 function terminate_cluster {
@@ -147,7 +147,7 @@ function terminate_cluster {
 function wait_cluster_running {
 	[ -n "$_ICC_COMMONS_CLUSTER_ID" ] || return
 	log "Waiting for the cluster to start"
-	echo "Type CTRL+C to abort."
+	echo "Please wait, it usually takes about 10 minutes... (press CTRL+C to abort)"
 	"$_ICC_COMMONS_AWS" emr wait cluster-running --cluster-id "$_ICC_COMMONS_CLUSTER_ID" || die "Cluster timed out."
 	echo "The cluster has started."
 }
@@ -155,7 +155,7 @@ function wait_cluster_running {
 function wait_cluster_terminated {
 	[ -n "$_ICC_COMMONS_CLUSTER_ID" ] || return
 	log "Waiting for the cluster to terminate its job"
-	echo "Type CTRL+C to abort."
+	echo "Please wait... (press CTRL+C to abort)"
 	"$_ICC_COMMONS_AWS" emr wait cluster-terminated --cluster-id "$_ICC_COMMONS_CLUSTER_ID" || die "Cluster timed out."
 	echo "The cluster has terminated its job."
 }
@@ -192,26 +192,34 @@ function fin_cleanup {
 	[ "$_ICC_COMMONS_KEY_CREATED" = true ] && delete_key
 	[ "$_ICC_COMMONS_BUCKET_CREATED" = true ] && delete_bucket
 	[ "$_ICC_COMMONS_SSH_AUTHORIZED" = true ] && revoke_ssh
+	rm -f "$RES_TEMP_TGZ"
+}
+
+function _icc_commons_resolve {
+	local DIR=`dirname "$1"`
+	local NAME=`basename "$1"`
+	local DIR_ABS=`realpath "$DIR"`
+	echo "$DIR_ABS/$NAME"
 }
 
 function cluster_ssh {
-	"$_ICC_COMMONS_AWS" emr ssh --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --command "$1" | tail -n +2 || die "Failed to run command on remote machine."
+	"$_ICC_COMMONS_AWS" emr ssh --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --command "$1" | awk 'NR > 2 && !/^(ssh -o|Connection to .* closed\.)/' || die "Failed to run command on remote machine."
 }
 
 function cluster_dl {
-	"$_ICC_COMMONS_AWS" emr get --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "$2" > /dev/null || die "Download from remote machine failed."
+	"$_ICC_COMMONS_AWS" emr get --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "`_icc_commons_resolve \"$2\"`" >& /dev/null || die "Download from remote machine failed."
 }
 
 function cluster_ul {
-	"$_ICC_COMMONS_AWS" emr put --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "$2" > /dev/null || die "Upload to remote machine failed."
+	"$_ICC_COMMONS_AWS" emr put --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "`_icc_commons_resolve \"$1\"`" --dest "$2" >& /dev/null || die "Upload to remote machine failed."
 }
 
 function bucket_ul {
-	"$_ICC_COMMONS_AWS" s3 cp "$1" "$BUCKET/$2" || die "Upload to S3 bucket failed."
+	"$_ICC_COMMONS_AWS" s3 cp "`_icc_commons_resolve \"$1\"`" "$BUCKET/$2" || die "Upload to S3 bucket failed."
 }
 
 function bucket_dl {
-	"$_ICC_COMMONS_AWS" s3 cp "$BUCKET/$1" "$2" || die "Download from S3 bucket failed."
+	"$_ICC_COMMONS_AWS" s3 cp "$BUCKET/$1" "`_icc_commons_resolve \"$2\"`" || die "Download from S3 bucket failed."
 }
 
 function extract_results {

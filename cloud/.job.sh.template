@@ -34,9 +34,11 @@ echo "-- Downloading dataset from remote machine"
 
 # Run
 echo "-- Running app from remote machine"
-spark-submit "$ASSEMBLY" "$DATASET/config.json" | tee "$RESULTS/log" 
+spark-submit "$ASSEMBLY" "$DATASET/config.json" 2>&1 | tee "$RESULTS/log" 
 
 # Collect results
 cd "$RESULTS"
-hdfs fs -get "hdfs:///image-classifier"
+hadoop fs -get "hdfs:///image-classifier"
+mv image-classifier/* .
+rm -rf image-classifier
 tar -czf "/home/hadoop/image-classifier-results.tgz" *
