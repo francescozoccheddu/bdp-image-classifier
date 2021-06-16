@@ -4,6 +4,8 @@
 ### Run the app in AWS EMR ###
 ##############################
 
+# Commons
+
 HELP_DESC="Create an EMR cluster, run the app, then destroy the cluster (create a temporary EC2 key-pair and use SSH to communicate)"
 . `dirname "$0"`/.commons.sh
 
@@ -23,6 +25,5 @@ cluster_ssh "chmod +x \"$JOB_REMOTE\" && \"$JOB_REMOTE\" \"$DATASET\""
 
 # Download results
 
-cluster_dl "$RES_REMOTE/$SUMMARY_NAME" "$OUTPUT_DIR/$SUMMARY_NAME"
-cluster_dl "$RES_REMOTE/$LOG_NAME" "$OUTPUT_DIR/$LOG_NAME"
-cluster_dl "$RES_REMOTE/$MODEL_NAME" "$OUTPUT_DIR/$MODEL_NAME"
+cluster_dl "$RES_REMOTE" "$RES_TEMP_TGZ"
+extract_results

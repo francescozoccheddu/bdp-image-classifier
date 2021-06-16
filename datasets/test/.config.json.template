@@ -1,0 +1,42 @@
+{
+  "data": {
+    "make": {
+      "dataSet": [
+        ["./images/0/*.jpg"],
+        ["./images/1/*.jpg"]
+      ],
+	  "tempFile": "hdfs:///image-classifier-temp-data",
+      "testSample": {
+        "maxFractionPerClass": 0.2
+      }
+    }
+  },
+  "featurization": {
+    "make": {
+      "descriptor": {
+        "algorithm": "sift",
+        "maxFeatureCount": 100,
+        "minFeatureCount": 20
+      },
+      "codebook": {
+        "size": 200,
+        "assignNearest": true,
+        "imageSample": {
+          "maxCountPerClass": 100
+        },
+        "featureSample": {
+          "maxCountPerClass": 5000
+        }
+      }
+    }
+  },
+  "training": {
+	"save": "./results/model",
+    "make": {
+      "algorithm": "nn"
+    }
+  },
+  "testing": {
+	"save": "./results/summary"
+  }
+}

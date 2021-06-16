@@ -8,7 +8,7 @@
 
 OPTS_NAME=(DATASET AWS_AK_ID AWS_AK_SECRET INSTANCE_COUNT OUTPUT_DIR)
 OPTS_FLAG=(d k s c o)
-_ICC_COMMONS_DATASETS=("supermarket" "land" "indoor")
+_ICC_COMMONS_DATASETS=("supermarket" "land" "indoor" "test")
 _ICC_COMMONS_DATASETS_LISTING=""
 for I in ${!_ICC_COMMONS_DATASETS[@]}; do 
 	_ICC_COMMONS_DATASETS_COUNT="${#_ICC_COMMONS_DATASETS[@]}"
@@ -81,7 +81,7 @@ _ICC_COMMONS_KEY_NAME="$_ICC_COMMONS_NAME"
 _ICC_COMMONS_KEY_FILE="$SDIR/.key.pem"
 _ICC_COMMONS_BUCKET_NAME="$_ICC_COMMONS_NAME-$_ICC_COMMONS_AWS_UID"
 BUCKET="s3://$_ICC_COMMONS_BUCKET_NAME"
-RES_REMOTE="/home/hadoop/image-classifier-results"
+RES_REMOTE="/home/hadoop/image-classifier-results.tgz"
 _ICC_COMMONS_REMOTE_USR="hadoop"
 HOME_REMOTE="/home/$_ICC_COMMONS_REMOTE_USR"
 
@@ -198,6 +198,13 @@ function bucket_ul {
 	"$_ICC_COMMONS_AWS" s3 cp "$1" "$BUCKET/$2" || die "Upload to S3 bucket failed."
 }
 
-function bucket_dl_rec {
-	"$_ICC_COMMONS_AWS" s3 cp "$BUCKET/$1" "$2" --recursive || die "Download from S3 bucket failed."
+function bucket_dl {
+	"$_ICC_COMMONS_AWS" s3 cp "$BUCKET/$1" "$2" || die "Download from S3 bucket failed."
+}
+
+RES_TEMP_TGZ="$OUTPUT_DIR/.results.tgz"
+
+function extract_results {
+	tar xf "$RES_TEMP_TGZ" -C "$OUTPUT_DIR" --overwrite || die "Extraction failed."
+	rm -f "$RES_TEMP_TGZ"
 }
