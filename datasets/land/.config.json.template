@@ -24,7 +24,7 @@
         ["./images/storagetanks/*.png"],
         ["./images/tenniscourt/*.png"]
       ],
-	  "tempFile": "hdfs:///image-classifier-temp-data",
+	  "tempFile": "hdfs:///image-classifier/data",
       "testSample": {
         "maxFractionPerClass": 0.2
       }
@@ -46,13 +46,13 @@
     }
   },
   "training": {
-	"save": "./results/model",
+	"save": "hdfs:///image-classifier/model",
     "make": {
       "algorithm": "nn"
     }
   },
   "testing": {
-	"save": "./results/summary",
+	"save": "hdfs:///image-classifier/summary",
     "labels": [
       "Agricultural",
       "Airplane",
