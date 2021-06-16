@@ -16,9 +16,10 @@ create_key
 EMR_KEY=true
 create_cluster
 wait_cluster_running
+authorize_ssh
 JOB_REMOTE="$HOME_REMOTE/job.sh"
 cluster_ul "$JOB_FILE" "$JOB_REMOTE"
-cluster_ssh "chmod +x \"$JOB_REMOTE\" && \"$JOB_REMOTE\""
+cluster_ssh "chmod +x \"$JOB_REMOTE\" && \"$JOB_REMOTE\" \"$DATASET\""
 
 # Download results
 
