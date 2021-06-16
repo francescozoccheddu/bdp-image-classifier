@@ -6,28 +6,36 @@
 
 # Commons
 
-OPTS_NAME=(DATASET AWS_AK_ID AWS_AK_SECRET INSTANCE_COUNT OUTPUT_DIR)
-OPTS_FLAG=(d k s c o)
+OPTS_NAME=(DATASET AWS_AK_ID AWS_AK_SECRET INSTANCE_COUNT INSTANCE_TYPE OUTPUT_DIR)
+OPTS_FLAG=(d k s c t o)
+
+function _icc_commons_listing {
+	local LISTING=""
+	local IN=("$@")
+	local COUNT="${#IN[@]}"
+	local LASTI=$((COUNT-1))
+	for I in ${!IN[@]}; do 
+		if [ "$I" -eq "$LASTI" ]; then
+			LISTING="$LISTING and "
+		elif [ "$I" -ne "0" ]; then
+			LISTING="$LISTING, "
+		fi
+		LISTING="$LISTING'${IN[$I]}'"
+	done
+	echo $LISTING
+}
+
 _ICC_COMMONS_DATASETS=("test" "supermarket" "land" "indoor")
-_ICC_COMMONS_DATASETS_LISTING=""
-for I in ${!_ICC_COMMONS_DATASETS[@]}; do 
-	_ICC_COMMONS_DATASETS_COUNT="${#_ICC_COMMONS_DATASETS[@]}"
-	_ICC_COMMONS_LAST_DATASET_I=$((_ICC_COMMONS_DATASETS_COUNT-1))
-	if [ "$I" -eq "$_ICC_COMMONS_LAST_DATASET_I" ]; then
-		_ICC_COMMONS_DATASETS_LISTING="$_ICC_COMMONS_DATASETS_LISTING and "
-	elif [ "$I" -ne "0" ]; then
-		_ICC_COMMONS_DATASETS_LISTING="$_ICC_COMMONS_DATASETS_LISTING, "
-	fi
-	_ICC_COMMONS_DATASETS_LISTING="$_ICC_COMMONS_DATASETS_LISTING'${_ICC_COMMONS_DATASETS[$I]}'"
-done
-OPTS_DEF=("${_ICC_COMMONS_DATASETS[0]}" "" "" 3 "results")
-OPTS_HELP=("the dataset to use, between $_ICC_COMMONS_DATASETS_LISTING" "the AWS access key ID (defaults to AWS_ACCESS_KEY_ID)" "the AWS secret access key (defaults to AWS_SECRET_ACCESS_KEY)" "the number of instances, between 2 and 10" "the output directory")
+_ICC_COMMONS_INSTANCE_TYPES=("m4.large" "c5.xlarge")
+OPTS_DEF=("${_ICC_COMMONS_DATASETS[0]}" "" "" 3 "${_ICC_COMMONS_INSTANCE_TYPES[0]}" "results")
+OPTS_HELP=("the dataset to use, between `_icc_commons_listing ${_ICC_COMMONS_DATASETS[@]}`" "the AWS access key ID (defaults to AWS_ACCESS_KEY_ID)" "the AWS secret access key (defaults to AWS_SECRET_ACCESS_KEY)" "the number of instances, between 2 and 10" "the EC2 instance type, between `_icc_commons_listing ${_ICC_COMMONS_INSTANCE_TYPES[@]}`" "the output directory")
 
 . `dirname "$0"`/../.commons.sh
 reqs curl
 
 DATASET=${ARGS[DATASET]}
 INSTANCE_COUNT=${ARGS[INSTANCE_COUNT]}
+INSTANCE_TYPE=${ARGS[INSTANCE_TYPE]}
 OUTPUT_DIR=${ARGS[OUTPUT_DIR]}
 
 _ICC_COMMONS_DATASET_OK=false
@@ -110,7 +118,7 @@ function create_cluster {
 		--release-label emr-6.3.0 \
 		--name "$_ICC_COMMONS_CLUSTER_NAME" \
 		--configurations "file://$SDIR/.configuration.json" \
-		--instance-type c5.xlarge \
+		--instance-type $INSTANCE_TYPE \
 		--instance-count $INSTANCE_COUNT \
 		$OPTS ) 2> /dev/null || die "Failed to create the cluster."
 	echo "Cluster created succesfully with ID '$_ICC_COMMONS_CLUSTER_ID'."
