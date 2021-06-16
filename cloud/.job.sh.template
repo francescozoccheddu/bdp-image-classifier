@@ -18,7 +18,7 @@ function indent {
 echo "-- Downloading repository from remote machine"
 mkdir -p "image-classifier" | indent
 cd "image-classifier" | indent
-TMP_ZIP=".repo.zip" | indent
+TMP_ZIP=".repo.zip"
 curl -o "$TMP_ZIP" -L -s "https://github.com/francescozoccheddu/big-data-project/archive/refs/heads/main.zip" | indent
 unzip -o -qq "$TMP_ZIP" | indent
 rm -f "$TMP_ZIP" | indent

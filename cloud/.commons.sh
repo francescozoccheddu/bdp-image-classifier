@@ -8,7 +8,7 @@
 
 OPTS_NAME=(DATASET AWS_AK_ID AWS_AK_SECRET INSTANCE_COUNT OUTPUT_DIR)
 OPTS_FLAG=(d k s c o)
-_ICC_COMMONS_DATASETS=("supermarket" "land" "indoor" "test")
+_ICC_COMMONS_DATASETS=("test" "supermarket" "land" "indoor")
 _ICC_COMMONS_DATASETS_LISTING=""
 for I in ${!_ICC_COMMONS_DATASETS[@]}; do 
 	_ICC_COMMONS_DATASETS_COUNT="${#_ICC_COMMONS_DATASETS[@]}"
@@ -39,21 +39,18 @@ done
 
 # Paths
 
-MODEL_NAME="model"
-SUMMARY_NAME="summary"
-LOG_NAME="log"
 EMR_LOG_NAME="emr-logs"
 JOB_FILE="$SDIR/.job.sh.template"
+RES_TEMP_TGZ="$OUTPUT_DIR/.results.tgz"
 
 mkdir -p "$OUTPUT_DIR" || die "Failed to create output directory '$OUTPUT_DIR'."
 
 function fail_cleanup {
-	rm -f "$OUTPUT_DIR/$MODEL_NAME" "$OUTPUT_DIR/$SUMMARY_NAME" "$OUTPUT_DIR/$LOG_NAME"
-	rm -rf "$OUTPUT_DIR/$EMR_LOG_NAME"
+	rm -rf "$OUTPUT_DIR/model" "$OUTPUT_DIR/summary" "$OUTPUT_DIR/log" "$OUTPUT_DIR/summary.crc" "$OUTPUT_DIR/model.crc" "$RES_TEMP_TGZ"
 	rmdir --ignore-fail-on-non-empty "$OUTPUT_DIR"
 }
 
-# _ICC_COMMONS_AWS
+# AWS CLI
 
 export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-${ARGS[AWS_AK_ID]}}
 export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-${ARGS[AWS_AK_SECRET]}}
@@ -93,11 +90,12 @@ echo "All AWS resources will be allocated in region '$AWS_DEFAULT_REGION'."
 EMR_KEY=false
 EMR_LOG=false
 EMR_STEPS=""
-unset CLUSTER_ID
+unset _ICC_COMMONS_CLUSTER_ID
 
 _ICC_COMMONS_CLUSTER_CREATED=false
 _ICC_COMMONS_KEY_CREATED=false
 _ICC_COMMONS_BUCKET_CREATED=false
+_ICC_COMMONS_SSH_AUTHORIZED=false
 
 function create_cluster {
 	log "Creating cluster '$_ICC_COMMONS_CLUSTER_NAME'"
@@ -108,7 +106,7 @@ function create_cluster {
 	[ -n "$EMR_STEPS" ] && OPTS="$OPTS --auto-terminate --steps $EMR_STEPS"  
 	[ -n "$EMR_STEPS" ] || OPTS="$OPTS --no-auto-terminate"  
 	[ "$EMR_LOG" = true ] && OPTS="$OPTS --log-uri \"s3n://$_ICC_COMMONS_BUCKET_NAME/$RES_NAME/$EMR_LOG_NAME\"" 
-	CLUSTER_ID=$("$_ICC_COMMONS_AWS" emr create-cluster \
+	_ICC_COMMONS_CLUSTER_ID=$("$_ICC_COMMONS_AWS" emr create-cluster \
 		--query ClusterId \
 		--applications Name=Spark \
 		--use-default-roles \
@@ -118,34 +116,47 @@ function create_cluster {
 		--instance-type m4.large \
 		--instance-count $INSTANCE_COUNT \
 		$OPTS ) || die "Failed to create the cluster."
-	echo "Cluster created succesfully with ID '$CLUSTER_ID'."
+	echo "Cluster created succesfully with ID '$_ICC_COMMONS_CLUSTER_ID'."
 }
 
 function authorize_ssh {
-	_ICC_COMMONS_MY_IP=`curl http://checkip.amazonaws.com/` || die "Failed to get local machine IP."
-	local SECURITY_GROUP_ID=`"$_ICC_COMMONS_AWS" emr describe-cluster --cluster-id "$CLUSTER_ID" --query Cluster.Ec2InstanceAttributes.EmrManagedMasterSecurityGroup` || die "Failed to get the security group."
-	"$_ICC_COMMONS_AWS" ec2 authorize-security-group-ingress --group-id "$SECURITY_GROUP_ID" --protocol tcp --port 22 --cidr "$_ICC_COMMONS_MY_IP/32" || die "Failed to authorize SSH inbound traffic."
+	log "Authorizing SSH inbound traffic"
+	_ICC_COMMONS_MY_IP=`curl -s http://checkip.amazonaws.com/` || die "Failed to get local machine IP."
+	_ICC_COMMONS_SECURITY_GROUP_ID=`"$_ICC_COMMONS_AWS" emr describe-cluster --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --query Cluster.Ec2InstanceAttributes.EmrManagedMasterSecurityGroup` || die "Failed to get the security group."
+	local AUTH_ERR=`"$_ICC_COMMONS_AWS" ec2 authorize-security-group-ingress --group-id "$_ICC_COMMONS_SECURITY_GROUP_ID" --protocol tcp --port 22 --cidr "$_ICC_COMMONS_MY_IP/32" 2>&1`
+	if [ "$?" -ne 0 ]; then
+		[ `grep "(InvalidPermission.Duplicate) <<< $AUTH_ERR"` ] || die "Failed to authorize SSH inbound traffic."
+	else
+		_ICC_COMMONS_SSH_AUTHORIZED=true
+	fi
+}
+
+function revoke_ssh {
+	log "Revoking SSH inbound traffic authorization"
+	[ -n "$_ICC_COMMONS_MY_IP" ] || return
+	[ -n "$_ICC_COMMONS_SECURITY_GROUP_ID" ] || return
+	"$_ICC_COMMONS_AWS" ec2 authorize-security-group-ingress --group-id "$_ICC_COMMONS_SECURITY_GROUP_ID" --protocol tcp --port 22 --cidr "$_ICC_COMMONS_MY_IP/32" || die "Failed to revoke the SSH inbound traffic authorization."
 }
 
 function terminate_cluster {
-	[ -n "$CLUSTER_ID" ] || return
+	[ -n "$_ICC_COMMONS_CLUSTER_ID" ] || return
 	log "Terminating the cluster"
-	"$_ICC_COMMONS_AWS" emr terminate-clusters --cluster-ids "$CLUSTER_ID" || die "Failed to terminate the cluster."
+	"$_ICC_COMMONS_AWS" emr terminate-clusters --cluster-ids "$_ICC_COMMONS_CLUSTER_ID" || die "Failed to terminate the cluster."
 }
 
 function wait_cluster_running {
-	[ -n "$CLUSTER_ID" ] || return
-	echo "Waiting for the cluster to start..."
+	[ -n "$_ICC_COMMONS_CLUSTER_ID" ] || return
+	log "Waiting for the cluster to start"
 	echo "Type CTRL+C to abort."
-	"$_ICC_COMMONS_AWS" emr wait cluster-running --cluster-id "$CLUSTER_ID" || die "Cluster timed out."
+	"$_ICC_COMMONS_AWS" emr wait cluster-running --cluster-id "$_ICC_COMMONS_CLUSTER_ID" || die "Cluster timed out."
 	echo "The cluster has started."
 }
 
 function wait_cluster_terminated {
-	[ -n "$CLUSTER_ID" ] || return
-	echo "Waiting for the cluster to terminate its job..."
+	[ -n "$_ICC_COMMONS_CLUSTER_ID" ] || return
+	log "Waiting for the cluster to terminate its job"
 	echo "Type CTRL+C to abort."
-	"$_ICC_COMMONS_AWS" emr wait cluster-terminated --cluster-id "$CLUSTER_ID" || die "Cluster timed out."
+	"$_ICC_COMMONS_AWS" emr wait cluster-terminated --cluster-id "$_ICC_COMMONS_CLUSTER_ID" || die "Cluster timed out."
 	echo "The cluster has terminated its job."
 }
 
@@ -180,18 +191,19 @@ function fin_cleanup {
 	[ "$_ICC_COMMONS_CLUSTER_CREATED" = true ] && terminate_cluster
 	[ "$_ICC_COMMONS_KEY_CREATED" = true ] && delete_key
 	[ "$_ICC_COMMONS_BUCKET_CREATED" = true ] && delete_bucket
+	[ "$_ICC_COMMONS_SSH_AUTHORIZED" = true ] && revoke_ssh
 }
 
 function cluster_ssh {
-	"$_ICC_COMMONS_AWS" emr ssh --cluster-id "$CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --command "$1" || die "Failed to run command on remote machine."
+	"$_ICC_COMMONS_AWS" emr ssh --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --command "$1" | tail -n +2 || die "Failed to run command on remote machine."
 }
 
 function cluster_dl {
-	"$_ICC_COMMONS_AWS" emr get --cluster-id "$CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "$2" || die "Download from remote machine failed."
+	"$_ICC_COMMONS_AWS" emr get --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "$2" | tail -n +2 || die "Download from remote machine failed."
 }
 
 function cluster_ul {
-	"$_ICC_COMMONS_AWS" emr put --cluster-id "$CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "$2" || die "Upload to remote machine failed."
+	"$_ICC_COMMONS_AWS" emr put --cluster-id "$_ICC_COMMONS_CLUSTER_ID" --key-pair-file "$_ICC_COMMONS_KEY_FILE" --src "$1" --dest "$2" | tail -n +2 || die "Upload to remote machine failed."
 }
 
 function bucket_ul {
@@ -202,9 +214,6 @@ function bucket_dl {
 	"$_ICC_COMMONS_AWS" s3 cp "$BUCKET/$1" "$2" || die "Download from S3 bucket failed."
 }
 
-RES_TEMP_TGZ="$OUTPUT_DIR/.results.tgz"
-
 function extract_results {
 	tar xf "$RES_TEMP_TGZ" -C "$OUTPUT_DIR" --overwrite || die "Extraction failed."
-	rm -f "$RES_TEMP_TGZ"
 }
