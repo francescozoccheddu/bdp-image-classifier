@@ -26,7 +26,7 @@ To setup a local [Spark](https://spark.apache.org/) installation for debugging p
 
 ### Cloud deployment
 
-To setup an [AWS EMR](https://aws.amazon.com/emr/) cluster, see the [`cloud/`](cloud/) directory and [`cloud/README.md`](cloud/README.md).
+To test the classifier on an [AWS EMR](https://aws.amazon.com/emr/) cluster, see the [`cloud/`](cloud/) directory and [`cloud/README.md`](cloud/README.md).
 
 ## Example
 
