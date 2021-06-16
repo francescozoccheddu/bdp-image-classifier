@@ -10,3 +10,5 @@
 *.jar
 /cloud/.aws-cli
 /cloud/.key.pem
+__pycache__
+*.pyc
