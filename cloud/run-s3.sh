@@ -4,6 +4,8 @@
 ### Run the app in AWS EMR ###
 ##############################
 
+# Commons
+
 HELP_DESC="Create an EMR cluster, run the app, then destroy the cluster (create a temporary S3 bucket to communicate)"
 . `dirname "$0"`/.commons.sh
 
@@ -23,4 +25,5 @@ wait_cluster_terminated
 
 # Download results
 
-bucket_dl_rec "results" "$OUTPUT_DIR"
+bucket_dl "results" "$RES_TEMP_TGZ"
+extract_results

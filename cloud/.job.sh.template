@@ -38,4 +38,7 @@ echo "-- Downloading dataset from remote machine"
 # Run
 echo "-- Running app from remote machine"
 spark-submit "$ASSEMBLY" "$DATASET" | tee "$RESULTS/log" | indent
-mv "$RESULTS" "/home/hadoop/image-classifier-results"
+
+# Collect results
+cd "$RESULTS"
+tar -czf "/home/hadoop/image-classifier-results.tgz" *

@@ -6,6 +6,7 @@ Here is a list of datasets that you can try:
 
 | Name               | Size  | Images | Classes | Source                                                         |
 | :----------------: | :---: | :----: | :-----: | :------------------------------------------------------------: |
+| test               | 12MB  | 555    | 2       | https://iplab.dmi.unict.it/MLC2018/                            |
 | supermarket        | 275MB | 13360  | 16      | https://iplab.dmi.unict.it/MLC2018/                            |
 | land               | 1.1GB | 10500  | 21      | https://www.kaggle.com/apollo2506/landuse-scene-classification |
 | indoor             | 2.6GB | 15613  | 67      | https://www.kaggle.com/itsahmad/indoor-scenes-cvpr-2019        |
