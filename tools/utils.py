@@ -1,16 +1,28 @@
 
-def _require_python():
-    import sys
-    min_version = (3, 5)
-    if sys.version_info < min_version:
-        sys.exit('Python %s.%s or later is required.\n' % min_version)
+from contextlib import contextmanager
 
 
-_require_python()
+def dont_run():
+    if is_caller_main():
+        import sys
+        sys.exit('You should not directly run this script. See README.md for help.')
 
-if __name__ == '__main__':
-    import sys
-    sys.exit('You should not directly run this script. See README.md for help.')
+
+def _get_caller_caller_module():
+    import inspect
+    frame = inspect.stack()[3]
+    return inspect.getmodule(frame[0])
+
+
+def get_caller_module():
+    return _get_caller_caller_module()
+
+
+def is_caller_main():
+    return _get_caller_caller_module().__name__ == '__main__'
+
+
+dont_run()
 
 
 def download(url, output_file=None, silent=False):
@@ -32,7 +44,13 @@ def download(url, output_file=None, silent=False):
             progress = tqdm(response.iter_content(buffer_size), 'Downloading', total=file_size, unit='B', unit_scale=True, unit_divisor=1000)
             iterable = progress.iterable
     if output_file is None:
-        output_file = get_temp_path()
+        import cgi
+        from os import path
+        header = response.headers.get('Content-Disposition', '')
+        _, params = cgi.parse_header(header)
+        filename = params.get('filename', '')
+        ext = path.splitext(filename)[1]
+        output_file = get_temp_path(ext)
     try:
         with open(output_file, 'wb') as f:
             for data in iterable:
@@ -52,10 +70,10 @@ def _humanize_size(size):
     return '%.1f%sB' % (size, 'G')
 
 
-def get_temp_path():
+def get_temp_path(suffix=None):
     import tempfile
     try:
-        return tempfile.mktemp('francescozoccheddu-bdp-image-classifier')
+        return tempfile.mktemp(suffix, 'francescozoccheddu-bdp-image-classifier')
     except BaseException:
         raise NoTempPathError()
 
@@ -117,6 +135,22 @@ def input_file_arg(arg):
     return arg
 
 
+def input_file_or_parent_argb(file):
+
+    def process(arg):
+        import os
+        child = os.path.join(arg, file)
+        if is_file_readable(arg):
+            return arg
+        elif is_dir_readable(arg) and is_file_readable(child):
+            return child
+        else:
+            import argparse
+            raise argparse.ArgumentTypeError(f'not a readable file nor a directory with "{child}" file')
+
+    return process
+
+
 def input_dir_arg(arg):
     if not is_dir_readable(arg):
         import argparse
@@ -126,9 +160,21 @@ def input_dir_arg(arg):
 
 class LoggableError(Exception):
 
-    def __init__(self, message):
-        super().__init__()
-        self._message = message
+    @staticmethod
+    def prefix(prefix, error):
+        message = '' if error is None else str(error).strip()
+        if message:
+            if message.count('\n') > 0:
+                message = f'{prefix}:\n{message}'
+            else:
+                message = f'{prefix}: {message}'
+        else:
+            message = f'{prefix}.'
+        return message
+
+    def __init__(self, message, error=None):
+        super().__init__(message, error)
+        self._message = LoggableError.prefix(message, error)
 
     def log(self):
         printerr(self._message)
@@ -137,19 +183,19 @@ class LoggableError(Exception):
 class DownloadFailedError(LoggableError):
 
     def __init__(self):
-        super().__init__('Download failed.')
+        super().__init__('Download failed')
 
 
 class ExtractionFailedError(LoggableError):
 
     def __init__(self):
-        super().__init__('Extraction failed.')
+        super().__init__('Extraction failed')
 
 
 class NoTempPathError(LoggableError):
 
     def __init__(self):
-        super().__init__('Failed to get a temporary path.')
+        super().__init__('Failed to get a temporary path')
 
 
 def printerr(message):
@@ -163,16 +209,24 @@ def hook_exceptions():
     def except_hook(type, value, traceback):
         if issubclass(type, LoggableError):
             value.log()
-        if issubclass(type, KeyboardInterrupt):
-            printerr("Cancelled by user.")
+        elif issubclass(type, KeyboardInterrupt):
+            printerr('Cancelled by user.')
+        elif issubclass(type, ImportError):
+            printerr(f'Module "{value.name}" cannot be imported. See README.md for installation help.')
         else:
-            message = str(value).strip()
-            if message:
-                if message.count('\n') > 0:
-                    printerr(f'Unhandled exception:\n{message}')
-                else:
-                    printerr(f'Unhandled exception: {message}')
-            else:
-                printerr('Unhandled exception.')
+            printerr(LoggableError.prefix('Unhandled exception', value))
 
     sys.excepthook = except_hook
+
+
+@contextmanager
+def suppress_stdout():
+    import sys
+    import os
+    with open(os.devnull, 'w') as devnull:
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout

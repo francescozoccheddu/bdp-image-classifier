@@ -3,12 +3,12 @@ from .. import utils
 
 class NoSBTError(utils.LoggableError):
     def __init__(self):
-        super().__init__('SBT is not installed. See "https://www.scala-sbt.org/download.html" for help.')
+        super().__init__('SBT is not installed. See "https://www.scala-sbt.org/download.html" for help')
 
 
 class CompilationFailedError(utils.LoggableError):
     def __init__(self):
-        super().__init__('Build failed.')
+        super().__init__('Build failed')
 
 
 def assembly(project_dir, output_file):
