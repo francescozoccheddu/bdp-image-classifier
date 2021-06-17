@@ -19,7 +19,7 @@ def _main():
     utils.hook_exceptions()
     import argparse
     parser = argparse.ArgumentParser(description='Download prebuilt app JARs', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('architecture', type=Architecture, choices=list(Architecture), help='the target architecture')
+    parser.add_argument('architecture', metavar='ARCHITECTURE', type=Architecture, choices=list(Architecture), help='the target architecture')
     parser.add_argument('-o', '--output-file', type=utils.output_file_arg, default='assembly.jar', help='the output JAR file')
     args = parser.parse_args()
     download(args.architecture, args.output_file)

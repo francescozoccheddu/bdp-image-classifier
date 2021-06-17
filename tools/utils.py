@@ -134,6 +134,16 @@ def input_file_arg(arg):
         raise argparse.ArgumentTypeError('not a readable file')
     return arg
 
+def bool_arg(arg):
+    arg = arg.lower()
+    if arg in ('1', 'true', 'y', 'yes'):
+        return True
+    elif arg in ('0', 'false', 'n', 'no'):
+        return False
+    else:
+        import argparse
+        raise argparse.ArgumentTypeError('not a boolean value')
+
 
 def input_file_or_parent_argb(file):
 

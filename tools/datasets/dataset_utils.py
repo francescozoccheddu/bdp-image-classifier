@@ -78,7 +78,7 @@ def _on_dir(dir, config_file, func, temp_files):
 
 def on_dir(dir, func, temp_files):
     from os import path
-    caller_file = utils.get_caller_module().__file__
+    caller_file = path.realpath(utils.get_caller_module().__file__)
     caller_dir = path.dirname(caller_file)
     name = path.basename(caller_file).rstrip('.py')
     config_file = path.join(caller_dir, _config_template_name.format(name))
@@ -90,7 +90,7 @@ def catch_main(func, temp_files):
         utils.hook_exceptions()
         import argparse
         from os import path
-        caller_file = utils.get_caller_module().__file__
+        caller_file = path.realpath(utils.get_caller_module().__file__)
         caller_dir = path.dirname(caller_file)
         name = path.basename(caller_file).rstrip('.py')
         config_file = path.join(caller_dir, _config_template_name.format(name))

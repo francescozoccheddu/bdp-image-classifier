@@ -18,7 +18,7 @@ def assembly(project_dir, output_file):
         raise NoSBTError()
     import subprocess
     from os import path
-    interm_file = path.realpath(path.join(project_dir, '.intermediate.jar'))
+    interm_file = path.abspath(path.join(project_dir, '.intermediate.jar'))
     if subprocess.call([sbt_file, '--error', f'set assembly / assemblyOutputPath := file("{interm_file}")', 'assembly'], cwd=project_dir) != 0:
         raise CompilationFailedError()
     shutil.move(interm_file, output_file)
