@@ -32,13 +32,13 @@ def download(url, output_file=None, silent=False):
         response = requests.get(url, stream=True)
         file_size = int(response.headers.get('Content-Length', 0))
         iterable = response.iter_content(buffer_size)
-    except BaseException:
+    except Exception:
         raise DownloadFailedError()
     progress = None
     if not silent:
         try:
             from tqdm import tqdm
-        except BaseException:
+        except Exception:
             print(f'Downloading {_humanize_size(file_size)}. Please wait...')
         else:
             progress = tqdm(response.iter_content(buffer_size), 'Downloading', total=file_size, unit='B', unit_scale=True, unit_divisor=1000)
@@ -57,7 +57,7 @@ def download(url, output_file=None, silent=False):
                 f.write(data)
                 if progress is not None:
                     progress.update(len(data))
-    except BaseException:
+    except Exception:
         raise DownloadFailedError()
     return output_file
 
@@ -214,8 +214,8 @@ def hook_exceptions():
         elif issubclass(type, ImportError):
             printerr(f'Module "{value.name}" cannot be imported. See README.md for installation help.')
         else:
-            printerr(LoggableError.prefix('Unhandled exception', value))
-
+            printerr(LoggableError.prefix('Unhandled Exception', value))
+            sys.__excepthook__(type, value, traceback)
     sys.excepthook = except_hook
 
 
@@ -230,3 +230,23 @@ def suppress_stdout():
             yield
         finally:
             sys.stdout = old_stdout
+
+
+def delete_if_empty_dir(dir):
+    import os
+    try:
+        os.rmdir(dir)
+    except Exception:
+        pass
+
+
+def delete(path):
+    import os
+    try:
+        if os.path.isfile(path):
+            os.remove(path)
+        elif os.path.isdir(path):
+            import shutil
+            shutil.rmtree(path)
+    except Exception:
+        pass
