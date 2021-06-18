@@ -26,8 +26,8 @@ def log(msg):
 
 def err(msg):
     import sys
-    if isinstance(err, Exception):
-        msg = humanize_exc(err)
+    if isinstance(msg, BaseException):
+        msg = humanize_exc(msg)
     print(msg, file=sys.stderr)
 
 
@@ -62,10 +62,10 @@ def humanize_exc(exc):
         return concat('Unhandled exception', str(exc), sep=':', empty_sep='.')
 
 
-def listing(*msgs, quote=True):
+def listing(*msgs, doQuote=True):
     res = ''
-    if quote:
-        msgs = list(map(quote, msgs))
+    if doQuote:
+        msgs = list(map(quote, filter(lambda x : x is not None, msgs)))
     else:
         msgs = list(filter(bool, map(str.strip, msgs)))
     for msg in msgs[:-1]:
