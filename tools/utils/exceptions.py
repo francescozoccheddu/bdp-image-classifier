@@ -6,10 +6,12 @@ class LoggableError(Exception):
 
     @staticmethod
     def prefix(prefix, cause):
-        from .cli import concat, humanize_exc
+        from .cli import concat, humanize_exc, at_end
         cause = cause or ''
         if isinstance(cause, Exception):
             cause = humanize_exc(cause)
+        if cause:
+            cause = at_end(cause, '.')
         return concat(prefix, cause, sep=':', empty_sep='.')
 
     def __init__(self, message, cause=None, *info):

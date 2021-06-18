@@ -1,5 +1,5 @@
+from ..utils.launcher import main
 
-from ..utils import cli
 _default_data_save = None
 _default_data_temp_file = 'hdfs:///image-classifier/data'
 _default_featurization_save = None
@@ -62,6 +62,7 @@ def reconfigure(
         json.dump(config, f)
 
 
+@main
 def _main():
     from ..utils import cliargs
     import argparse
@@ -76,6 +77,3 @@ def _main():
     parser.add_argument('--testing-print', type=cliargs.boolean, default=_default_testing_print, help='whether to print the testing summary to stdout')
     args = parser.parse_args()
     reconfigure(args.config_file, args.data_save, args.data_temp_file, args.data_cwd, args.featurization_save, args.training_save, args.testing_save, args.testing_print)
-
-
-cli.hook_main(_main)

@@ -1,36 +1,32 @@
 
-def _is_main(mod):
+
+def is_main_module(mod):
     return mod.__name__ == '__main__'
 
 
-def launcher(func):
-
-    def actual_launcher(main):
-        def prevent():
-            raise RuntimeError('Main function call.')
-
-        import inspect
-        module = inspect.getmodule(main)
-        if _is_main(module):
-            from . import cli
-            cli.set_exception_hook()
-            func(main)
-        return prevent
-
-    return actual_launcher
-
-
-def dont_run():
-    import inspect
-    frame = inspect.stack()[1]
-    if _is_main(inspect.getmodule(frame[0])):
+def dont_run(skip=0):
+    if is_main_module(get_caller_module(skip + 1)):
         import sys
         sys.exit('You should not run this script directly. See README.md for help.')
 
 
-@launcher
+def get_caller_module(skip=0):
+    import inspect
+    frame = inspect.stack()[skip + 1]
+    return inspect.getmodule(frame[0])
+
+
+def is_caller_main(skip=0):
+    is_main_module(get_caller_module(skip + 1))
+
+
 def main(func):
-    func()
+    import inspect
+    if is_main_module(inspect.getmodule(func)):
+        from . import cli
+        cli.set_exception_hook()
+        func()
+    return func
 
 
 dont_run()
