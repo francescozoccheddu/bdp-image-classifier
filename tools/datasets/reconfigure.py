@@ -1,5 +1,5 @@
-from .. import utils
 
+from ..utils import cli
 _default_data_save = None
 _default_data_temp_file = 'hdfs:///image-classifier/data'
 _default_featurization_save = None
@@ -63,21 +63,19 @@ def reconfigure(
 
 
 def _main():
-    utils.hook_exceptions()
+    from ..utils import cliargs
     import argparse
-    from os import path
     parser = argparse.ArgumentParser(description=f'Change output paths in a JSON configuration file', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('config_file', metavar='CONFIG_FILE', type=utils.input_file_or_parent_argb('config.json'), help='the JSON config file or the dataset directory')
+    parser.add_argument('config_file', metavar='CONFIG_FILE', type=cliargs.make_input_file_or_parent('config.json'), help='the JSON config file or the dataset directory')
     parser.add_argument('--data-save', type=str, default=_default_data_save, help='the data output file')
     parser.add_argument('--data-temp-file', type=str, default=_default_data_temp_file, help='the data temporary file')
     parser.add_argument('--data-cwd', type=str, default=_default_data_cwd, help='the datasets working directory')
     parser.add_argument('--featurization-save', type=str, default=_default_featurization_save, help='the features output file')
     parser.add_argument('--training-save', type=str, default=_default_training_save, help='the model output file')
     parser.add_argument('--testing-save', type=str, default=_default_testing_save, help='the testing summary output file')
-    parser.add_argument('--testing-print', type=utils.bool_arg, default=_default_testing_print, help='whether to print the testing summary to stdout')
+    parser.add_argument('--testing-print', type=cliargs.boolean, default=_default_testing_print, help='whether to print the testing summary to stdout')
     args = parser.parse_args()
     reconfigure(args.config_file, args.data_save, args.data_temp_file, args.data_cwd, args.featurization_save, args.training_save, args.testing_save, args.testing_print)
 
 
-if __name__ == '__main__':
-    _main()
+cli.hook_main(_main)

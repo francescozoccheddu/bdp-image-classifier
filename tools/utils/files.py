@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from .exceptions import FileSystemError, NetworkError
 import os
 import shutil
-from .cli import dont_run
+from .launcher import dont_run
 dont_run()
 
 

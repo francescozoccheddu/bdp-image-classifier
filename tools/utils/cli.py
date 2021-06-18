@@ -1,28 +1,22 @@
 
+from .exceptions import LoggableError
 from contextlib import contextmanager
-
-
-def _get_caller_caller_module():
-    import inspect
-    frame = inspect.stack()[3]
-    return inspect.getmodule(frame[0])
-
-
-def get_caller_module():
-    return _get_caller_caller_module()
-
-
-def is_caller_main():
-    return _get_caller_caller_module().__name__ == '__main__'
-
-
-def dont_run():
-    if is_caller_main():
-        import sys
-        sys.exit('You should not directly run this script. See README.md for help.')
-
-
+from .launcher import dont_run
 dont_run()
+
+_debug = True
+
+
+def set_exception_hook():
+    import sys
+
+    def hook(exc_type, exc, traceback):
+        from .cli import err
+        err(exc)
+        if _debug:
+            sys.__excepthook__(exc_type, exc, traceback)
+
+    sys.excepthook = hook
 
 
 def log(msg):
@@ -104,9 +98,6 @@ def at_end(msg, end):
         return msg + end
 
 
-_debug = True
-
-
 @contextmanager
 def no_stdout():
     import sys
@@ -120,13 +111,15 @@ def no_stdout():
             sys.stdout = old_stdout
 
 
-def set_exception_hook():
+class NoCommandError(LoggableError):
 
-    import sys
+    def __init__(self, command):
+        super().__init__(f'Command "{command}" not found. See README.md for installation help.')
 
-    def hook(exc_type, exc, traceback):
-        err(exc)
-        if _debug:
-            sys.__excepthook__(exc_type, exc, traceback)
 
-    sys.excepthook = hook
+def get_command_path(cmd):
+    import shutil
+    path = shutil.which(cmd)
+    if not path:
+        raise NoCommandError(cmd)
+    return path

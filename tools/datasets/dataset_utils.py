@@ -42,7 +42,6 @@ def _on_dir(dir, config_file, func, temp_files):
     existed = os.path.exists(dir)
     config_output_file = os.path.join(dir, _config_output_name)
     this_images_dir = os.path.join(dir, images_dir())
-    cwd = os.getcwd()
     if not existed:
         os.mkdir(dir)
 
@@ -58,11 +57,8 @@ def _on_dir(dir, config_file, func, temp_files):
     delete_results()
 
     try:
-        try:
-            os.chdir(dir)
+        with utils.cwd(dir):
             func()
-        finally:
-            os.chdir(cwd)
         shutil.copyfile(config_file, config_output_file)
     except Exception:
         delete_temp()
