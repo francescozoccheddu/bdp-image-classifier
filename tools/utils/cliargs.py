@@ -1,30 +1,29 @@
-from .cli import dont_run
 from .files import is_dir_readable, is_file_readable, is_dir_writable, is_file_writable
+from .launcher import dont_run
 dont_run()
 
-
-def output_file_arg(arg):
+def output_file(arg):
     if not is_file_writable(arg):
         import argparse
         raise argparse.ArgumentTypeError('not a writable file')
     return arg
 
 
-def output_dir_arg(arg):
+def output_dir(arg):
     if not is_dir_writable(arg):
         import argparse
         raise argparse.ArgumentTypeError('not a writable dir')
     return arg
 
 
-def input_file_arg(arg):
+def input_file(arg):
     if not is_file_readable(arg):
         import argparse
         raise argparse.ArgumentTypeError('not a readable file')
     return arg
 
 
-def bool_arg(arg):
+def boolean(arg):
     arg = arg.lower()
     if arg in ('1', 'true', 'y', 'yes'):
         return True
@@ -35,7 +34,7 @@ def bool_arg(arg):
         raise argparse.ArgumentTypeError('not a boolean value')
 
 
-def input_file_or_parent_argb(file):
+def make_input_file_or_parent(file):
 
     def process(arg):
         import os
@@ -51,7 +50,7 @@ def input_file_or_parent_argb(file):
     return process
 
 
-def input_dir_arg(arg):
+def input_dir(arg):
     if not is_dir_readable(arg):
         import argparse
         raise argparse.ArgumentTypeError('not a readable dir')

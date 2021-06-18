@@ -1,4 +1,4 @@
-from .cli import dont_run
+from .launcher import dont_run
 dont_run()
 
 
