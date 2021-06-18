@@ -33,8 +33,6 @@ def images_dir():
 
 def downloader(temp_files):
 
-    temp_files += [_config_output_name]
-
     def decorator(func):
         from ..utils import launcher
         import os

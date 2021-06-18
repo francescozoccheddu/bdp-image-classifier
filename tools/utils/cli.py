@@ -64,8 +64,9 @@ def humanize_exc(exc):
 
 def listing(*msgs, doQuote=True):
     res = ''
+    msgs = filter(lambda x: x is not None, msgs)
     if doQuote:
-        msgs = list(map(quote, filter(lambda x : x is not None, msgs)))
+        msgs = list(map(quote, msgs))
     else:
         msgs = list(filter(bool, map(str.strip, msgs)))
     for msg in msgs[:-1]:
@@ -81,7 +82,7 @@ def concat(msg_a, msg_b, sep='', empty_sep=''):
     msg_a = msg_a.strip()
     msg_b = msg_b.strip()
     if not msg_b:
-        return at_end(empty_sep)
+        return at_end(msg_a, empty_sep)
     if not msg_a:
         return msg_b
     if is_multiline(msg_a) or is_multiline(msg_b):

@@ -137,14 +137,17 @@ def create_dir(dir):
 
 @contextmanager
 def output_dir(dir, children=[], wipe=False):
+    abs_dir = os.path.abspath(dir)
     if wipe:
-        delete_output_dir(dir)
-    created = create_dir(dir)
+        for child in children:
+            res_child = os.path.join(abs_dir, child)
+            delete(res_child) 
+    created = create_dir(abs_dir)
     try:
-        with cwd(dir):
+        with cwd(abs_dir):
             yield
     except BaseException:
-        delete_output_dir(dir, children, created)
+        delete_output_dir(abs_dir, children, created)
         raise
 
 
@@ -191,12 +194,14 @@ def download(url, output_file=None, silent=False):
         try_delete_file(output_file)
         raise
 
+
 def try_delete_file(file):
     if os.path.isfile(file):
         try:
             delete(file)
-        except:
+        except BaseException:
             pass
+
 
 def extract(archive_file, output_dir, format=None):
     import shutil
