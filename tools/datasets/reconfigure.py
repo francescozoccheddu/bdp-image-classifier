@@ -34,9 +34,13 @@ def reconfigure(
         training_save=_default_training_save,
         testing_save=_default_testing_save,
         testing_print=_default_testing_print):
+    from json.decoder import JSONDecodeError
+    from ..utils import files
     import json
-    with open(file) as f:
-        config = json.load(f)
+    try:
+        config = json.loads(files.read(file))
+    except JSONDecodeError as exc:
+        raise files.FileAccessError(file, exc)
     data = config.get('data')
     featurization = config.get('featurization')
     training = config.get('training')
@@ -58,8 +62,7 @@ def reconfigure(
     if 'testing' in config:
         testing['print'] = testing_print
         testing['save'] = testing_save
-    with open(file, 'w') as f:
-        json.dump(config, f)
+    files.write(file, json.dumps(config))
 
 
 @main

@@ -1,10 +1,13 @@
 
+import os
+from sys import stdin
 from .exceptions import LoggableError
 from contextlib import contextmanager
 from .launcher import dont_run
 dont_run()
 
 _debug = True
+_log = False
 
 
 def set_exception_hook():
@@ -19,9 +22,15 @@ def set_exception_hook():
     sys.excepthook = hook
 
 
+def set_log_enabled():
+    global _log
+    _log = True
+
+
 def log(msg):
-    import sys
-    print(msg, file=sys.stdout)
+    if _log:
+        import sys
+        print(msg, file=sys.stdout)
 
 
 def err(msg):
@@ -124,3 +133,12 @@ def get_command_path(cmd):
     if not path:
         raise NoCommandError(cmd)
     return path
+
+
+def run(cmd, args, cwd=os.getcwd(), input=None, noOut=False, noErr=False):
+    file = os.path.abspath(get_command_path(cmd))
+    import subprocess
+    import sys
+    stdout = subprocess.DEVNULL if noOut else sys.stdout
+    stderr = subprocess.DEVNULL if noErr else sys.stderr
+    subprocess.run([file, *args], cwd=cwd, input=input, stdout=stdout, stderr=stderr)

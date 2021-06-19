@@ -5,11 +5,11 @@
 	</property>
 	<property>
 		<name>dfs.namenode.name.dir</name>
-		<value>$NAMENODE_DATA_HOME</value>
+		<value>%INSTALL_DIR%/%NAMENODE_DIR%</value>
 	</property>
 	<property>
 		<name>dfs.datanode.data.dir</name>
-		<value>$DATANODE_DATA_HOME</value>
+		<value>%INSTALL_DIR%/%DATANODE_DIR%</value>
 	</property>
 	<property>
 		<name>dfs.namenode.http-address</name>

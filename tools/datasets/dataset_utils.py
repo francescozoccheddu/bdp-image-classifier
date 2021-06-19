@@ -53,6 +53,7 @@ def downloader(temp_files):
                     files.delete(temp_file)
 
         if launcher.is_main_module(module):
+            cli.set_log_enabled()
             cli.set_exception_hook()
             from ..utils import cliargs
             import argparse
