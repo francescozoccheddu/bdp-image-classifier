@@ -24,7 +24,7 @@ def main(func):
     import inspect
     if is_main_module(inspect.getmodule(func)):
         from . import cli
-        cli.set_log_enabled()
+        cli.set_logging()
         cli.set_exception_hook()
         func()
     return func

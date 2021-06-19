@@ -1,6 +1,6 @@
 
-from ..utils.exceptions import LoggableError
 from ..utils.launcher import dont_run
+from ..utils import files
 dont_run()
 
 
@@ -33,9 +33,7 @@ def ssh_public_key_file():
 
 
 def ssh_authorized_keys_file():
-    from ..utils import files
-    import os
-    return os.path.join(files.get_home(), '.ssh/authorized_keys')
+    return files.join(files.get_home(), '.ssh/authorized_keys')
 
 
 def namenode_dir():
@@ -51,21 +49,9 @@ def all_dirs():
 
 
 def add_argparse_install_dir(parser):
-    from ..utils import cliargs, files
-    import os
-    default = os.path.join(files.get_home(), '.fz-bdp-ic')
+    from ..utils import cliargs
+    default = files.join(files.get_home(), '.fz-bdp-ic')
     parser.add_argument('-o', '--install-dir', type=cliargs.output_dir, default=default, help='the install directory')
-
-
-class UnsupportedPlatformError(LoggableError):
-
-    def __init__(self, platform):
-        super().__init__(f'Unsupported platform "{platform}". Only Linux is currently supported.', None, platform)
-        self._platform = platform
-
-    @property
-    def platform(self):
-        return self._platform
 
 
 def ensure_supported_platform():
@@ -73,10 +59,9 @@ def ensure_supported_platform():
     from ..utils.cli import get_command_path
     system = platform.system()
     if system not in ('Linux'):
-        raise UnsupportedPlatformError(system)
+        raise RuntimeError(f'Unsupported platform "{system}", only Linux is supported')
     get_command_path('ssh')
     get_command_path('sshd')
-    import os
-    os.makedirs(os.path.dirname(ssh_authorized_keys_file()), exist_ok=True)
+    files.create_dir_tree(files.parent(ssh_authorized_keys_file()))
     with open(ssh_authorized_keys_file(), 'a'):
         pass

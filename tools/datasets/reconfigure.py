@@ -1,4 +1,5 @@
 from ..utils.launcher import main
+from ..utils import files
 
 _default_data_save = None
 _default_data_temp_file = 'hdfs:///image-classifier/data'
@@ -11,9 +12,8 @@ _default_data_cwd = '.'
 
 def _map_file_cwd(file, cwd):
     from urllib.parse import urlparse
-    from os.path import isabs
     uri = urlparse(file)
-    if uri.scheme or uri.netloc or isabs(uri.path):
+    if uri.scheme or uri.netloc or files.isabs(uri.path):
         return file
     else:
         return f'{cwd}/{file}'
@@ -34,13 +34,8 @@ def reconfigure(
         training_save=_default_training_save,
         testing_save=_default_testing_save,
         testing_print=_default_testing_print):
-    from json.decoder import JSONDecodeError
-    from ..utils import files
     import json
-    try:
-        config = json.loads(files.read(file))
-    except JSONDecodeError as exc:
-        raise files.FileAccessError(file, exc)
+    config = json.loads(files.read(file))
     data = config.get('data')
     featurization = config.get('featurization')
     training = config.get('training')

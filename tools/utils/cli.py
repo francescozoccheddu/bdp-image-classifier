@@ -1,7 +1,5 @@
 
 import os
-from sys import stdin
-from .exceptions import LoggableError
 from contextlib import contextmanager
 from .launcher import dont_run
 dont_run()
@@ -22,7 +20,7 @@ def set_exception_hook():
     sys.excepthook = hook
 
 
-def set_log_enabled():
+def set_logging():
     global _log
     _log = True
 
@@ -121,24 +119,22 @@ def no_stdout():
             sys.stdout = old_stdout
 
 
-class NoCommandError(LoggableError):
-
-    def __init__(self, command):
-        super().__init__(f'Command "{command}" not found. See README.md for installation help.')
-
-
 def get_command_path(cmd):
     import shutil
     path = shutil.which(cmd)
     if not path:
-        raise NoCommandError(cmd)
+        raise RuntimeError(f'Command {cmd} not found')
     return path
 
 
-def run(cmd, args, cwd=os.getcwd(), input=None, noOut=False, noErr=False):
+def is_logging():
+    return _log
+
+
+def run(cmd, args, cwd=os.getcwd(), input=None, enable_out=is_logging(), enable_err=is_logging()):
     file = os.path.abspath(get_command_path(cmd))
     import subprocess
     import sys
-    stdout = subprocess.DEVNULL if noOut else sys.stdout
-    stderr = subprocess.DEVNULL if noErr else sys.stderr
-    subprocess.run([file, *args], cwd=cwd, input=input, stdout=stdout, stderr=stderr)
+    stdout = sys.stdout if enable_out else subprocess.DEVNULL
+    stderr = sys.stderr if enable_err else subprocess.DEVNULL
+    return subprocess.run([file, *args], cwd=cwd, input=input, stdout=stdout, stderr=stderr).returncode

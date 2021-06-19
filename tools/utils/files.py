@@ -1,150 +1,74 @@
-from argparse import ArgumentError
 from contextlib import contextmanager
-from .exceptions import FileSystemError, NetworkError
 import os
 import shutil
 from .launcher import dont_run
+from .cli import is_logging
 dont_run()
-
-
-class PathAccessError(FileSystemError):
-
-    def __init__(self, path, path_type='path', cause=None):
-        super().__init__(f'Cannot access {path_type} "{os.path.abspath(path)}"', cause, path, path_type)
-        self._path_type = path_type
-        self._path = path
-
-    @property
-    def path_type(self):
-        return self._path_type
-
-    @property
-    def path(self):
-        return self._path
-
-
-class DirectoryAccessError(PathAccessError):
-
-    def __init__(self, dir, cause=None):
-        super().__init__(dir, 'directory', cause)
-
-
-class FileAccessError(PathAccessError):
-
-    def __init__(self, file, cause=None):
-        super().__init__(file, 'file', cause)
-
-
-class ExtractionError(FileSystemError):
-
-    def __init__(self, archive_file, output_dir, cause=None):
-        super().__init__(f'Extraction failed', cause, archive_file, output_dir)
-        self._archive_file = archive_file
-        self._output_dir = output_dir
-
-    @property
-    def archive_file(self):
-        return self._archive_file
-
-    @property
-    def output_dir(self):
-        return self._output_dir
-
-
-class DownloadError(NetworkError):
-
-    def __init__(self, url, output_file, cause=None):
-        super().__init__('Download failed', cause, url, output_file)
-        self._url = url
-        self._output_file = output_file
-
-    @property
-    def url(self):
-        return self._url
-
-    @property
-    def output_file(self):
-        return self._output_file
 
 
 @contextmanager
 def cwd(dir):
-    try:
-        abs_dir = os.path.abspath(dir)
-        abs_old_dir = os.path.abspath(os.getcwd())
-        os.chdir(abs_dir)
-    except OSError as exc:
-        raise DirectoryAccessError(abs_dir, exc)
+    abs_dir = abs(dir)
+    abs_old_dir = abs(os.getcwd())
+    os.chdir(abs_dir)
     try:
         yield
     finally:
-        try:
-            os.chdir(abs_old_dir)
-        except OSError as exc:
-            raise DirectoryAccessError(abs_old_dir, exc)
+        os.chdir(abs_old_dir)
 
 
 def delete(path):
-    abs_path = os.path.abspath(path)
-    if os.path.isfile(abs_path):
-        try:
-            os.remove(abs_path)
-            return True
-        except IOError as exc:
-            raise FileAccessError(abs_path, cause=exc)
-    elif os.path.isdir(abs_path):
-        try:
-            shutil.rmtree(abs_path)
-            return True
-        except IOError as exc:
-            raise FileAccessError(abs_path, cause=exc)
+    abs_path = abs(path)
+    if is_file(abs_path):
+        os.remove(abs_path)
+        return True
+    elif is_dir(abs_path):
+        shutil.rmtree(abs_path)
+        return True
     else:
         return False
 
 
 def delete_output_dir(dir, children=[], created=False):
-    abs_dir = os.path.abspath(dir)
-    if os.path.isdir(abs_dir):
+    abs_dir = abs(dir)
+    if is_dir(abs_dir):
         if created:
             delete(abs_dir)
             return True
         else:
             for child in children:
-                res_child = os.path.join(abs_dir, child)
+                res_child = join(abs_dir, child)
                 delete(res_child)
-            if len(os.listdir(abs_dir)) == 0:
+            if len(children(abs_dir)) == 0:
                 delete(abs_dir)
                 return True
             else:
                 return False
-    elif os.path.isfile(abs_dir):
-        raise DirectoryAccessError(abs_dir, 'not a directory')
+    elif is_file(abs_dir):
+        raise RuntimeError('Not a directory')
     else:
         return False
 
 
 def create_dir(dir, wipe=False):
-    if os.path.isdir(dir):
+    if is_dir(dir):
         if wipe:
-            for file in os.listdir(dir):
+            for file in children(dir):
                 delete(file)
         return False
-    elif os.path.isfile(dir):
-        raise DirectoryAccessError(dir, 'not a directory')
+    elif is_file(dir):
+        raise RuntimeError('Not a directory')
     else:
-        try:
-            os.mkdir(dir)
-            return True
-        except Exception as exc:
-            raise DirectoryAccessError(dir, exc)
+        os.mkdir(dir)
+        return True
 
 
 @contextmanager
 def output_dir(dir, children=[], wipe=False):
-    abs_dir = os.path.abspath(dir)
+    abs_dir = abs(dir)
     if wipe:
         for child in children:
-            res_child = os.path.join(abs_dir, child)
+            res_child = join(abs_dir, child)
             delete(res_child)
     created = create_dir(abs_dir)
     try:
@@ -157,42 +81,32 @@ def output_dir(dir, children=[], wipe=False):
 
 def temp_path(suffix=''):
     import tempfile
-    try:
-        return tempfile.mktemp(suffix, 'francescozoccheddu-bdp-image-classifier')
-    except Exception:
-        raise FileSystemError('Failed to get a temporary path')
+    return tempfile.mktemp(suffix, 'francescozoccheddu-bdp-image-classifier')
 
 
-def download(url, output_file=None, log='Downloading'):
+def download(url, output_file=None, msg='Downloading', show_progress=is_logging()):
     try:
         import requests
         buffer_size = 1024
-        try:
-            response = requests.get(url, stream=True)
-            file_size = int(response.headers.get('Content-Length', 0))
-            iterable = response.iter_content(buffer_size)
-        except Exception as exc:
-            raise DownloadError(url, output_file, exc)
-        if log is not None:
+        response = requests.get(url, stream=True)
+        file_size = int(response.headers.get('Content-Length', 0))
+        iterable = response.iter_content(buffer_size)
+        if show_progress:
             from tqdm import tqdm
-            progress = tqdm(response.iter_content(buffer_size), log, total=file_size, unit='B', unit_scale=True, unit_divisor=1000)
+            progress = tqdm(response.iter_content(buffer_size), msg, total=file_size, unit='B', unit_scale=True, unit_divisor=1000)
             iterable = progress.iterable
         if output_file is None:
             import cgi
-            from os import path
             header = response.headers.get('Content-Disposition', '')
             _, params = cgi.parse_header(header)
             filename = params.get('filename', '')
-            ext = path.splitext(filename)[1]
+            ext = os.path.splitext(filename)[1]
             output_file = temp_path(ext)
-        try:
-            with open(output_file, 'wb') as f:
-                for data in iterable:
-                    f.write(data)
-                    if log is not None:
-                        progress.update(len(data))
-        except Exception as exc:
-            raise DownloadError(url, output_file, exc)
+        with open(output_file, 'wb') as f:
+            for data in iterable:
+                f.write(data)
+                if show_progress:
+                    progress.update(len(data))
         return output_file
     except BaseException:
         try_delete_file(output_file)
@@ -200,37 +114,35 @@ def download(url, output_file=None, log='Downloading'):
 
 
 def try_delete_file(file):
-    if os.path.isfile(file):
+    if is_file(file):
         try:
             delete(file)
-        except BaseException:
+        except Exception:
             pass
 
 
 def extract(archive_file, output_dir, format=None, unwrap=False):
-    import shutil
-    try:
-        if unwrap:
-            temp_dir = temp_path()
-            try:
-                shutil.unpack_archive(archive_file, temp_dir, format)
-                create_dir(output_dir)
-                content = os.listdir(temp_dir)
-                if len(content) != 1:
-                    raise DirectoryAccessError(output_dir)
-                wrapped = os.path.join(temp_dir, content[0])
-                for child in os.listdir(wrapped):
-                    shutil.move(os.path.join(wrapped, child), output_dir)
-            finally:
-                delete(temp_dir)
-        else:
-            shutil.unpack_archive(archive_file, output_dir, format)
-    except Exception as exc:
-        raise ExtractionError(archive_file, output_dir, exc)
+    if unwrap:
+        temp_dir = temp_path()
+        try:
+            shutil.unpack_archive(archive_file, temp_dir, format)
+            create_dir(output_dir)
+            content = children(temp_dir)
+            if len(content) > 1:
+                raise RuntimeError('Multiple files in archive')
+            if len(content) < 1:
+                raise RuntimeError('Empty archive')
+            wrapped = join(temp_dir, content[0])
+            for child in children(wrapped):
+                move(join(wrapped, child), output_dir)
+        finally:
+            delete(temp_dir)
+    else:
+        shutil.unpack_archive(archive_file, output_dir, format)
 
 
-def download_and_extract(url, output_dir, format=None, unwrap=False, log='Downloading'):
-    file = download(url, None, log)
+def download_and_extract(url, output_dir, format=None, unwrap=False, msg='Downloading', show_progress=is_logging()):
+    file = download(url, None, msg, show_progress)
     try:
         extract(file, output_dir, format, unwrap)
     finally:
@@ -238,53 +150,115 @@ def download_and_extract(url, output_dir, format=None, unwrap=False, log='Downlo
 
 
 def is_dir_writable(dir):
-    if os.path.exists(dir):
-        return os.path.isdir(dir) and os.access(dir, os.W_OK)
+    if exists(dir):
+        return is_dir(dir) and os.access(dir, os.W_OK)
     else:
-        parent_dir = os.path.dirname(dir) or '.'
+        parent_dir = parent(dir) or '.'
         return os.access(parent_dir, os.W_OK)
 
 
 def is_file_writable(file):
-    if os.path.exists(file):
-        return os.path.isfile(file) and os.access(file, os.W_OK)
+    if exists(file):
+        return is_file(file) and os.access(file, os.W_OK)
     else:
-        parent_dir = os.path.dirname(file) or '.'
+        parent_dir = parent(file) or '.'
         return os.access(parent_dir, os.W_OK)
 
 
 def is_file_readable(file):
-    return os.path.isfile(file) and os.access(file, os.R_OK)
+    return is_file(file) and os.access(file, os.R_OK)
 
 
 def is_dir_readable(dir):
-    return os.path.isdir(dir) and os.access(dir, os.R_OK)
+    return is_dir(dir) and os.access(dir, os.R_OK)
+
+
+def parent(path):
+    return os.path.dirname(path)
+
+
+def children(dir):
+    return os.listdir(dir)
+
+
+def is_dir(path):
+    return os.path.isdir(path)
+
+
+def is_file(path):
+    return os.path.isfile(path)
+
+
+def exists(path):
+    return os.path.exists(path)
 
 
 def read(file):
-    try:
-        with open(file) as f:
-            return f.read()
-    except IOError as exc:
-        raise FileAccessError(file, exc)
+    with open(file) as f:
+        return f.read()
 
 
 def write(file, cnt):
-    try:
-        with open(file, 'w') as f:
-            return f.write(cnt)
-    except IOError as exc:
-        raise FileAccessError(file, exc)
+    with open(file, 'w') as f:
+        return f.write(cnt)
 
 
 def append(file, cnt):
-    try:
-        with open(file, 'a') as f:
-            return f.write(cnt)
-    except IOError as exc:
-        raise FileAccessError(file, exc)
+    with open(file, 'a') as f:
+        return f.write(cnt)
 
 
 def get_home():
     from pathlib import Path
     return str(Path.home())
+
+
+def copy(src, dst):
+    shutil.copyfile(src, dst)
+
+
+def move(src, dst):
+    shutil.move(src, dst)
+
+
+def join(a, *args):
+    return os.path.join(a, *args)
+
+
+def abs(path):
+    return os.path.abspath(path)
+
+
+def rel(path):
+    return os.path.relpath(path)
+
+
+def name(path):
+    return os.path.basename(path)
+
+
+def isabs(path):
+    return os.path.isabs(path)
+
+
+def create_dir_tree(dir):
+    return os.makedirs(dir, exist_ok=True)
+
+
+def set_permissions(path, permission, recursive=False):
+    if recursive and is_file(path):
+        for root, dirs, files in os.walk(dir):
+            for f in files + dirs:
+                os.chmod(join(root, f), permission)
+    else:
+        os.chmod(path, permission)
+
+
+def filter_file_lines(file, filter):
+    with open(file, "r+") as f:
+        lines = f.readlines()
+        f.seek(0)
+        for line in lines:
+            if filter(line):
+                f.write(line)
+        f.truncate()

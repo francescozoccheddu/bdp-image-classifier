@@ -1,6 +1,7 @@
 
 
 from ..utils.launcher import main
+from ..utils import files
 from enum import Enum
 
 
@@ -12,7 +13,6 @@ class Architecture(Enum):
 
 
 def download(architecture: Architecture, output_file: str):
-    from ..utils import files
     files.download(f'https://github.com/francescozoccheddu/big-data-project/releases/download/v0.1-alpha/assembly-{architecture}.jar', output_file)
 
 

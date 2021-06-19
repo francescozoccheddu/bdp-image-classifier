@@ -1,4 +1,5 @@
 from ..dataset_utils import downloader, images_dir
+from ...utils import files
 
 _class_count = 15
 
@@ -17,15 +18,12 @@ def _process_csv(file):
 
 @downloader(['training_list.csv', 'validation_list.csv', 'testing_list_blind.csv', 'README.txt', '.images'])
 def download():
-    import shutil
-    import os
-    from ...utils import files
     files.download_and_extract('https://iplab.dmi.unict.it/MLC2018/dataset.zip', '.', 'zip')
-    shutil.move(images_dir(), '.images')
-    os.mkdir(images_dir())
+    files.move(images_dir(), '.images')
+    files.create_dir(images_dir())
     images_map = list(map(lambda l: l[0] + l[1], zip(_process_csv('validation_list.csv'), _process_csv('training_list.csv'))))
     for label in range(_class_count):
-        os.mkdir(f'{images_dir()}/{label}')
+        files.create_dir(f'{images_dir()}/{label}')
     for label, images in enumerate(images_map):
         for image in images:
-            shutil.move(f'.images/{image}', f'{images_dir()}/{label}')
+            files.move(f'.images/{image}', f'{images_dir()}/{label}')
