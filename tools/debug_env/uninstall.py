@@ -43,7 +43,11 @@ def revoke_ssh(install_dir):
 @main
 def _main():
     import argparse
+    from ..utils import cli
     parser = argparse.ArgumentParser(description='Uninstall a debug environment', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     env_utils.add_argparse_install_dir(parser)
+    cli.add_argparse_quiet(parser)
     args = parser.parse_args()
+    cli.set_exception_hook()
+    cli.set_logging(not args.quiet)
     uninstall(args.install_dir)
