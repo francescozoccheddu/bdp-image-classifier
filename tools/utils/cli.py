@@ -140,7 +140,29 @@ def make_input_file_or_parent_arg(file):
         elif files.is_dir_readable(arg) and files.is_file_readable(child):
             return child
         else:
-            raise argparse.ArgumentTypeError(f'not a readable file nor a directory with "{child}" file')
+            raise argparse.ArgumentTypeError(f'not a readable file nor a directory with "{file}" file')
+
+    return process
+
+
+def make_int_arg(min=None, max=None):
+
+    def process(arg):
+        msg = 'not an integer'
+        if min is not None:
+            if max is not None:
+                msg += f' between {min} and {max}'
+            else:
+                msg += f' greater than {min}'
+        elif max is not None:
+            msg += f' smaller than {max}'
+        try:
+            value = int(arg)
+        except ValueError:
+            raise argparse.ArgumentError(msg)
+        if (min is not None and value < min) or (max is not None and value > max):
+            raise argparse.ArgumentError(msg)
+        value
 
     return process
 

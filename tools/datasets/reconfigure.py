@@ -73,8 +73,6 @@ def _main():
     parser.add_argument('--training-save', type=str, default=_default_training_save, help='the model output file')
     parser.add_argument('--testing-save', type=str, default=_default_testing_save, help='the testing summary output file')
     parser.add_argument('--testing-print', type=cli.bool_arg, default=_default_testing_print, help='whether to print the testing summary to stdout')
-    cli.add_argparse_quiet(parser)
     args = parser.parse_args()
     cli.set_exception_hook()
-    cli.set_logging(not args.quiet)
     reconfigure(args.config_file, args.data_save, args.data_temp_file, args.data_cwd, args.featurization_save, args.training_save, args.testing_save, args.testing_print)
