@@ -49,9 +49,9 @@ def all_dirs():
 
 
 def add_argparse_install_dir(parser):
-    from ..utils import cliargs
+    from ..utils import cli
     default = files.join(files.get_home(), '.fz-bdp-ic')
-    parser.add_argument('-o', '--install-dir', type=cliargs.output_dir, default=default, help='the install directory')
+    parser.add_argument('-o', '--install-dir', type=cli.output_dir_arg, default=default, help='the install directory')
 
 
 def ensure_supported_platform():

@@ -36,7 +36,7 @@ def authorize_ssh(install_dir):
         files.write(env_utils.ssh_public_key_file(), pub_key_content)
         files.write(env_utils.ssh_private_key_file(), prv_key)
         files.set_permissions(env_utils.ssh_private_key_file(), 0o600)
-        files.append(env_utils.ssh_authorized_keys_file(), '\n' + pub_key + '\n')
+        files.append(env_utils.ssh_authorized_keys_file(), f'\n{pub_key}\n')
         return pub_key_content
 
 
@@ -67,7 +67,7 @@ def install(install_dir):
             files.create_dir(env_utils.datanode_dir(), True)
             files.create_dir(env_utils.temp_dir(), True)
             vars = {
-                '%INSTALL_DIR%': os.path.abspath('.'),
+                '%INSTALL_DIR%': files.abs('.'),
                 '%JDK_DIR%': env_utils.jdk_dir(),
                 '%HADOOP_DIR%': env_utils.hadoop_dir(),
                 '%SPARK_DIR%': env_utils.spark_dir(),
@@ -99,7 +99,11 @@ def install(install_dir):
 @main
 def _main():
     import argparse
+    from ..utils import cli
     parser = argparse.ArgumentParser(description='Install a debug environment', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     env_utils.add_argparse_install_dir(parser)
+    cli.add_argparse_quiet(parser)
     args = parser.parse_args()
+    cli.set_exception_hook()
+    cli.set_logging(not args.quiet)
     install(args.install_dir)

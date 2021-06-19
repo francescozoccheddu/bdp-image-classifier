@@ -1,115 +1,66 @@
 
 import os
+import sys
 from contextlib import contextmanager
 from .launcher import dont_run
+import argparse
+from . import files
 dont_run()
 
 _debug = True
 _log = False
 
 
-def set_exception_hook():
-    import sys
-
-    def hook(exc_type, exc, traceback):
-        from .cli import err
-        err(exc)
-        if _debug:
-            sys.__excepthook__(exc_type, exc, traceback)
-
-    sys.excepthook = hook
+def _stop(msg):
+    msg = msg.capitalize()
+    if msg.endswith('.'):
+        return msg
+    else:
+        return msg + '.'
 
 
-def set_logging():
+def _humanize_exc(exc, exc_type):
+    if issubclass(exc_type, KeyboardInterrupt):
+        return 'Canceled by user.'
+    if issubclass(exc_type, ImportError):
+        return f'Cannot import module "{exc.name}".See README.md for installation help.'
+    if issubclass(exc_type, OSError):
+        msg = _stop(exc.strerror)
+        if exc.filename is not None:
+            msg += f' (file "{exc.filename}")'
+        return msg
+    if exc.args:
+        return _stop(exc_type.args[0])
+    return 'Unhandled exception.'
+
+
+def _exc_hook(exc_type, exc, traceback):
+
+    print(_humanize_exc(exc, exc_type), file=sys.stderr)
+
+    if _debug:
+        sys.__excepthook__(exc_type, exc, traceback)
+
+
+def set_exception_hook(enabled=True):
+    if enabled:
+        sys.excepthook = _exc_hook
+    else:
+        sys.excepthook = sys.__excepthook__
+
+
+def set_logging(enabled=True):
     global _log
-    _log = True
+    _log = enabled
 
 
 def log(msg):
     if _log:
-        import sys
         print(msg, file=sys.stdout)
-
-
-def err(msg):
-    import sys
-    if isinstance(msg, BaseException):
-        msg = humanize_exc(msg)
-    print(msg, file=sys.stderr)
-
-
-def is_multiline(msg):
-    return msg.strip().count('\n') > 0
-
-
-def quote(msg):
-    return f'"{msg}"'
-
-
-def parens(msg):
-    msg = msg.strip()
-    if msg:
-        return f'({msg})'
-    else:
-        return ''
-
-
-def humanize_exc(exc):
-    exc_type = type(exc)
-    from .exceptions import LoggableError
-    if issubclass(exc_type, LoggableError):
-        return exc.message
-    elif issubclass(exc_type, KeyboardInterrupt):
-        return 'Cancelled by user.'
-    elif issubclass(exc_type, ImportError):
-        return f'Module "{exc.name}" cannot be imported. See README.md for installation help.'
-    elif issubclass(exc_type, OSError):
-        return concat('OS error', concat(exc.strerror, parens(listing(exc.filename, exc.filename2))), sep=':', empty_sep='.')
-    else:
-        return concat('Unhandled exception', str(exc), sep=':', empty_sep='.')
-
-
-def listing(*msgs, doQuote=True):
-    res = ''
-    msgs = filter(lambda x: x is not None, msgs)
-    if doQuote:
-        msgs = list(map(quote, msgs))
-    else:
-        msgs = list(filter(bool, map(str.strip, msgs)))
-    for msg in msgs[:-1]:
-        res += msg + ', '
-    if len(msgs) > 1:
-        res += ' and '
-    if msgs:
-        res += msgs[-1]
-    return res
-
-
-def concat(msg_a, msg_b, sep='', empty_sep=''):
-    msg_a = msg_a.strip()
-    msg_b = msg_b.strip()
-    if not msg_b:
-        return at_end(msg_a, empty_sep)
-    if not msg_a:
-        return msg_b
-    if is_multiline(msg_a) or is_multiline(msg_b):
-        sep += '\n'
-    else:
-        sep += ' '
-    return at_end(msg_a, sep) + msg_b
-
-
-def at_end(msg, end):
-    if msg.endswith(end):
-        return msg
-    else:
-        return msg + end
 
 
 @contextmanager
 def no_stdout():
-    import sys
-    import os
     with open(os.devnull, 'w') as devnull:
         old_stdout = sys.stdout
         sys.stdout = devnull
@@ -131,10 +82,71 @@ def is_logging():
     return _log
 
 
-def run(cmd, args, cwd=os.getcwd(), input=None, enable_out=is_logging(), enable_err=is_logging()):
-    file = os.path.abspath(get_command_path(cmd))
+def add_argparse_quiet(parser):
+    parser.add_argument('-q', '--quiet', action='store_true', help='disable logging')
+
+
+def run(cmd, args, cwd=os.getcwd(), input=None, enable_out=None, enable_err=None):
+    if enable_out is None:
+        enable_out = _log
+    if enable_err is None:
+        enable_err = _log
+    from . import files
+    file = files.abs(get_command_path(cmd))
     import subprocess
-    import sys
     stdout = sys.stdout if enable_out else subprocess.DEVNULL
     stderr = sys.stderr if enable_err else subprocess.DEVNULL
     return subprocess.run([file, *args], cwd=cwd, input=input, stdout=stdout, stderr=stderr).returncode
+
+
+def output_file_arg(arg):
+    arg = files.expand_user(arg)
+    if not files.is_file_writable(arg):
+        raise argparse.ArgumentTypeError('not a writable file')
+    return arg
+
+
+def output_dir_arg(arg):
+    arg = files.expand_user(arg)
+    if not files.is_dir_writable(arg):
+        raise argparse.ArgumentTypeError('not a writable dir')
+    return arg
+
+
+def input_file_arg(arg):
+    arg = files.expand_user(arg)
+    if not files.is_file_readable(arg):
+        raise argparse.ArgumentTypeError('not a readable file')
+    return arg
+
+
+def bool_arg(arg):
+    arg = arg.lower()
+    if arg in ('1', 'true', 'y', 'yes'):
+        return True
+    elif arg in ('0', 'false', 'n', 'no'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('not a boolean value')
+
+
+def make_input_file_or_parent_arg(file):
+
+    def process(arg):
+        arg = files.expand_user(arg)
+        child = files.join(arg, file)
+        if files.is_file_readable(arg):
+            return arg
+        elif files.is_dir_readable(arg) and files.is_file_readable(child):
+            return child
+        else:
+            raise argparse.ArgumentTypeError(f'not a readable file nor a directory with "{child}" file')
+
+    return process
+
+
+def input_dir_arg(arg):
+    arg = files.expand_user(arg)
+    if not files.is_dir_readable(arg):
+        raise argparse.ArgumentTypeError('not a readable dir')
+    return arg

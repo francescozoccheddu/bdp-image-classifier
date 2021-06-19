@@ -2,49 +2,46 @@ from contextlib import contextmanager
 import os
 import shutil
 from .launcher import dont_run
-from .cli import is_logging
 dont_run()
 
 
 @contextmanager
 def cwd(dir):
-    abs_dir = abs(dir)
-    abs_old_dir = abs(os.getcwd())
-    os.chdir(abs_dir)
+    dir = abs(dir)
+    old_dir = abs(os.getcwd())
+    os.chdir(dir)
     try:
         yield
     finally:
-        os.chdir(abs_old_dir)
+        os.chdir(old_dir)
 
 
 def delete(path):
-    abs_path = abs(path)
-    if is_file(abs_path):
-        os.remove(abs_path)
+    if is_file(path):
+        os.remove(path)
         return True
-    elif is_dir(abs_path):
-        shutil.rmtree(abs_path)
+    elif is_dir(path):
+        shutil.rmtree(path)
         return True
     else:
         return False
 
 
-def delete_output_dir(dir, children=[], created=False):
-    abs_dir = abs(dir)
-    if is_dir(abs_dir):
+def delete_output_dir(dir, output_children=[], created=False):
+    if is_dir(dir):
         if created:
-            delete(abs_dir)
+            delete(dir)
             return True
         else:
-            for child in children:
-                res_child = join(abs_dir, child)
+            for child in output_children:
+                res_child = join(dir, child)
                 delete(res_child)
-            if len(children(abs_dir)) == 0:
-                delete(abs_dir)
+            if len(children(dir)) == 0:
+                delete(dir)
                 return True
             else:
                 return False
-    elif is_file(abs_dir):
+    elif is_file(dir):
         raise RuntimeError('Not a directory')
     else:
         return False
@@ -65,17 +62,16 @@ def create_dir(dir, wipe=False):
 
 @contextmanager
 def output_dir(dir, children=[], wipe=False):
-    abs_dir = abs(dir)
+    dir = abs(dir)
     if wipe:
         for child in children:
-            res_child = join(abs_dir, child)
-            delete(res_child)
-    created = create_dir(abs_dir)
+            delete(child)
+    created = create_dir(dir)
     try:
-        with cwd(abs_dir):
+        with cwd(dir):
             yield
     except BaseException:
-        delete_output_dir(abs_dir, children, created)
+        delete_output_dir(dir, children, created)
         raise
 
 
@@ -84,7 +80,10 @@ def temp_path(suffix=''):
     return tempfile.mktemp(suffix, 'francescozoccheddu-bdp-image-classifier')
 
 
-def download(url, output_file=None, msg='Downloading', show_progress=is_logging()):
+def download(url, output_file=None, msg='Downloading', show_progress=None):
+    from .cli import is_logging
+    if show_progress is None:
+        show_progress = is_logging()
     try:
         import requests
         buffer_size = 1024
@@ -132,16 +131,15 @@ def extract(archive_file, output_dir, format=None, unwrap=False):
                 raise RuntimeError('Multiple files in archive')
             if len(content) < 1:
                 raise RuntimeError('Empty archive')
-            wrapped = join(temp_dir, content[0])
-            for child in children(wrapped):
-                move(join(wrapped, child), output_dir)
+            for child in children(content[0]):
+                move(join(content[0], child), output_dir)
         finally:
             delete(temp_dir)
     else:
         shutil.unpack_archive(archive_file, output_dir, format)
 
 
-def download_and_extract(url, output_dir, format=None, unwrap=False, msg='Downloading', show_progress=is_logging()):
+def download_and_extract(url, output_dir, format=None, unwrap=False, msg='Downloading', show_progress=None):
     file = download(url, None, msg, show_progress)
     try:
         extract(file, output_dir, format, unwrap)
@@ -178,7 +176,7 @@ def parent(path):
 
 
 def children(dir):
-    return os.listdir(dir)
+    return [join(dir, p) for p in os.listdir(dir)]
 
 
 def is_dir(path):
@@ -262,3 +260,7 @@ def filter_file_lines(file, filter):
             if filter(line):
                 f.write(line)
         f.truncate()
+
+
+def expand_user(path):
+    return os.path.expanduser(path)
