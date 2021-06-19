@@ -1,3 +1,4 @@
+from argparse import ArgumentError
 from contextlib import contextmanager
 from .exceptions import FileSystemError, NetworkError
 import os
@@ -122,8 +123,11 @@ def delete_output_dir(dir, children=[], created=False):
         return False
 
 
-def create_dir(dir):
+def create_dir(dir, wipe=False):
     if os.path.isdir(dir):
+        if wipe:
+            for file in os.listdir(dir):
+                delete(file)
         return False
     elif os.path.isfile(dir):
         raise DirectoryAccessError(dir, 'not a directory')
@@ -141,7 +145,7 @@ def output_dir(dir, children=[], wipe=False):
     if wipe:
         for child in children:
             res_child = os.path.join(abs_dir, child)
-            delete(res_child) 
+            delete(res_child)
     created = create_dir(abs_dir)
     try:
         with cwd(abs_dir):
@@ -151,7 +155,7 @@ def output_dir(dir, children=[], wipe=False):
         raise
 
 
-def temp_path(suffix=None):
+def temp_path(suffix=''):
     import tempfile
     try:
         return tempfile.mktemp(suffix, 'francescozoccheddu-bdp-image-classifier')
@@ -159,7 +163,7 @@ def temp_path(suffix=None):
         raise FileSystemError('Failed to get a temporary path')
 
 
-def download(url, output_file=None, silent=False):
+def download(url, output_file=None, log='Downloading'):
     try:
         import requests
         buffer_size = 1024
@@ -169,9 +173,9 @@ def download(url, output_file=None, silent=False):
             iterable = response.iter_content(buffer_size)
         except Exception as exc:
             raise DownloadError(url, output_file, exc)
-        if not silent:
+        if log is not None:
             from tqdm import tqdm
-            progress = tqdm(response.iter_content(buffer_size), 'Downloading', total=file_size, unit='B', unit_scale=True, unit_divisor=1000)
+            progress = tqdm(response.iter_content(buffer_size), log, total=file_size, unit='B', unit_scale=True, unit_divisor=1000)
             iterable = progress.iterable
         if output_file is None:
             import cgi
@@ -185,7 +189,7 @@ def download(url, output_file=None, silent=False):
             with open(output_file, 'wb') as f:
                 for data in iterable:
                     f.write(data)
-                    if not silent:
+                    if log is not None:
                         progress.update(len(data))
         except Exception as exc:
             raise DownloadError(url, output_file, exc)
@@ -203,18 +207,32 @@ def try_delete_file(file):
             pass
 
 
-def extract(archive_file, output_dir, format=None):
+def extract(archive_file, output_dir, format=None, unwrap=False):
     import shutil
     try:
-        shutil.unpack_archive(archive_file, output_dir, format)
+        if unwrap:
+            temp_dir = temp_path()
+            try:
+                shutil.unpack_archive(archive_file, temp_dir, format)
+                create_dir(output_dir)
+                content = os.listdir(temp_dir)
+                if len(content) != 1:
+                    raise DirectoryAccessError(output_dir)
+                wrapped = os.path.join(temp_dir, content[0])
+                for child in os.listdir(wrapped):
+                    shutil.move(os.path.join(wrapped, child), output_dir)
+            finally:
+                delete(temp_dir)
+        else:
+            shutil.unpack_archive(archive_file, output_dir, format)
     except Exception as exc:
         raise ExtractionError(archive_file, output_dir, exc)
 
 
-def download_and_extract(url, output_dir, format=None):
-    file = download(url)
+def download_and_extract(url, output_dir, format=None, unwrap=False, log='Downloading'):
+    file = download(url, None, log)
     try:
-        extract(file, output_dir, format)
+        extract(file, output_dir, format, unwrap)
     finally:
         try_delete_file(file)
 
@@ -241,3 +259,32 @@ def is_file_readable(file):
 
 def is_dir_readable(dir):
     return os.path.isdir(dir) and os.access(dir, os.R_OK)
+
+
+def read(file):
+    try:
+        with open(file) as f:
+            return f.read()
+    except IOError as exc:
+        raise FileAccessError(file, exc)
+
+
+def write(file, cnt):
+    try:
+        with open(file, 'w') as f:
+            return f.write(cnt)
+    except IOError as exc:
+        raise FileAccessError(file, exc)
+
+
+def append(file, cnt):
+    try:
+        with open(file, 'a') as f:
+            return f.write(cnt)
+    except IOError as exc:
+        raise FileAccessError(file, exc)
+
+
+def get_home():
+    from pathlib import Path
+    return str(Path.home())

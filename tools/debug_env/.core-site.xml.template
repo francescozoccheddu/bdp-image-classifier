@@ -1,7 +1,7 @@
 <configuration>
 	<property>
 		<name>hadoop.tmp.dir</name>
-		<value>$TEMP_HOME</value>
+		<value>%INSTALL_DIR%/%TEMP_DIR%</value>
 	</property>
 	<property>
 		<name>fs.default.name</name>

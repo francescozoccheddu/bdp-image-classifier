@@ -1,3 +1,4 @@
+from subprocess import CalledProcessError
 from ..utils import cli, exceptions
 from ..utils.launcher import main
 
@@ -8,12 +9,12 @@ class CompilationFailedError(exceptions.LoggableError):
 
 
 def assembly(project_dir, output_file):
-    import shutil
-    sbt_file = cli.get_command_path('sbt')
-    import subprocess
     from os import path
+    import shutil
     interm_file = path.abspath(path.join(project_dir, '.intermediate.jar'))
-    if subprocess.call([sbt_file, '--error', f'set assembly / assemblyOutputPath := file("{interm_file}")', 'assembly'], cwd=project_dir) != 0:
+    try:
+        cli.run('sbt', ['--error', f'set assembly / assemblyOutputPath := file("{interm_file}")', 'assembly'], cwd=project_dir)
+    except CalledProcessError:
         raise CompilationFailedError()
     shutil.move(interm_file, output_file)
 
