@@ -1,26 +1,14 @@
-from ..utils import exceptions, cli
+from ..utils import cli, files
 from ..utils.launcher import dont_run
 dont_run()
 
 
-class KaggleAuthenticationError(exceptions.AuthenticationError):
-
-    def __init__(self, cause):
-        super().__init__('Kaggle authentication failed', cause)
-
-
 def download_kaggle(dataset, output_dir):
-    try:
-        with cli.no_stdout():
-            from kaggle.api.kaggle_api_extended import KaggleApi
-            api = KaggleApi()
-            api.authenticate()
-    except ValueError as exc:
-        raise KaggleAuthenticationError(exc)
-    try:
-        api.dataset_download_files(dataset, output_dir, True, False, True)
-    except Exception as exc:
-        raise exceptions.NetworkError('Dataset download failed', exc)
+    with cli.no_stdout():
+        from kaggle.api.kaggle_api_extended import KaggleApi
+        api = KaggleApi()
+        api.authenticate()
+    api.dataset_download_files(dataset, output_dir, True, cli.is_logging(), True)
 
 
 _config_template_name = '.{}-config.json.template'
@@ -35,25 +23,22 @@ def downloader(temp_files):
 
     def decorator(func):
         from ..utils import launcher
-        import os
         import inspect
         module = inspect.getmodule(func)
         script_file = module.__file__
-        script_dir = os.path.dirname(script_file)
-        dataset = os.path.basename(script_file).rstrip('.py')
-        config_file = os.path.join(script_dir, _config_template_name.format(dataset))
+        script_dir = files.parent(script_file)
+        dataset = files.name(script_file).rstrip('.py')
+        config_file = files.join(script_dir, _config_template_name.format(dataset))
 
         def download(dir):
-            from ..utils import files
-            import shutil
             with files.output_dir(dir, temp_files + [images_dir(), _config_output_name], True):
                 func()
-                shutil.copyfile(config_file, _config_output_name)
+                files.copy(config_file, _config_output_name)
                 for temp_file in temp_files:
                     files.delete(temp_file)
 
         if launcher.is_main_module(module):
-            cli.set_log_enabled()
+            cli.set_logging()
             cli.set_exception_hook()
             from ..utils import cliargs
             import argparse
