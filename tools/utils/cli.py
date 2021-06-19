@@ -24,13 +24,13 @@ def _humanize_exc(exc, exc_type):
         return 'Canceled by user.'
     if issubclass(exc_type, ImportError):
         return f'Cannot import module "{exc.name}".See README.md for installation help.'
-    if issubclass(exc_type, OSError):
+    if issubclass(exc_type, OSError) and exc.strerror:
         msg = _stop(exc.strerror)
         if exc.filename is not None:
             msg += f' (file "{exc.filename}")'
         return msg
     if exc.args:
-        return _stop(exc_type.args[0])
+        return _stop(exc.args[0])
     return 'Unhandled exception.'
 
 
