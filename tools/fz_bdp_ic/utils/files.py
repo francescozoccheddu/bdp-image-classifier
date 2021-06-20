@@ -81,7 +81,7 @@ def temp_path(suffix=''):
 
 
 def download(url, output_file=None, msg='Downloading', show_progress=None):
-    from .cli import is_logging
+    from .cli import is_logging, log
     if show_progress is None:
         show_progress = is_logging()
     try:
@@ -91,9 +91,14 @@ def download(url, output_file=None, msg='Downloading', show_progress=None):
         file_size = int(response.headers.get('Content-Length', 0))
         iterable = response.iter_content(buffer_size)
         if show_progress:
-            from tqdm import tqdm
-            progress = tqdm(response.iter_content(buffer_size), msg, total=file_size, unit='B', unit_scale=True, unit_divisor=1000)
-            iterable = progress.iterable
+            try:
+                from tqdm import tqdm
+            except ImportError:
+                log(f'{msg} ({_humanize_size(file_size)})')
+                show_progress = False
+            else:
+                progress = tqdm(response.iter_content(buffer_size), msg, total=file_size, unit='B', unit_scale=True, unit_divisor=1000)
+                iterable = progress.iterable
         if output_file is None:
             import cgi
             header = response.headers.get('Content-Disposition', '')
@@ -110,6 +115,14 @@ def download(url, output_file=None, msg='Downloading', show_progress=None):
     except BaseException:
         try_delete_file(output_file)
         raise
+
+
+def _humanize_size(size):
+    for unit in ['', 'K', 'M']:
+        if abs(size) < 1000.0:
+            return '%3.1f%sB' % (size, unit)
+        size /= 1000.0
+    return '%.1f%sB' % (size, 'G')
 
 
 def try_delete_file(file):
