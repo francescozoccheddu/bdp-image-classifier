@@ -1,17 +1,16 @@
-from ..dataset_utils import downloader, images_dir, main
+from ..download import images_dir
 from ...utils import files
 from . import supermarket
 
 _class_count = 2
 
 
-@downloader([])
+def temp_files():
+    return []
+
+
 def download():
-    supermarket.download('.')
+    from .. import download
+    download.download(download.Dataset.supermarket, '.')
     for label in range(_class_count, supermarket._class_count):
         files.delete(f'{images_dir()}/{label}')
-
-
-@main
-def _main(dir):
-    download(dir)

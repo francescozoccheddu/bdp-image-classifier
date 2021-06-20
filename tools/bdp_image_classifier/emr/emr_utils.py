@@ -1,21 +1,17 @@
-from enum import Enum
 from ..utils.launcher import dont_run
 from ..utils import cli
 dont_run()
 
 
-class Mode(Enum):
+class Mode(cli.Choice):
     S3 = 'S3'
     SSH = 'SSH'
-
-    def __str__(self):
-        return self.value
 
 def add_argparse_args(parser):
     parser.add_argument('--aws-ak-id', help='the AWS access key ID (use "AWS_ACCESS_KEY_ID" env variable if not provided)')
     parser.add_argument('--aws-ak-secret', help='the AWS secret access key (use "AWS_SECRET_ACCESS_KEY" env variable if not provided)')
     parser.add_argument('--aws-region', default='us-east-1', help='the AWS region to use')
-    parser.add_argument('-m', '--mode', type=Mode, choices=list(Mode), default=Mode.SSH, help='the communication mode')
+    parser.add_argument('-m', '--mode', type=Mode, choices=Mode.choices(), default=Mode.SSH, help='the communication mode')
     parser.add_argument('-o', '--output-dir', type=cli.output_dir_arg, default='results', help='the output directory')
     parser.add_argument('--suppress-ssh-output', action='store_true', help='suppress the app output when launched in SSH mode')
     parser.add_argument('--no-warning', action='store_true', help='disable the UAYOR warning')

@@ -1,4 +1,5 @@
 
+from enum import Enum
 import os
 import sys
 from contextlib import contextmanager
@@ -180,3 +181,13 @@ def input_dir_arg(arg):
 
 def pause():
     input('Press ENTER to continue or CTRL+C to cancel... ')
+
+
+class Choice(Enum):
+
+    @classmethod
+    def choices(cls):
+        return list(cls)
+
+    def __str__(self):
+        return self.value
