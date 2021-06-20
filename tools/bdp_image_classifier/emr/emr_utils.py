@@ -11,7 +11,6 @@ class Mode(Enum):
     def __str__(self):
         return self.value
 
-
 def add_argparse_args(parser):
     parser.add_argument('--aws-ak-id', help='the AWS access key ID (use "AWS_ACCESS_KEY_ID" env variable if not provided)')
     parser.add_argument('--aws-ak-secret', help='the AWS secret access key (use "AWS_SECRET_ACCESS_KEY" env variable if not provided)')
