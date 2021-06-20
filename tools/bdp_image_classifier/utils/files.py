@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from importlib import import_module
 import os
 import shutil
 from .launcher import dont_run
@@ -281,6 +282,9 @@ def expand_user(path):
     return os.path.expanduser(path)
 
 
-def resource(module_name, resource):
+def resource(resource, module_name=None):
+    if module_name is None:
+        from .launcher import get_caller_module
+        module_name = get_caller_module(1).__name__
     import pkg_resources
     return pkg_resources.resource_filename(module_name, resource + '.resource')

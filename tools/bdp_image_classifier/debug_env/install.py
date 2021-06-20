@@ -14,7 +14,7 @@ def _retrieve(url, output_dir, format, name):
 
 
 def _copy(src, dst, vars={}):
-    cnt = files.read(files.resource(__name__, src))
+    cnt = files.read(files.resource(src))
     for k, v in vars.items():
         cnt = cnt.replace(k, v)
     files.write(dst, cnt)

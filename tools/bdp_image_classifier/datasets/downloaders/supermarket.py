@@ -1,4 +1,4 @@
-from ..dataset_utils import downloader, images_dir, main
+from ..download import images_dir
 from ...utils import files
 
 _class_count = 15
@@ -16,7 +16,10 @@ def _process_csv(file):
     return res
 
 
-@downloader(['training_list.csv', 'validation_list.csv', 'testing_list_blind.csv', 'README.txt', '.images'])
+def temp_files():
+    return ['training_list.csv', 'validation_list.csv', 'testing_list_blind.csv', 'README.txt', '.images']
+
+
 def download():
     files.download_and_extract('https://iplab.dmi.unict.it/MLC2018/dataset.zip', '.', 'zip')
     files.move(images_dir(), '.images')
@@ -27,8 +30,3 @@ def download():
     for label, images in enumerate(images_map):
         for image in images:
             files.move(f'.images/{image}', f'{images_dir()}/{label}')
-
-
-@main
-def _main(dir):
-    download(dir)
