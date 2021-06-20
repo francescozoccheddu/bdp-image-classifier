@@ -15,9 +15,14 @@ def assembly(project_dir, output_file):
 def _main():
     import argparse
     from ..utils import cli
-    default_project_dir = files.rel(files.join(files.parent(__file__), '../../app/image-classifier'))
+    inferred_project_dir = files.rel(files.join(files.parent(__file__), '../../app/image-classifier'))
+    project_dir_nargs=None
+    project_dir_default=None
+    if files.is_dir(inferred_project_dir) and files.is_file(files.join(inferred_project_dir, 'build.sbt')):
+        project_dir_default = inferred_project_dir
+        project_dir_nargs = '?'
     parser = argparse.ArgumentParser(description='Assembly app JAR', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-p', '--project-dir', type=cli.input_dir_arg, default=default_project_dir, help='the SBT project directory')
+    parser.add_argument('project_dir', metavar='PROJECT_DIR', type=cli.input_dir_arg, default=project_dir_default, nargs=project_dir_nargs, help='the SBT project directory')
     parser.add_argument('-o', '--output-file', type=cli.output_file_arg, default='assembly.jar', help='the output JAR file')
     cli.add_argparse_quiet(parser)
     args = parser.parse_args()

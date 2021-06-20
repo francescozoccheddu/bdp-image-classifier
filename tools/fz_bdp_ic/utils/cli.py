@@ -21,7 +21,7 @@ def _stop(msg):
 
 def _humanize_exc(exc, exc_type):
     if issubclass(exc_type, KeyboardInterrupt):
-        return 'Canceled by user.'
+        return '\nCanceled by user.'
     if issubclass(exc_type, ImportError):
         return f'Cannot import module "{exc.name}".See README.md for installation help.'
     if issubclass(exc_type, OSError) and exc.strerror:
@@ -36,7 +36,7 @@ def _humanize_exc(exc, exc_type):
 
 def _exc_hook(exc_type, exc, traceback):
 
-    print(_humanize_exc(exc, exc_type), file=sys.stderr)
+    err(_humanize_exc(exc, exc_type))
 
     if _debug:
         sys.__excepthook__(exc_type, exc, traceback)
@@ -52,6 +52,10 @@ def set_exception_hook(enabled=True):
 def set_logging(enabled=True):
     global _log
     _log = enabled
+
+
+def err(msg):
+    print(msg, file=sys.stderr)
 
 
 def log(msg):
@@ -172,3 +176,7 @@ def input_dir_arg(arg):
     if not files.is_dir_readable(arg):
         raise argparse.ArgumentTypeError('not a readable dir')
     return arg
+
+
+def pause():
+    input('Press ENTER to continue or CTRL+C to cancel...')

@@ -25,8 +25,15 @@ def _map_dataset_cwd(dataset, cwd):
             images[i] = _map_file_cwd(image, cwd)
 
 
+def reconfigure_file(file, *args, **kwargs):
+    import json
+    config = json.loads(files.read(file))
+    config = reconfigure(config, *args, **kwargs)
+    files.write(file, json.dumps(config))
+
+
 def reconfigure(
-        file,
+        config,
         data_save=_default_data_save,
         data_temp_file=_default_data_temp_file,
         data_cwd=_default_data_cwd,
@@ -34,8 +41,6 @@ def reconfigure(
         training_save=_default_training_save,
         testing_save=_default_testing_save,
         testing_print=_default_testing_print):
-    import json
-    config = json.loads(files.read(file))
     data = config.get('data')
     featurization = config.get('featurization')
     training = config.get('training')
@@ -57,7 +62,7 @@ def reconfigure(
     if 'testing' in config:
         testing['print'] = testing_print
         testing['save'] = testing_save
-    files.write(file, json.dumps(config))
+    return config
 
 
 @main
@@ -66,13 +71,13 @@ def _main():
     import argparse
     parser = argparse.ArgumentParser(description=f'Change output paths in a JSON configuration file', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('config_file', metavar='CONFIG_FILE', type=cli.make_input_file_or_parent_arg('config.json'), help='the JSON config file or the dataset directory')
-    parser.add_argument('--data-save', type=str, default=_default_data_save, help='the data output file')
-    parser.add_argument('--data-temp-file', type=str, default=_default_data_temp_file, help='the data temporary file')
-    parser.add_argument('--data-cwd', type=str, default=_default_data_cwd, help='the datasets working directory')
-    parser.add_argument('--featurization-save', type=str, default=_default_featurization_save, help='the features output file')
-    parser.add_argument('--training-save', type=str, default=_default_training_save, help='the model output file')
-    parser.add_argument('--testing-save', type=str, default=_default_testing_save, help='the testing summary output file')
+    parser.add_argument('--data-save', default=_default_data_save, help='the data output file')
+    parser.add_argument('--data-temp-file', default=_default_data_temp_file, help='the data temporary file')
+    parser.add_argument('--data-cwd', default=_default_data_cwd, help='the datasets working directory')
+    parser.add_argument('--featurization-save', default=_default_featurization_save, help='the features output file')
+    parser.add_argument('--training-save', default=_default_training_save, help='the model output file')
+    parser.add_argument('--testing-save', default=_default_testing_save, help='the testing summary output file')
     parser.add_argument('--testing-print', type=cli.bool_arg, default=_default_testing_print, help='whether to print the testing summary to stdout')
     args = parser.parse_args()
     cli.set_exception_hook()
-    reconfigure(args.config_file, args.data_save, args.data_temp_file, args.data_cwd, args.featurization_save, args.training_save, args.testing_save, args.testing_print)
+    reconfigure_file(args.config_file, args.data_save, args.data_temp_file, args.data_cwd, args.featurization_save, args.training_save, args.testing_save, args.testing_print)
