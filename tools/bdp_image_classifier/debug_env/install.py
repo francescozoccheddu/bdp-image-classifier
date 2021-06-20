@@ -14,10 +14,7 @@ def _retrieve(url, output_dir, format, name):
 
 
 def _copy(src, dst, vars={}):
-    cnt = files.read(files.resource(src))
-    for k, v in vars.items():
-        cnt = cnt.replace(k, v)
-    files.write(dst, cnt)
+    files.write(dst, files.template(src, vars=vars))
 
 
 def authorize_ssh(install_dir):

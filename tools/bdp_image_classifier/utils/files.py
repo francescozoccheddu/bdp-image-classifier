@@ -282,9 +282,19 @@ def expand_user(path):
     return os.path.expanduser(path)
 
 
-def resource(resource, module_name=None):
-    if module_name is None:
+def resource(name, module=None):
+    if module is None:
         from .launcher import get_caller_module
-        module_name = get_caller_module(1).__name__
+        module = get_caller_module(1)
     import pkg_resources
-    return pkg_resources.resource_filename(module_name, resource + '.resource')
+    return pkg_resources.resource_filename(module.__name__, name + '.resource')
+
+
+def template(name, module=None, vars={}):
+    if module is None:
+        from .launcher import get_caller_module
+        module = get_caller_module(1)
+    cnt = read(resource(name, module))
+    for k, v in vars.items():
+        cnt = cnt.replace(k, v)
+    return cnt

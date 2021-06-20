@@ -23,7 +23,7 @@ def download(dataset, output_dir):
     import importlib
     parent_module = '.'.join(__name__.split('.')[:-1])
     module = importlib.import_module(f'.downloaders.{dataset.value}', parent_module)
-    config_file = files.resource(_config_template_name.format(dataset))
+    config_file = files.resource(_config_template_name.format(dataset), module)
     temp_files = module.temp_files()
     downloader = module.download()
 

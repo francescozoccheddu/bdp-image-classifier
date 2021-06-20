@@ -179,6 +179,17 @@ def input_dir_arg(arg):
     return arg
 
 
+def make_opt_arg(func):
+
+    def process(arg):
+        if arg is not None:
+            return func(arg)
+        else:
+            return None
+
+    return process
+
+
 def pause():
     input('Press ENTER to continue or CTRL+C to cancel... ')
 
