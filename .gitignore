@@ -10,3 +10,5 @@
 *.jar
 __pycache__
 *.pyc
+/tools/dist
+/tools/bdp_image_classifier.egg-info

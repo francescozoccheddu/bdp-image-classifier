@@ -1,8 +1,59 @@
+from contextlib import contextmanager
+from botocore.exceptions import ClientError
 from . import emr_utils
 from ..utils.launcher import main
+from ..utils.cli import log
 
 
-def run(script_file, output_dir, aws_ak_id, aws_ak_secret, mode=emr_utils.Mode.SSH, suppress_ssh_out=False):
+def run_file(script_file, output_dir, aws_region='us-east-1', aws_ak_id=None, aws_ak_secret=None, mode=emr_utils.Mode.SSH, suppress_ssh_out=False):
+    from ..utils import files
+    run(files.read(script_file), output_dir, aws_region, aws_ak_id, aws_ak_secret, mode, suppress_ssh_out)
+
+
+def run(script, output_dir, aws_region='us-east-1', aws_ak_id=None, aws_ak_secret=None, mode=emr_utils.Mode.SSH, suppress_ssh_out=False):
+    import boto3
+    import os
+    from ..utils import files
+    log(f'All AWS resources will be allocated in region "{aws_region}"')
+    aws_ak_id = aws_ak_id or os.environ.get('AWS_ACCESS_KEY_ID')
+    aws_ak_secret = aws_ak_secret or os.environ.get('AWS_SECRET_ACCESS_KEY')
+    session = boto3.Session(aws_ak_id, aws_ak_secret, region_name=aws_region)
+    if mode == emr_utils.Mode.SSH:
+        _run_with_ssh(session, script, output_dir, suppress_ssh_out)
+    elif mode == emr_utils.Mode.S3:
+        _run_with_s3(session, script, output_dir)
+
+
+@contextmanager
+def _bucket(session, name):
+    bucket = session.resource('s3').Bucket(name)
+    try:
+        log(f'Creating "{name}" S3 bucket')
+        bucket.create(
+            CreateBucketConfiguration={
+                'LocationConstraint': session.region_name
+            })
+        yield bucket
+    except BaseException:
+        try:
+            log(f'Deleting "{name}" S3 bucket')
+            bucket.objects.all.delete()
+            bucket.delete()
+        except ClientError as exc:
+            if exc['error']['code'] != 'NoSuchBucket':
+                raise
+        raise
+
+
+def _run_with_s3(session, script, output_dir):
+    uid = session.client('sts').get_caller_identity().get('Account')
+    bucket_name = f'bdp-image-classifier-{uid}'
+    script_key='script'
+    with _bucket(bucket_name) as bucket:
+        bucket.put_object(Body=script.encode(), Key=script_key)
+
+
+def _run_with_ssh(session, script_file, output_dir, suppress_output=False):
     pass
 
 

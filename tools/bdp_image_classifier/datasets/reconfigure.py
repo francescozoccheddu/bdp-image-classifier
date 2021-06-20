@@ -1,14 +1,6 @@
 from ..utils.launcher import main
 from ..utils import files
 
-_default_data_save = None
-_default_data_temp_file = 'hdfs:///image-classifier/data'
-_default_featurization_save = None
-_default_training_save = 'hdfs:///image-classifier/model'
-_default_testing_save = 'hdfs:///image-classifier/summary'
-_default_testing_print = True
-_default_data_cwd = '.'
-
 
 def _map_file_cwd(file, cwd):
     from urllib.parse import urlparse
@@ -34,34 +26,41 @@ def reconfigure_file(file, *args, **kwargs):
 
 def reconfigure(
         config,
-        data_save=_default_data_save,
-        data_temp_file=_default_data_temp_file,
-        data_cwd=_default_data_cwd,
-        featurization_save=_default_featurization_save,
-        training_save=_default_training_save,
-        testing_save=_default_testing_save,
-        testing_print=_default_testing_print):
+        data_save=None,
+        data_temp_file=None,
+        data_cwd=None,
+        featurization_save=None,
+        training_save=None,
+        testing_save=None,
+        testing_print=None):
     data = config.get('data')
     featurization = config.get('featurization')
     training = config.get('training')
     testing = config.get('testing')
     if data is not None:
-        data['save'] = data_save
+        if data_save is not None:
+            data['save'] = data_save or None
         make = data.get('make')
         if make is not None:
-            make['tempFile'] = data_temp_file
-            datasetKeys = ('dataSet', 'trainingSet', 'testSet')
-            for datasetKey in datasetKeys:
-                dataset = make.get(datasetKey)
-                if dataset is not None:
-                    _map_dataset_cwd(dataset, data_cwd)
+            if data_temp_file is not None:
+                make['tempFile'] = data_temp_file or None
+            if data_cwd is not None:
+                datasetKeys = ('dataSet', 'trainingSet', 'testSet')
+                for datasetKey in datasetKeys:
+                    dataset = make.get(datasetKey)
+                    if dataset is not None:
+                        _map_dataset_cwd(dataset, data_cwd)
     if 'featurization' in config:
-        featurization['save'] = featurization_save
+        if featurization_save is not None:
+            featurization['save'] = featurization_save or None
     if 'training' in config:
-        training['save'] = training_save
+        if training_save is not None:
+            training['save'] = training_save or None
     if 'testing' in config:
-        testing['print'] = testing_print
-        testing['save'] = testing_save
+        if testing_print is not None:
+            testing['print'] = testing_print
+        if testing_save is not None:
+            testing['save'] = testing_save or None
     return config
 
 
@@ -71,13 +70,13 @@ def _main():
     import argparse
     parser = argparse.ArgumentParser(description=f'Change output paths in a JSON configuration file', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('config_file', metavar='CONFIG_FILE', type=cli.make_input_file_or_parent_arg('config.json'), help='the JSON config file or the dataset directory')
-    parser.add_argument('--data-save', default=_default_data_save, help='the data output file')
-    parser.add_argument('--data-temp-file', default=_default_data_temp_file, help='the data temporary file')
-    parser.add_argument('--data-cwd', default=_default_data_cwd, help='the datasets working directory')
-    parser.add_argument('--featurization-save', default=_default_featurization_save, help='the features output file')
-    parser.add_argument('--training-save', default=_default_training_save, help='the model output file')
-    parser.add_argument('--testing-save', default=_default_testing_save, help='the testing summary output file')
-    parser.add_argument('--testing-print', type=cli.bool_arg, default=_default_testing_print, help='whether to print the testing summary to stdout')
+    parser.add_argument('--data-save', help='the data output file')
+    parser.add_argument('--data-temp-file', help='the data temporary file')
+    parser.add_argument('--data-cwd', help='the datasets working directory')
+    parser.add_argument('--featurization-save', help='the features output file')
+    parser.add_argument('--training-save', help='the model output file')
+    parser.add_argument('--testing-save', help='the testing summary output file')
+    parser.add_argument('--testing-print', type=cli.bool_arg, help='whether to print the testing summary to stdout')
     args = parser.parse_args()
     cli.set_exception_hook()
     reconfigure_file(args.config_file, args.data_save, args.data_temp_file, args.data_cwd, args.featurization_save, args.training_save, args.testing_save, args.testing_print)
