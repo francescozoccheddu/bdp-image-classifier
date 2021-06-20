@@ -3,12 +3,10 @@
 .bloop
 .scalafmt.conf
 .idea
-/app/image-classifier/.bsp
-/app/image-classifier/target
-/app/image-classifier/project/*
-!/app/image-classifier/project/plugins.sbt
+/app/.bsp
+/app/target
+/app/project/*
+!/app/project/plugins.sbt
 *.jar
-/cloud/.aws-cli
-/cloud/.key.pem
 __pycache__
 *.pyc
