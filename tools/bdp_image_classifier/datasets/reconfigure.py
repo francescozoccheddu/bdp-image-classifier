@@ -17,11 +17,11 @@ def _map_dataset_cwd(dataset, cwd):
             images[i] = _map_file_cwd(image, cwd)
 
 
-def reconfigure_file(file, *args, **kwargs):
+def reconfigure_file(input_file, output_file, *args, **kwargs):
     import json
-    config = json.loads(files.read(file))
+    config = json.loads(files.read(input_file))
     config = reconfigure(config, *args, **kwargs)
-    files.write(file, json.dumps(config))
+    files.write(output_file, json.dumps(config))
 
 
 def reconfigure(
@@ -77,6 +77,7 @@ def _main():
     parser.add_argument('--training-save', help='the model output file')
     parser.add_argument('--testing-save', help='the testing summary output file')
     parser.add_argument('--testing-print', type=cli.bool_arg, help='whether to print the testing summary to stdout')
+    parser.add_argument('-o', '--output-file', type=cli.make_opt_arg(cli.output_file_arg), help='the reconfigured JSON output file, if different than CONFIG_FILE')
     args = parser.parse_args()
     cli.set_exception_hook()
-    reconfigure_file(args.config_file, args.data_save, args.data_temp_file, args.data_cwd, args.featurization_save, args.training_save, args.testing_save, args.testing_print)
+    reconfigure_file(args.config_file, args.output_file or args.config_file, args.data_save, args.data_temp_file, args.data_cwd, args.featurization_save, args.training_save, args.testing_save, args.testing_print)

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+cd
 
 echo "[EMR] Retrieving app assembly"
 ASSEMBLY_FILE="assembly.jar"
@@ -10,11 +11,11 @@ bdp-ic-app-download x64 -o "$ASSEMBLY_FILE" -q
 echo "[EMR] Generating configuration"
 OUTPUT_DIR_NAME="results"
 HDFS_OUTPUT_DIR="hdfs:///$OUTPUT_DIR_NAME"
-SCRIPT_FILE="%SCRIPT_FILE%"
+CG_SCRIPT_FILE="%CG_SCRIPT_FILE%"
 mkdir -p "$OUTPUT_DIR_NAME"
-chmod +x "$SCRIPT_FILE"
+chmod +x "$CG_SCRIPT_FILE"
 CONFIG_FILE="config.json"
-"$SCRIPT_FILE" > "$CONFIG_FILE"
+"$CG_SCRIPT_FILE" > "$CONFIG_FILE"
 bdp-ic-datasets-reconfigure --data-save "" --data-temp-file "hdfs:///temp" --featurization-save "" --training-save "$HDFS_OUTPUT_DIR/model" --testing-save "$HDFS_OUTPUT_DIR/summary" --testing-print true
 
 echo "[EMR] Running app"
