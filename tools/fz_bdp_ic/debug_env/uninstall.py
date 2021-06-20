@@ -14,6 +14,7 @@ def uninstall(install_dir):
 
 
 def revoke_ssh_key(key):
+    env_utils.ensure_supported_platform()
     if files.exists(env_utils.ssh_authorized_keys_file()):
         files.filter_file_lines(env_utils.ssh_authorized_keys_file(), lambda l: key not in l and l.strip())
         return True

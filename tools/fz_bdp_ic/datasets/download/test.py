@@ -1,4 +1,4 @@
-from ..dataset_utils import downloader, images_dir
+from ..dataset_utils import downloader, images_dir, main
 from ...utils import files
 from . import supermarket
 
@@ -10,3 +10,8 @@ def download():
     supermarket.download('.')
     for label in range(_class_count, supermarket._class_count):
         files.delete(f'{images_dir()}/{label}')
+
+
+@main
+def _main(dir):
+    download(dir)

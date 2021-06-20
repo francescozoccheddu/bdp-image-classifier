@@ -21,7 +21,7 @@ def _stop(msg):
 
 def _humanize_exc(exc, exc_type):
     if issubclass(exc_type, KeyboardInterrupt):
-        return '\nCanceled by user.'
+        return 'Canceled by user.'
     if issubclass(exc_type, ImportError):
         return f'Cannot import module "{exc.name}".See README.md for installation help.'
     if issubclass(exc_type, OSError) and exc.strerror:
@@ -179,4 +179,4 @@ def input_dir_arg(arg):
 
 
 def pause():
-    input('Press ENTER to continue or CTRL+C to cancel...')
+    input('Press ENTER to continue or CTRL+C to cancel... ')
