@@ -1,4 +1,4 @@
-from ..dataset_utils import downloader, images_dir
+from ..dataset_utils import downloader, images_dir, main
 from ...utils import files
 
 _class_count = 15
@@ -27,3 +27,8 @@ def download():
     for label, images in enumerate(images_map):
         for image in images:
             files.move(f'.images/{image}', f'{images_dir()}/{label}')
+
+
+@main
+def _main(dir):
+    download(dir)

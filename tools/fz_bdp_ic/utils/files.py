@@ -244,8 +244,10 @@ def rel(path):
     return os.path.relpath(path)
 
 
-def name(path):
-    return os.path.basename(path)
+def name(path, include_ext=True):
+    name = os.path.basename(path)
+    if not include_ext:
+        return os.path.splitext(name)[0]
 
 
 def isabs(path):
@@ -277,3 +279,8 @@ def filter_file_lines(file, filter):
 
 def expand_user(path):
     return os.path.expanduser(path)
+
+
+def resource(module_name, resource):
+    import pkg_resources
+    return pkg_resources.resource_filename(module_name, resource + '.resource')

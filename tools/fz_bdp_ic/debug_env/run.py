@@ -1,10 +1,10 @@
-from tools.debug_env.install import install
 from ..utils.launcher import main
-from . import env_utils
+from . import env_utils, install
 from ..utils import files, cli
 
 
 def run(install_dir, assembly_file, config_file, driver_ram_mb=2048, executor_ram_mb=2048):
+    env_utils.ensure_supported_platform()
     start_script = files.join(install_dir, env_utils.hadoop_dir(), 'sbin', 'start-dfs.sh')
     run_script = files.join(install_dir, env_utils.spark_dir(), 'bin', 'spark-submit')
     stop_script = files.join(install_dir, env_utils.hadoop_dir(), 'sbin', 'stop-dfs.sh')

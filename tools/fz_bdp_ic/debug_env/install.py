@@ -14,8 +14,7 @@ def _retrieve(url, output_dir, format, name):
 
 
 def _copy(src, dst, vars={}):
-    src = files.join(files.parent(__file__), f'.{src}.template')
-    cnt = files.read(src)
+    cnt = files.read(files.resource(__name__, src))
     for k, v in vars.items():
         cnt = cnt.replace(k, v)
     files.write(dst, cnt)
@@ -23,7 +22,7 @@ def _copy(src, dst, vars={}):
 
 def authorize_ssh(install_dir):
     env_utils.ensure_supported_platform()
-    from tools.debug_env.uninstall import revoke_ssh
+    from .uninstall import revoke_ssh
     revoke_ssh(install_dir)
     from cryptography.hazmat.primitives.asymmetric import rsa
     from cryptography.hazmat.primitives import serialization as crypto_serialization
@@ -41,6 +40,7 @@ def authorize_ssh(install_dir):
 
 
 def format_hdfs(install_dir):
+    env_utils.ensure_supported_platform()
     from ..utils.cli import run
     cmd = files.join(install_dir, env_utils.hadoop_dir(), 'bin', 'hdfs')
     run(cmd, ['namenode', '-format'], input=b'Y', enable_out=False, enable_err=False)
