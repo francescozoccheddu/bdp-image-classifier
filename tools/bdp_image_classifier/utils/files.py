@@ -119,7 +119,7 @@ def download(url, output_file=None, msg='Downloading', show_progress=None):
 
 def _humanize_size(size):
     for unit in ['', 'K', 'M']:
-        if abs(size) < 1000.0:
+        if size < 1000.0:
             return '%3.1f%sB' % (size, unit)
         size /= 1000.0
     return '%.1f%sB' % (size, 'G')
