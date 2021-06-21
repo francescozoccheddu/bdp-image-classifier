@@ -269,7 +269,7 @@ def set_permissions(path, permission, recursive=False):
 
 
 def filter_file_lines(file, filter):
-    with open(file, "r+") as f:
+    with open(file, 'r+') as f:
         lines = f.readlines()
         f.seek(0)
         for line in lines:
