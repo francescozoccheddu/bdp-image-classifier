@@ -25,8 +25,8 @@ def authorize_ssh(install_dir):
     from cryptography.hazmat.primitives import serialization as crypto_serialization
     from cryptography.hazmat.backends import default_backend as crypto_default_backend
     key = rsa.generate_private_key(65537, 2047, backend=crypto_default_backend())
-    prv_key = key.private_bytes(crypto_serialization.Encoding.PEM, crypto_serialization.PrivateFormat.TraditionalOpenSSL, crypto_serialization.NoEncryption()).decode("utf-8")
-    pub_key = key.public_key().public_bytes(crypto_serialization.Encoding.OpenSSH, crypto_serialization.PublicFormat.OpenSSH).decode("utf-8")
+    prv_key = key.private_bytes(crypto_serialization.Encoding.PEM, crypto_serialization.PrivateFormat.TraditionalOpenSSL, crypto_serialization.NoEncryption()).decode('utf-8')
+    pub_key = key.public_key().public_bytes(crypto_serialization.Encoding.OpenSSH, crypto_serialization.PublicFormat.OpenSSH).decode('utf-8')
     with files.output_dir(files.join(install_dir, env_utils.ssh_key_dir()), [env_utils.ssh_private_key_file(), env_utils.ssh_public_key_file()], True):
         pub_key_content = pub_key.split()[1]
         files.write(env_utils.ssh_public_key_file(), pub_key_content)
