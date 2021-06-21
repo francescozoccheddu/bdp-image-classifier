@@ -63,7 +63,7 @@ def _bucket(session):
         bucket.create(
             CreateBucketConfiguration={
                 'LocationConstraint': session.region_name
-            })
+            }).wait_until_exists()
         yield bucket
     finally:
         try:
@@ -85,6 +85,7 @@ def _catch_no_such_entity():
 
 
 def _delete_role(role):
+    log(f'Deleting "{role.name}" role')
     for policy in role.attached_policies.all():
         role.detach_policy(PolicyArn=policy.arn)
     for inst_profile in role.instance_profiles.all():
@@ -95,7 +96,6 @@ def _delete_role(role):
 
 @contextmanager
 def _role(session, name, policy_doc, policy_arn, create_instance_profile):
-    import json
     iam = session.resource('iam')
     role = None
     with _catch_no_such_entity():
@@ -104,16 +104,16 @@ def _role(session, name, policy_doc, policy_arn, create_instance_profile):
         log(f'Creating "{name}" role')
         role = iam.create_role(
             RoleName=name,
-            AssumeRolePolicyDocument=json.dumps(policy_doc)
+            AssumeRolePolicyDocument=policy_doc
         )
         iam.meta.client.get_waiter('role_exists').wait(RoleName=name)
         role.attach_policy(PolicyArn=policy_arn)
         if create_instance_profile:
             instance_profile = iam.create_instance_profile(InstanceProfileName=name)
             instance_profile.add_role(RoleName=name)
+            iam.meta.client.get_waiter('instance_profile_exists').wait(InstanceProfileName=name)
         yield role
     finally:
-        log(f'Deleting "{name}" role')
         if role is not None:
             _delete_role(role)
 
@@ -122,67 +122,47 @@ def _role(session, name, policy_doc, policy_arn, create_instance_profile):
 def _emr_roles(session):
     job_flow_role_name = f'{_prefix}-ec2-role'
     job_flow_policy_arn = 'arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceforEC2Role'
-    job_flow_policy_doc = {
-        'Version': '2008-10-17',
-        'Statement': [{
-            'Effect': 'Allow',
-            'Principal': {
-                'Service': 'ec2.amazonaws.com'
-            },
-            'Action': 'sts:AssumeRole'
-        }]
-    }
+    job_flow_policy_doc = files.template('emr-ec2-policy.json')
     service_role_name = f'{_prefix}-service-role'
     service_policy_arn = 'arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceRole'
-    service_policy_doc = {
-        'Version': '2008-10-17',
-        'Statement': [{
-            'Sid': '',
-            'Effect': 'Allow',
-            'Principal': {
-                'Service': 'elasticmapreduce.amazonaws.com'
-            },
-            'Action': 'sts:AssumeRole'
-        }]
-    }
+    service_policy_doc = files.template('emr-service-policy.json')
     with _role(session, job_flow_role_name, job_flow_policy_doc, job_flow_policy_arn, True) as job_flow_role:
         with _role(session, service_role_name, service_policy_doc, service_policy_arn, False) as service_role:
             yield job_flow_role, service_role
 
 
 def _delete_security_group(group, max_attempts=5, delay=10):
+    log(f'Deleting "{group.group_name}" security group')
+    if group.ip_permissions:
+        group.revoke_ingress(IpPermissions=group.ip_permissions)
     while True:
         try:
             group.delete()
             break
         except ClientError as exc:
-            if exc.response['Error']['Code'] == 'DependencyViolation':
-                if max_attempts > 0:
-                    log(f'Security group "{group.group_name}" is in use. Retrying in {delay} seconds {max_attempts} more times. Please wait.')
-                    import time
-                    time.sleep(delay)
-                    max_attempts -= 1
-                else:
-                    raise RuntimeError('Timed out')
+            if exc.response['Error']['Code'] == 'DependencyViolation' and max_attempts > 0:
+                log(f'Security group "{group.group_name}" is in use. Retrying in {delay} seconds {max_attempts} more times. Please wait.')
+                import time
+                time.sleep(delay)
+                max_attempts -= 1
             else:
                 raise
 
 
 @contextmanager
-def _security_group(vpc, name, enable_ssh):
-    old_groups = iter(vpc.security_groups.filter(GroupNames=[name]))
-    while True:
-        try:
-            _delete_security_group(next(old_groups))
-        except StopIteration:
-            break
-        except ClientError as exc:
-            if exc.response['Error']['Code'] != 'InvalidGroup.NotFound':
-                raise
+def _security_group(session, vpc, name, enable_ssh):
+    try:
+        group = list(vpc.security_groups.filter(GroupNames=[name]))[0]
+        _delete_security_group(group)
+    except ClientError as exc:
+        if exc.response['Error']['Code'] != 'InvalidGroup.NotFound':
+            raise
+    ec2_client = session.client('ec2')
     group = None
     try:
         log(f'Creating "{name}" security group')
         group = vpc.create_security_group(GroupName=name, Description='Security group for the bdp-image-classifier EMR cluster')
+        ec2_client.get_waiter('security_group_exists').wait(GroupIds=[group.id])
         if enable_ssh:
             import requests
             my_ip = requests.get('http://checkip.amazonaws.com').text.rstrip()
@@ -190,23 +170,29 @@ def _security_group(vpc, name, enable_ssh):
             group.authorize_ingress(FromPort=22, IpProtocol='tcp', ToPort=22, IpRanges=[{'CidrIp': f'{my_ip}/32'}])
         yield group
     finally:
-        log(f'Deleting "{name}" security group')
         if group is not None:
             _delete_security_group(group)
 
 
-@contextmanager
-def _emr_security_groups(session, enable_ssh):
+def _default_vpc(session):
     log('Retrieving default VPC')
+    ec2 = session.resource('ec2')
     try:
-        session.client('ec2').create_default_vpc()
+        ec2.meta.client.create_default_vpc()
     except ClientError as exc:
         if exc.response['Error']['Code'] != 'DefaultVpcAlreadyExists':
             raise
-    ec2 = session.resource('ec2')
-    vpc = list(ec2.vpcs.filter(Filters=[{'Name': 'isDefault', 'Values': ['true']}]))[0]
-    with _security_group(vpc, f'{_prefix}-master-security-group', enable_ssh) as master_sg:
-        with _security_group(vpc, f'{_prefix}-slave-security-group', False) as slave_sg:
+    default_filter = [{'Name': 'isDefault', 'Values': ['true']}]
+    ec2.meta.client.get_waiter('vpc_available').wait(Filters=default_filter)
+    vpc = list(ec2.vpcs.filter(Filters=default_filter))[0]
+    return vpc
+
+
+@contextmanager
+def _emr_security_groups(session, enable_ssh):
+    vpc = _default_vpc(session)
+    with _security_group(session, vpc, f'{_prefix}-master-security-group', enable_ssh) as master_sg:
+        with _security_group(session, vpc, f'{_prefix}-slave-security-group', False) as slave_sg:
             yield master_sg, slave_sg
 
 
@@ -214,6 +200,11 @@ def _emr_security_groups(session, enable_ssh):
 def _cluster(session, instance_type, instance_count, steps=[], key=None):
     with _emr_roles(session) as (job_flow_role, service_role):
         with _emr_security_groups(session, key is not None) as (master_sg, slave_sg):
+            delay = 5
+            if delay > 0:
+                import time
+                log(f'Waiting {delay} seconds for the changes to propagate')
+                time.sleep(delay)
             log(f'Creating cluster "{_cluster_name}"')
             import json
             client = session.client('emr')
@@ -302,4 +293,5 @@ def test():
     cli.set_logging()
     with _cluster(session, emr_utils.InstanceType.m4_large, 1, [], None):
         import time
-        time.sleep(60 * 20)
+        time.sleep(2)
+        print("ok")
