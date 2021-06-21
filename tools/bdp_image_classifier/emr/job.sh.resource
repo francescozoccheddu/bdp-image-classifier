@@ -21,7 +21,7 @@ mkdir -p "$OUTPUT_DIR_NAME"
 bdp-ic-datasets-reconfigure --data-save "" --data-temp-file "hdfs:///temp" --featurization-save "" --training-save "$HDFS_OUTPUT_DIR/model" --testing-save "$HDFS_OUTPUT_DIR/summary" --testing-print true
 
 echo "[EMR] Running app"
-spark-submit "$ASSEMBLY_FILE" "$CONFIG_FILE" | tee "$OUTPUT_DIR_NAME/log"
+spark-submit "$ASSEMBLY_FILE" "$CONFIG_FILE" 2>&1 | tee "$OUTPUT_DIR_NAME/log"
 
 echo "[EMR] Collecting results"
 hadoop fs -get "$HDFS_OUTPUT_DIR"

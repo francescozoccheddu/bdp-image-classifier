@@ -100,9 +100,10 @@ def _delete_key_pair(key):
             raise
 
 
-@ contextmanager
-def _key_pair(session, name):
+@contextmanager
+def _key_pair(session):
     ec2 = session.client('ec2')
+    name = f'{_prefix}-key-pair'
     _delete_key_pair(ec2.KeyPair(name))
     key = None
     try:
@@ -127,7 +128,7 @@ def _delete_role(role):
             raise
 
 
-@ contextmanager
+@contextmanager
 def _role(session, name, policy_doc, policy_arn, create_instance_profile):
     iam = session.resource('iam')
     role = None
@@ -150,7 +151,7 @@ def _role(session, name, policy_doc, policy_arn, create_instance_profile):
             _delete_role(role)
 
 
-@ contextmanager
+@contextmanager
 def _emr_roles(session):
     job_flow_role_name = f'{_prefix}-ec2-role'
     job_flow_policy_arn = 'arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceforEC2Role'
@@ -227,9 +228,10 @@ def _default_vpc(session):
     return vpc
 
 
-@ contextmanager
+@contextmanager
 def _emr_security_groups(session, enable_ssh):
     vpc = _default_vpc(session)
+    default_sg = _get_security_group_by_name(vpc, 'default')
     master_name = f'{_prefix}-master-security-group'
     slave_name = f'{_prefix}-slave-security-group'
     groups = [g for g in [_get_security_group_by_name(vpc, n) for n in [master_name, slave_name]] if g is not None]
@@ -238,15 +240,25 @@ def _emr_security_groups(session, enable_ssh):
     try:
         groups += [_create_security_group(session, vpc, master_name, enable_ssh)]
         groups += [_create_security_group(session, vpc, slave_name, False)]
-        yield tuple(groups)
+        yield (*groups, default_sg)
     finally:
-        _delete_security_groups(groups, 10)
+        _delete_security_groups(groups, 12)
 
 
-@ contextmanager
+def _list_instances(session, cluster_id, sort=False):
+    emr = session.client('emr')
+    instances = emr.list_instances(ClusterId=cluster_id)['Instances']
+    if sort:
+        groups = emr.list_instance_groups(ClusterId=cluster_id)['InstanceGroups']
+        master_group_id = next((g for g in groups if g['InstanceGroupType'] == 'MASTER'))['Id']
+        instances.sort(key=lambda i: i['InstanceGroupId'] != master_group_id)
+    return instances
+
+
+@contextmanager
 def _cluster(session, instance_type, instance_count, steps=[], key=None, log_uri=None):
     with _emr_roles(session) as (job_flow_role, service_role):
-        with _emr_security_groups(session, key is not None) as (master_sg, slave_sg):
+        with _emr_security_groups(session, key is not None) as (master_sg, slave_sg, default_sg):
             delay = 5
             if delay > 0:
                 import time
@@ -285,13 +297,22 @@ def _cluster(session, instance_type, instance_count, steps=[], key=None, log_uri
                     VisibleToAllUsers=True,
                     **addit_args
                 )['JobFlowId']
+                log(f'EMR cluster successfully created with ID "{id}".')
                 log('Waiting for the EMR cluster to be running. Please wait or type CTRL+C to abort (it usually takes about 10 minutes)...')
                 client.get_waiter('cluster_running').wait(ClusterId=id)
                 log('The EMR cluster is running.')
                 yield id
             finally:
-                log(f'Terminating "{_cluster_name}" EMR cluster...')
                 if id is not None:
+                    log(f'Terminating "{_cluster_name}" EMR cluster...')
+                    try:
+                        ec2 = session.client('ec2')
+                        instances = _list_instances(session, id, False)
+                        for instance in instances:
+                            instance = ec2.Instance(instance['Id'])
+                            instance.modify_attribute(Groups=[default_sg])
+                    except Exception:
+                        pass
                     client.terminate_job_flows(JobFlowIds=[id])
 
 
@@ -347,8 +368,57 @@ def _run_with_s3(session, cg_script, output_dir, instance_type, instance_count):
             files.delete(results_file)
 
 
-def _run_with_ssh(session, script_file, output_dir, instance_type, instance_count, suppress_output=False):
-    pass
+def _ssh_command(client, command, suppress_output):
+    import selectors
+    import sys
+    _, stdout, stderr = client.exec_command(command)
+    sel = selectors.DefaultSelector()
+    sel.register(stdout, selectors.EVENT_READ)
+    sel.register(stderr, selectors.EVENT_READ)
+    while True:
+        for key, _ in sel.select():
+            data = key.fileobj.read1().decode()
+            if not data:
+                return
+            if not suppress_output:
+                out = sys.stdout if key.fileobj is stdout else sys.stderr
+                print(data, end="", file=out)
+
+
+def _run_with_ssh(session, cg_script, output_dir, instance_type, instance_count, suppress_output=False):
+    import paramiko
+    from scp import SCPClient
+    import io
+    results_emr_file = '~/results.tgz'
+    cg_script_emr_file = '~/cg-script'
+    job_script_emr_file = '~/job-script'
+    job_script = files.template('job.sh', vars={
+        '%CG_SCRIPT_FILE%': cg_script_emr_file,
+        '%RESULTS_FILE%': results_emr_file
+    })
+    results_file = None
+    try:
+        with _key_pair(session) as key_pair:
+            with _cluster(session, instance_type, instance_count, key=key_pair.name) as cluster_id:
+                master_ip = _list_instances(session, cluster_id, True)[0]['PublicDNSName']
+                log('Establishing SSH connection to EMR cluster...')
+                with paramiko.SSHClient() as ssh:
+                    ssh_key = paramiko.RSAKey.from_private_key(io.StringIO(key_pair.key_material))
+                    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                    ssh.connect(hostname=master_ip, username='hadoop', pkey=ssh_key)
+                    with SCPClient(ssh.get_transport()) as scp:
+                        log('Uploading scripts to EMR cluster...')
+                        scp.putfo(io.StringIO(job_script), job_script_emr_file)
+                        scp.putfo(io.StringIO(cg_script), cg_script_emr_file)
+                        log('Running job on EMR cluster...')
+                        _ssh_command(ssh, job_script_emr_file, suppress_output)
+                        log('Collecting results from EMR cluster...')
+                        results_file = files.temp_path()
+                        scp.get(results_emr_file, results_file)
+            files.extract(results_file, output_dir, 'gztar', True)
+    finally:
+        if results_file is not None:
+            files.delete(results_file)
 
 
 @main
