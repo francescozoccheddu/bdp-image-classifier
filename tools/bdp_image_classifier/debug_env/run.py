@@ -9,13 +9,13 @@ def run(install_dir, assembly_file, config_file, driver_ram_mb=2048, executor_ra
     run_script = files.join(install_dir, env_utils.spark_dir(), 'bin', 'spark-submit')
     stop_script = files.join(install_dir, env_utils.hadoop_dir(), 'sbin', 'stop-dfs.sh')
     try:
-        cli.log('Starting HDFS daemons')
+        cli.log('Starting HDFS daemons...')
         if cli.run(start_script, [], enable_out=False, enable_err=False) != 0:
             raise RuntimeError('Failed to start HDFS daemons')
-        cli.log('Running')
+        cli.log('Running...')
         cli.run(run_script, ['--master', 'local[*]', '--driver-memory', f'{driver_ram_mb}M', '--executor-memory', f'{executor_ram_mb}M', assembly_file, config_file], enable_out=True, enable_err=True)
     finally:
-        cli.log('Stopping HDFS daemons')
+        cli.log('Stopping HDFS daemons...')
         if cli.run(stop_script, [], enable_out=False, enable_err=False) != 0:
             raise RuntimeError('Failed to stop HDFS daemons')
 

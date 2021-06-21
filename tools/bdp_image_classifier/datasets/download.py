@@ -41,6 +41,18 @@ class Dataset(cli.Choice):
     indoor = 'indoor'
 
 
+def get_kaggle_credentials():
+    with cli.no_stdout():
+        from kaggle.api.kaggle_api_extended import KaggleApi
+        api = KaggleApi()
+        api.authenticate()
+    return api.config_values[api.CONFIG_NAME_USER], api.config_values[api.CONFIG_NAME_KEY]
+
+
+def requires_kaggle(dataset):
+    return dataset in (Dataset.indoor,)
+
+
 @main
 def _main():
     import argparse
