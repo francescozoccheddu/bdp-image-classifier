@@ -372,9 +372,9 @@ def _ssh_command(client, command, suppress_output):
         if not line:
             break
         if not suppress_output:
-            print(line, end="")
+            print(f'[EMR] {line}', end="")
     if stdout.channel.recv_exit_status() != 0:
-        raise RuntimeError('Command failed', stderr.read())
+        raise RuntimeError('Command failed', stderr.read().decode())
 
 
 def _run_with_ssh(session, cg_script, output_dir, instance_type, instance_count, suppress_output=False):
@@ -400,10 +400,10 @@ def _run_with_ssh(session, cg_script, output_dir, instance_type, instance_count,
                     ssh.connect(hostname=master_ip, username='hadoop', pkey=ssh_key)
                     with SCPClient(ssh.get_transport()) as scp:
                         log('Uploading scripts to EMR cluster...')
-                        scp.putfo(io.StringIO(job_script), job_script_emr_file)
-                        scp.putfo(io.StringIO(cg_script), cg_script_emr_file)
+                        scp.putfo(io.StringIO(job_script), job_script_emr_file, mode='0777')
+                        scp.putfo(io.StringIO(cg_script), cg_script_emr_file, mode='0777')
                         log('Running job on EMR cluster...')
-                        _ssh_command(ssh, f'chmod +x "{job_script_emr_file}" && "{job_script_emr_file}"', suppress_output)
+                        _ssh_command(ssh, job_script_emr_file, suppress_output)
                         log('Collecting results from EMR cluster...')
                         results_file = files.temp_path()
                         scp.get(results_emr_file, results_file)
