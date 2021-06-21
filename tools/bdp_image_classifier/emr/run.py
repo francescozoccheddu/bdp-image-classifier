@@ -102,7 +102,7 @@ def _delete_key_pair(key):
 
 @contextmanager
 def _key_pair(session):
-    ec2 = session.client('ec2')
+    ec2 = session.resource('ec2')
     name = f'{_prefix}-key-pair'
     _delete_key_pair(ec2.KeyPair(name))
     key = None
@@ -210,7 +210,7 @@ def _create_security_group(session, vpc, name, enable_ssh):
         import requests
         my_ip = requests.get('http://checkip.amazonaws.com').text.rstrip()
         log(f'Authorizing SSH traffic from {my_ip} in EC2 security group "{name}"...')
-        group.authorize_ingress(FromPort=22, IpProtocol='tcp', ToPort=22, IpRanges=[{'CidrIp': f'{my_ip}/32'}])
+        group.authorize_ingress(FromPort=22, IpProtocol='tcp', ToPort=22, CidrIp=f'{my_ip}/32')
     return group
 
 
@@ -245,13 +245,10 @@ def _emr_security_groups(session, enable_ssh):
         _delete_security_groups(groups, 12)
 
 
-def _list_instances(session, cluster_id, sort=False):
+def _list_instances(session, cluster_id):
     emr = session.client('emr')
-    instances = emr.list_instances(ClusterId=cluster_id)['Instances']
-    if sort:
-        groups = emr.list_instance_groups(ClusterId=cluster_id)['InstanceGroups']
-        master_group_id = next((g for g in groups if g['InstanceGroupType'] == 'MASTER'))['Id']
-        instances.sort(key=lambda i: i['InstanceGroupId'] != master_group_id)
+    instances = emr.list_instances(ClusterId=cluster_id, InstanceGroupTypes=['MASTER'])['Instances']
+    instances += emr.list_instances(ClusterId=cluster_id, InstanceGroupTypes=['CORE', 'TASK'])['Instances']
     return instances
 
 
@@ -306,12 +303,12 @@ def _cluster(session, instance_type, instance_count, steps=[], key=None, log_uri
                 if id is not None:
                     log(f'Terminating "{_cluster_name}" EMR cluster...')
                     try:
-                        ec2 = session.client('ec2')
-                        instances = _list_instances(session, id, False)
+                        ec2 = session.resource('ec2')
+                        instances = _list_instances(session, id)
                         for instance in instances:
-                            instance = ec2.Instance(instance['Id'])
-                            instance.modify_attribute(Groups=[default_sg])
-                    except Exception:
+                            instance = ec2.Instance(instance['Ec2InstanceId'])
+                            instance.modify_attribute(Groups=[default_sg.id])
+                    except Exception as exc:
                         pass
                     client.terminate_job_flows(JobFlowIds=[id])
 
@@ -369,20 +366,15 @@ def _run_with_s3(session, cg_script, output_dir, instance_type, instance_count):
 
 
 def _ssh_command(client, command, suppress_output):
-    import selectors
-    import sys
     _, stdout, stderr = client.exec_command(command)
-    sel = selectors.DefaultSelector()
-    sel.register(stdout, selectors.EVENT_READ)
-    sel.register(stderr, selectors.EVENT_READ)
     while True:
-        for key, _ in sel.select():
-            data = key.fileobj.read1().decode()
-            if not data:
-                return
-            if not suppress_output:
-                out = sys.stdout if key.fileobj is stdout else sys.stderr
-                print(data, end="", file=out)
+        line = stdout.readline()
+        if not line:
+            break
+        if not suppress_output:
+            print(line, end="")
+    if stdout.channel.recv_exit_status() != 0:
+        raise RuntimeError('Command failed', stderr.read())
 
 
 def _run_with_ssh(session, cg_script, output_dir, instance_type, instance_count, suppress_output=False):
@@ -400,7 +392,7 @@ def _run_with_ssh(session, cg_script, output_dir, instance_type, instance_count,
     try:
         with _key_pair(session) as key_pair:
             with _cluster(session, instance_type, instance_count, key=key_pair.name) as cluster_id:
-                master_ip = _list_instances(session, cluster_id, True)[0]['PublicDNSName']
+                master_ip = _list_instances(session, cluster_id)[0]['PublicDnsName']
                 log('Establishing SSH connection to EMR cluster...')
                 with paramiko.SSHClient() as ssh:
                     ssh_key = paramiko.RSAKey.from_private_key(io.StringIO(key_pair.key_material))
@@ -411,11 +403,11 @@ def _run_with_ssh(session, cg_script, output_dir, instance_type, instance_count,
                         scp.putfo(io.StringIO(job_script), job_script_emr_file)
                         scp.putfo(io.StringIO(cg_script), cg_script_emr_file)
                         log('Running job on EMR cluster...')
-                        _ssh_command(ssh, job_script_emr_file, suppress_output)
+                        _ssh_command(ssh, f'chmod +x "{job_script_emr_file}" && "{job_script_emr_file}"', suppress_output)
                         log('Collecting results from EMR cluster...')
                         results_file = files.temp_path()
                         scp.get(results_emr_file, results_file)
-            files.extract(results_file, output_dir, 'gztar', True)
+                files.extract(results_file, output_dir, 'gztar', True)
     finally:
         if results_file is not None:
             files.delete(results_file)
