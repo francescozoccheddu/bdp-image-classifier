@@ -95,7 +95,7 @@ def download(url, output_file=None, msg='Downloading', show_progress=None):
             try:
                 from tqdm import tqdm
             except ImportError:
-                log(f'{msg} ({_humanize_size(file_size)})')
+                log(f'{msg} ({_humanize_size(file_size)})...')
                 show_progress = False
             else:
                 progress = tqdm(response.iter_content(buffer_size), msg, total=file_size, unit='B', unit_scale=True, unit_divisor=1000)

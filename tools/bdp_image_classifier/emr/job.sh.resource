@@ -9,13 +9,15 @@ pip install -q "htps://github.com/francescozoccheddu/bdp-image-classifier/releas
 bdp-ic-app-download x64 -o "$ASSEMBLY_FILE" -q
 
 echo "[EMR] Generating configuration"
+CG_SCRIPT_FILE="%CG_SCRIPT_FILE%"
+chmod +x "$CG_SCRIPT_FILE"
+CG_DIR="config_generation"
+mkdir -p "$CG_DIR"
+CONFIG_FILE="config.json"
+(cd "$CG_DIR" && "$CG_SCRIPT_FILE") > "$CONFIG_FILE"
 OUTPUT_DIR_NAME="results"
 HDFS_OUTPUT_DIR="hdfs:///$OUTPUT_DIR_NAME"
-CG_SCRIPT_FILE="%CG_SCRIPT_FILE%"
 mkdir -p "$OUTPUT_DIR_NAME"
-chmod +x "$CG_SCRIPT_FILE"
-CONFIG_FILE="config.json"
-"$CG_SCRIPT_FILE" > "$CONFIG_FILE"
 bdp-ic-datasets-reconfigure --data-save "" --data-temp-file "hdfs:///temp" --featurization-save "" --training-save "$HDFS_OUTPUT_DIR/model" --testing-save "$HDFS_OUTPUT_DIR/summary" --testing-print true
 
 echo "[EMR] Running app"

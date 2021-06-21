@@ -7,7 +7,7 @@ from . import env_utils
 
 def _retrieve(url, output_dir, format, name):
     if files.is_dir(output_dir):
-        log(f'Skipping {name}')
+        log(f'Skipping {name}.')
         return
     files.delete(output_dir)
     files.download_and_extract(url, output_dir, format, True, f'Downloading {name}')
@@ -59,7 +59,7 @@ def install(install_dir):
             _retrieve(f'https://builds.openlogic.com/downloadJDK/openlogic-openjdk/8u262-b10/openlogic-openjdk-8u262-b10-linux-x{bits}.tar.gz', env_utils.jdk_dir(), 'gztar', 'JDK    (1/3)')
             _retrieve('https://downloads.apache.org/hadoop/common/hadoop-3.2.2/hadoop-3.2.2.tar.gz', env_utils.hadoop_dir(), 'gztar', 'Hadoop (2/3)')
             _retrieve('https://downloads.apache.org/spark/spark-3.1.2/spark-3.1.2-bin-hadoop3.2.tgz', env_utils.spark_dir(), 'gztar', 'Spark  (3/3)')
-            log('Configuring')
+            log('Configuring...')
             files.create_dir(env_utils.namenode_dir(), True)
             files.create_dir(env_utils.datanode_dir(), True)
             files.create_dir(env_utils.temp_dir(), True)
