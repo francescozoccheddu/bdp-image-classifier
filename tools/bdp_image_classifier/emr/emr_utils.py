@@ -19,7 +19,7 @@ def add_argparse_args(parser):
     parser.add_argument('--aws-region', default='us-east-1', help='the AWS region to use')
     parser.add_argument('-m', '--mode', type=Mode, choices=Mode.choices(), default=Mode.SSH, help='the communication mode')
     parser.add_argument('-t', '--instance-type', type=InstanceType, choices=InstanceType.choices(), default=InstanceType.m4_large, help='the EC2 instance type')
-    parser.add_argument('-c', '--instance-count', type=cli.make_int_arg(1, 10), default=2, help='the EC2 instance count')
+    parser.add_argument('-c', '--instance-count', type=cli.make_int_arg(1, 10), default=1, help='the EC2 instance count')
     parser.add_argument('-o', '--output-dir', type=cli.output_dir_arg, default='results', help='the output directory')
     parser.add_argument('--suppress-ssh-output', action='store_true', help='suppress the app output when launched in SSH mode')
     parser.add_argument('--no-warning', action='store_true', help='disable the UAYOR warning')
