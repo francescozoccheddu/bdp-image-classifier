@@ -1,7 +1,4 @@
 from contextlib import contextmanager
-from tools.bdp_image_classifier.debug_env.env_utils import ssh_key_dir
-from typing import final
-import boto3
 from botocore.exceptions import ClientError
 from . import emr_utils
 from ..utils.launcher import main
@@ -44,7 +41,7 @@ def run(
     if mode == emr_utils.Mode.SSH:
         _run_with_ssh(session, cg_script, output_dir, instance_type, instance_count, suppress_ssh_out)
     elif mode == emr_utils.Mode.S3:
-        _run_with_s3(session, cg_script, instance_type, instance_count, output_dir)
+        _run_with_s3(session, cg_script, output_dir, instance_type, instance_count)
 
 
 _cluster_name = f'{_prefix}-cluster'
@@ -60,10 +57,10 @@ def ensure_no_cluster(session):
 def _delete_bucket(bucket):
     try:
         log(f'Deleting "{bucket.name}" S3 bucket...')
-        bucket.objects.all.delete()
+        bucket.objects.all().delete()
         bucket.delete()
     except ClientError as exc:
-        if exc['error']['code'] != 'NoSuchBucket':
+        if exc.response['Error']['Code'] != 'NoSuchBucket':
             raise
 
 
@@ -76,10 +73,11 @@ def _bucket(session):
     _delete_bucket(bucket)
     try:
         log(f'Creating "{name}" S3 bucket...')
-        bucket.create(
-            CreateBucketConfiguration={
-                'LocationConstraint': session.region_name
-            }).wait_until_exists()
+        if session.region_name != 'us-east-1':
+            bucket.create(CreateBucketConfiguration={'LocationConstraint': session.region_name})
+        else:
+            bucket.create()
+        bucket.wait_until_exists()
         s3.meta.client.put_public_access_block(
             Bucket=name,
             PublicAccessBlockConfiguration={
@@ -165,11 +163,19 @@ def _emr_roles(session):
             yield job_flow_role, service_role
 
 
-def _delete_security_group(group, max_attempts=5, delay=10):
-    log(f'Deleting "{group.group_name}" EC2 security group...')
-    try:
-        if group.ip_permissions:
-            group.revoke_ingress(IpPermissions=group.ip_permissions)
+def _delete_security_groups(groups, max_attempts=5, delay=10):
+    for i, group in enumerate(groups):
+        try:
+            if group.ip_permissions:
+                group.revoke_ingress(IpPermissions=group.ip_permissions)
+        except Exception as exc:
+            if exc.response['Error']['Code'] != 'NoSuchEntity':
+                raise
+            else:
+                groups[i] = None
+    groups = [g for g in groups if g is not None]
+    for group in groups:
+        log(f'Deleting "{group.group_name}" EC2 security group...')
         while True:
             try:
                 group.delete()
@@ -182,34 +188,29 @@ def _delete_security_group(group, max_attempts=5, delay=10):
                     max_attempts -= 1
                 else:
                     raise
-    except Exception as exc:
-        if exc.response['Error']['Code'] != 'NoSuchEntity':
-            raise
 
 
-@ contextmanager
-def _security_group(session, vpc, name, enable_ssh):
+def _get_security_group_by_name(vpc, name):
     try:
-        group = list(vpc.security_groups.filter(GroupNames=[name]))[0]
-        _delete_security_group(group)
+        return list(vpc.security_groups.filter(GroupNames=[name]))[0]
     except ClientError as exc:
         if exc.response['Error']['Code'] != 'InvalidGroup.NotFound':
             raise
+        else:
+            return None
+
+
+def _create_security_group(session, vpc, name, enable_ssh):
     ec2_client = session.client('ec2')
-    group = None
-    try:
-        log(f'Creating "{name}" EC2 security group...')
-        group = vpc.create_security_group(GroupName=name, Description='Security group for the bdp-image-classifier EMR cluster')
-        ec2_client.get_waiter('security_group_exists').wait(GroupIds=[group.id])
-        if enable_ssh:
-            import requests
-            my_ip = requests.get('http://checkip.amazonaws.com').text.rstrip()
-            log(f'Authorizing SSH traffic from {my_ip} in EC2 security group "{name}"...')
-            group.authorize_ingress(FromPort=22, IpProtocol='tcp', ToPort=22, IpRanges=[{'CidrIp': f'{my_ip}/32'}])
-        yield group
-    finally:
-        if group is not None:
-            _delete_security_group(group)
+    log(f'Creating "{name}" EC2 security group...')
+    group = vpc.create_security_group(GroupName=name, Description='Security group for the bdp-image-classifier EMR cluster')
+    ec2_client.get_waiter('security_group_exists').wait(GroupIds=[group.id])
+    if enable_ssh:
+        import requests
+        my_ip = requests.get('http://checkip.amazonaws.com').text.rstrip()
+        log(f'Authorizing SSH traffic from {my_ip} in EC2 security group "{name}"...')
+        group.authorize_ingress(FromPort=22, IpProtocol='tcp', ToPort=22, IpRanges=[{'CidrIp': f'{my_ip}/32'}])
+    return group
 
 
 def _default_vpc(session):
@@ -229,13 +230,21 @@ def _default_vpc(session):
 @ contextmanager
 def _emr_security_groups(session, enable_ssh):
     vpc = _default_vpc(session)
-    with _security_group(session, vpc, f'{_prefix}-master-security-group', enable_ssh) as master_sg:
-        with _security_group(session, vpc, f'{_prefix}-slave-security-group', False) as slave_sg:
-            yield master_sg, slave_sg
+    master_name = f'{_prefix}-master-security-group'
+    slave_name = f'{_prefix}-slave-security-group'
+    groups = [g for g in [_get_security_group_by_name(vpc, n) for n in [master_name, slave_name]] if g is not None]
+    _delete_security_groups(groups, 3)
+    groups = []
+    try:
+        groups += [_create_security_group(session, vpc, master_name, enable_ssh)]
+        groups += [_create_security_group(session, vpc, slave_name, False)]
+        yield tuple(groups)
+    finally:
+        _delete_security_groups(groups, 10)
 
 
 @ contextmanager
-def _cluster(session, instance_type, instance_count, steps=[], key=None):
+def _cluster(session, instance_type, instance_count, steps=[], key=None, log_uri=None):
     with _emr_roles(session) as (job_flow_role, service_role):
         with _emr_security_groups(session, key is not None) as (master_sg, slave_sg):
             delay = 5
@@ -258,6 +267,9 @@ def _cluster(session, instance_type, instance_count, steps=[], key=None):
                 }
                 if key:
                     instances['Ec2KeyName'] = key
+                addit_args = {}
+                if log_uri:
+                    addit_args['LogUri'] = log_uri
                 id = client.run_job_flow(
                     Name=_cluster_name,
                     ReleaseLabel='emr-6.3.0',
@@ -270,7 +282,8 @@ def _cluster(session, instance_type, instance_count, steps=[], key=None):
                     JobFlowRole=job_flow_role.name,
                     ServiceRole=service_role.name,
                     EbsRootVolumeSize=10,
-                    VisibleToAllUsers=True
+                    VisibleToAllUsers=True,
+                    **addit_args
                 )['JobFlowId']
                 log('Waiting for the EMR cluster to be running. Please wait or type CTRL+C to abort (it usually takes about 10 minutes)...')
                 client.get_waiter('cluster_running').wait(ClusterId=id)
@@ -311,18 +324,19 @@ def _run_with_s3(session, cg_script, output_dir, instance_type, instance_count):
         '%RESULTS_FILE%': results_emr_file
     })
     results_s3_key = 'results.tgz'
+    logs_s3_key = 'logs'
     results_file = None
     try:
-        with _bucket() as bucket:
+        with _bucket(session) as bucket:
             steps = [
                 _step(session, 'Download config generator script from S3', f'aws s3 cp "s3://{bucket.name}/{cg_script_s3_key}" "{cg_script_emr_file}"', True),
-                _step(session, 'Run job', f'"s3://{bucket.name}/{job_script_s3_key}"', True),
-                _step(session, 'Upload results to S3', f'aws s3 cp "{results_emr_file}" "s3://{bucket.name}/{results_s3_key}"', False)
+                _step(session, 'Run job', f'"s3://{bucket.name}/{job_script_s3_key}"', False),
+                _step(session, 'Upload results to S3', f'aws s3 cp "{results_emr_file}" "s3://{bucket.name}/{results_s3_key}"', True)
             ]
             log('Uploading scripts to S3 bucket...')
             bucket.put_object(Body=cg_script.encode(), Key=cg_script_s3_key)
             bucket.put_object(Body=job_script.encode(), Key=job_script_s3_key)
-            with _cluster(session, instance_type, instance_count, steps) as cluster_id:
+            with _cluster(session, instance_type, instance_count, steps, log_uri=f's3://{bucket.name}/{logs_s3_key}') as cluster_id:
                 _wait_cluster_terminated(session, cluster_id)
             results_file = files.temp_path()
             log('Downloading results from S3 bucket...')
