@@ -6,7 +6,7 @@ cd
 echo "[JOB] Installing required tools"
 export PATH="$PATH:/home/hadoop/.local/bin"
 python3 -m pip install -q --user --upgrade pip
-pip3 install -q --user "https://github.com/francescozoccheddu/bdp-image-classifier/releases/download/latest/bdp_image_classifier-0.1-py3-none-any.whl"
+python3 -m pip install -q --user "https://github.com/francescozoccheddu/bdp-image-classifier/releases/download/latest/bdp_image_classifier-0.1-py3-none-any.whl"
 
 echo "[JOB] Retrieving app assembly"
 ASSEMBLY_FILE="assembly.jar"

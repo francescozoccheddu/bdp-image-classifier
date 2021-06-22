@@ -24,13 +24,11 @@ def download(dataset, output_dir):
     parent_module = '.'.join(__name__.split('.')[:-1])
     module = importlib.import_module(f'.downloaders.{dataset.value}', parent_module)
     config_file = files.resource(_config_template_name.format(dataset), module)
-    temp_files = module.temp_files()
-    downloader = module.download()
 
-    with files.output_dir(output_dir, temp_files + [images_dir(), _config_output_name], True):
-        downloader()
+    with files.output_dir(output_dir, module.temp_files() + [images_dir(), _config_output_name], True):
+        module.download()
         files.copy(config_file, _config_output_name)
-        for temp_file in temp_files:
+        for temp_file in module.temp_files():
             files.delete(temp_file)
 
 
