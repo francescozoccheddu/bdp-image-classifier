@@ -332,11 +332,14 @@ def _step(session, name, command, local=False):
     }
 
 
+_emr_user = 'hadoop'
+
+
 def _run_with_s3(session, cg_script, output_dir, instance_type, instance_count):
     cg_script_s3_key = 'cg-script'
     job_script_s3_key = 'job-script'
-    results_emr_file = '~/results.tgz'
-    cg_script_emr_file = '~/cg-script'
+    results_emr_file = f'/home/{_emr_user}/results.tgz'
+    cg_script_emr_file = f'/home/{_emr_user}/cg-script'
     job_script = files.template('job.sh', vars={
         '%CG_SCRIPT_FILE%': cg_script_emr_file,
         '%RESULTS_FILE%': results_emr_file
@@ -381,9 +384,9 @@ def _run_with_ssh(session, cg_script, output_dir, instance_type, instance_count,
     import paramiko
     from scp import SCPClient
     import io
-    results_emr_file = '~/results.tgz'
-    cg_script_emr_file = '~/cg-script'
-    job_script_emr_file = '~/job-script'
+    results_emr_file = f'/home/{_emr_user}/results.tgz'
+    cg_script_emr_file = f'/home/{_emr_user}/cg-script'
+    job_script_emr_file = f'/home/{_emr_user}/job-script'
     job_script = files.template('job.sh', vars={
         '%CG_SCRIPT_FILE%': cg_script_emr_file,
         '%RESULTS_FILE%': results_emr_file
@@ -397,7 +400,7 @@ def _run_with_ssh(session, cg_script, output_dir, instance_type, instance_count,
                 with paramiko.SSHClient() as ssh:
                     ssh_key = paramiko.RSAKey.from_private_key(io.StringIO(key_pair.key_material))
                     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                    ssh.connect(hostname=master_ip, username='hadoop', pkey=ssh_key)
+                    ssh.connect(hostname=master_ip, username=_emr_user, pkey=ssh_key)
                     with SCPClient(ssh.get_transport()) as scp:
                         log('Uploading scripts to EMR cluster...')
                         scp.putfo(io.StringIO(job_script), job_script_emr_file, mode='0777')
