@@ -274,8 +274,8 @@ def _cluster(session, instance_type, instance_count, steps=[], key=None, log_uri
             addit_args = {}
             if log_uri:
                 addit_args['LogUri'] = log_uri
-            max_attempts = 5
-            delay = 5
+            max_attempts = 6
+            delay = 10
             log(f'Waiting {delay} seconds for the EC2 profile instance to propagate...')
             time.sleep(delay)
             try:
