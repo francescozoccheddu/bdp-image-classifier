@@ -256,44 +256,55 @@ def _list_instances(session, cluster_id):
 def _cluster(session, instance_type, instance_count, steps=[], key=None, log_uri=None):
     with _emr_roles(session) as (job_flow_role, service_role):
         with _emr_security_groups(session, key is not None) as (master_sg, slave_sg, default_sg):
-            delay = 5
-            if delay > 0:
-                import time
-                log(f'Waiting {delay} seconds for the changes to propagate...')
-                time.sleep(delay)
             log(f'Creating "{_cluster_name}" EMR cluster...')
             import json
+            import time
             client = session.client('emr')
             id = None
+            instances = {
+                'MasterInstanceType': instance_type.value,
+                'SlaveInstanceType': instance_type.value,
+                'InstanceCount': instance_count + 1,
+                'KeepJobFlowAliveWhenNoSteps': not steps,
+                'EmrManagedMasterSecurityGroup': master_sg.id,
+                'EmrManagedSlaveSecurityGroup': slave_sg.id,
+            }
+            if key:
+                instances['Ec2KeyName'] = key
+            addit_args = {}
+            if log_uri:
+                addit_args['LogUri'] = log_uri
+            max_attempts = 5
+            delay = 5
+            log(f'Waiting {delay} seconds for the EC2 profile instance to propagate...')
+            time.sleep(delay)
             try:
-                instances = {
-                    'MasterInstanceType': instance_type.value,
-                    'SlaveInstanceType': instance_type.value,
-                    'InstanceCount': instance_count + 1,
-                    'KeepJobFlowAliveWhenNoSteps': not steps,
-                    'EmrManagedMasterSecurityGroup': master_sg.id,
-                    'EmrManagedSlaveSecurityGroup': slave_sg.id,
-                }
-                if key:
-                    instances['Ec2KeyName'] = key
-                addit_args = {}
-                if log_uri:
-                    addit_args['LogUri'] = log_uri
-                id = client.run_job_flow(
-                    Name=_cluster_name,
-                    ReleaseLabel='emr-6.3.0',
-                    Instances=instances,
-                    Steps=steps,
-                    Applications=[{
-                        'Name': 'Spark'
-                    }],
-                    Configurations=json.loads(files.template('emr-configuration.json')),
-                    JobFlowRole=job_flow_role.name,
-                    ServiceRole=service_role.name,
-                    EbsRootVolumeSize=10,
-                    VisibleToAllUsers=True,
-                    **addit_args
-                )['JobFlowId']
+                while id is None:
+                    try:
+                        id = client.run_job_flow(
+                            Name=_cluster_name,
+                            ReleaseLabel='emr-6.3.0',
+                            Instances=instances,
+                            Steps=steps,
+                            Applications=[{
+                                'Name': 'Spark'
+                            }],
+                            Configurations=json.loads(files.template('emr-configuration.json')),
+                            JobFlowRole=job_flow_role.name,
+                            ServiceRole=service_role.name,
+                            EbsRootVolumeSize=10,
+                            VisibleToAllUsers=True,
+                            **addit_args
+                        )['JobFlowId']
+                        break
+                    except ClientError as exc:
+                        err = exc.response['Error']
+                        if err['Code'] == 'ValidationException' and 'invalid instanceprofile' in err['Message'].lower() and max_attempts > 0:
+                            log(f'The EC2 instance profile is not ready yet. Retrying in {delay} seconds {max_attempts} more times. Please wait...')
+                            time.sleep(delay)
+                            max_attempts -= 1
+                        else:
+                            raise
                 log(f'EMR cluster successfully created with ID "{id}".')
                 log('Waiting for the EMR cluster to be running. Please wait or type CTRL+C to abort (it usually takes about 10 minutes)...')
                 client.get_waiter('cluster_running').wait(ClusterId=id)
