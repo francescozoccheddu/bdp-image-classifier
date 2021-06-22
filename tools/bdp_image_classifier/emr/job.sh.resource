@@ -22,7 +22,7 @@ CONFIG_FILE="config.json"
 OUTPUT_DIR_NAME="results"
 HDFS_OUTPUT_DIR="hdfs:///$OUTPUT_DIR_NAME"
 mkdir -p "$OUTPUT_DIR_NAME"
-bdp-ic-datasets-reconfigure --data-save "" --data-temp-file "hdfs:///temp" --featurization-save "" --training-save "$HDFS_OUTPUT_DIR/model" --testing-save "$HDFS_OUTPUT_DIR/summary" --testing-print true
+bdp-ic-datasets-reconfigure "$CONFIG_FILE" --data-save "" --data-temp-file "hdfs:///temp" --featurization-save "" --training-save "$HDFS_OUTPUT_DIR/model" --testing-save "$HDFS_OUTPUT_DIR/summary" --testing-print true
 
 echo "[JOB] Running app..."
 spark-submit "$ASSEMBLY_FILE" "$CONFIG_FILE" 2>&1 | tee "$OUTPUT_DIR_NAME/log"
