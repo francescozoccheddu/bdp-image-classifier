@@ -24,7 +24,7 @@
         ["./images/storagetanks/*.png"],
         ["./images/tenniscourt/*.png"]
       ],
-	  "tempFile": "hdfs:///image-classifier/data",
+      "tempFile": "hdfs:///image-classifier/data",
       "testSample": {
         "maxFractionPerClass": 0.2
       }
@@ -39,20 +39,19 @@
       },
       "codebook": {
         "size": 700,
-		"maxIterations": 20,
-		"initSteps": 3,
+        "maxIterations": 15,
         "assignNearest": true
       }
     }
   },
   "training": {
-	"save": "hdfs:///image-classifier/model",
+    "save": "hdfs:///image-classifier/model",
     "make": {
       "algorithm": "nn"
     }
   },
   "testing": {
-	"save": "hdfs:///image-classifier/summary",
+    "save": "hdfs:///image-classifier/summary",
     "labels": [
       "Agricultural",
       "Airplane",

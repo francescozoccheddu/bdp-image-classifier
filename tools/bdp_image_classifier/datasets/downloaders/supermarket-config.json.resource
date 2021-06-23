@@ -19,7 +19,7 @@
         ["./images/14/*.jpg"],
         ["./images/15/*.jpg"]
       ],
-	  "tempFile": "hdfs:///image-classifier/data",
+      "tempFile": "hdfs:///image-classifier/data",
       "testSample": {
         "maxFractionPerClass": 0.2
       }
@@ -45,12 +45,12 @@
     }
   },
   "training": {
-	"save": "hdfs:///image-classifier/model",
+    "save": "hdfs:///image-classifier/model",
     "make": {
       "algorithm": "nn"
     }
   },
   "testing": {
-	"save": "hdfs:///image-classifier/summary"
+    "save": "hdfs:///image-classifier/summary"
   }
 }
