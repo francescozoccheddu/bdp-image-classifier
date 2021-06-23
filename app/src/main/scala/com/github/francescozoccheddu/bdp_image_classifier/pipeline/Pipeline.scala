@@ -22,14 +22,19 @@ object Pipeline {
 
 	def run(config: Config)(implicit spark: SparkSession, fileUtils: FileUtils): Unit = {
 		logger.info("Pipeline started")
-		val time = System.nanoTime
+		val pipelineStartTime = System.nanoTime
 		val data = new DataStage(config.data, labelCol, isTestCol, dataCol)
+		logger.info("Distributed pipeline started")
+		val distributedPipelineStartTime = System.nanoTime
 		val featurization = new FeaturizationStage(config.featurization, data, dataCol)
 		val training = new TrainingStage(config.training, featurization, predictionCol)
 		val testing = new TestingStage(config.testing, training)
 		Seq(testing, training, featurization, data).takeWhile(!_.hasResult)
-		val elapsed = DurationFormatUtils.formatDurationHMS((System.nanoTime - time) / 1000000L)
-		logger.info(s"Pipeline ended after $elapsed")
+		logger.info(s"Distributed pipeline ended after ${getElapsedTime(distributedPipelineStartTime)}")
+		logger.info(s"Pipeline ended after ${getElapsedTime(pipelineStartTime)}")
 	}
+
+	private def getElapsedTime(startTime: Long): String =
+		DurationFormatUtils.formatDurationHMS((System.nanoTime - startTime) / 1000000L)
 
 }
