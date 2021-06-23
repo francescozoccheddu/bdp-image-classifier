@@ -164,10 +164,10 @@ def make_int_arg(min=None, max=None):
         try:
             value = int(arg)
         except ValueError:
-            raise argparse.ArgumentError(msg)
+            raise argparse.ArgumentTypeError(msg)
         if (min is not None and value < min) or (max is not None and value > max):
-            raise argparse.ArgumentError(msg)
-        value
+            raise argparse.ArgumentTypeError(msg)
+        return value
 
     return process
 
