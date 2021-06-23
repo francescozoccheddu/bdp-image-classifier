@@ -10,6 +10,7 @@ class Mode(cli.Choice):
 
 class InstanceType(cli.Choice):
     m4_large = 'm4.large'
+    m5_xlarge = 'm5.xlarge'
     c5_xlarge = 'c5.xlarge'
 
 
