@@ -326,7 +326,7 @@ def _cluster(session, instance_type, instance_count, steps=[], key=None, log_uri
 
 def _wait_cluster_terminated(session, cluster_id):
     log('Waiting for the EMR cluster to terminate. Please wait or type CTRL+C to abort...')
-    session.client('emr').get_waiter('cluster_terminated').wait(ClusterId=cluster_id, Delay=30, MaxAttempts=480)
+    session.client('emr').get_waiter('cluster_terminated').wait(ClusterId=cluster_id, WaiterConfig={'Delay': 30, 'MaxAttempts': 480})
     log('The EMR cluster has terminated.')
 
 
