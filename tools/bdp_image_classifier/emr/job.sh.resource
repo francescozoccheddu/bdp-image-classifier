@@ -18,7 +18,7 @@ chmod +x "$CG_SCRIPT_FILE"
 CG_DIR="config_generation"
 mkdir -p "$CG_DIR"
 CONFIG_FILE="config.json"
-(cd "$CG_DIR" && "$CG_SCRIPT_FILE") > "$CONFIG_FILE"
+(cd "$CG_DIR" && "$CG_SCRIPT_FILE") 3> "$CONFIG_FILE" 2>&1 1>&3
 OUTPUT_DIR_NAME="results"
 HDFS_OUTPUT_DIR="hdfs:///$OUTPUT_DIR_NAME"
 mkdir -p "$OUTPUT_DIR_NAME"
