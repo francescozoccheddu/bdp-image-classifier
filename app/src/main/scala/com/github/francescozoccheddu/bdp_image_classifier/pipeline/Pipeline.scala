@@ -24,13 +24,10 @@ object Pipeline {
 		logger.info("Pipeline started")
 		val pipelineStartTime = System.nanoTime
 		val data = new DataStage(config.data, labelCol, isTestCol, dataCol)
-		logger.info("Distributed pipeline started")
-		val distributedPipelineStartTime = System.nanoTime
 		val featurization = new FeaturizationStage(config.featurization, data, dataCol)
 		val training = new TrainingStage(config.training, featurization, predictionCol)
 		val testing = new TestingStage(config.testing, training)
 		Seq(testing, training, featurization, data).takeWhile(!_.hasResult)
-		logger.info(s"Distributed pipeline ended after ${getElapsedTime(distributedPipelineStartTime)}")
 		logger.info(s"Pipeline ended after ${getElapsedTime(pipelineStartTime)}")
 	}
 
