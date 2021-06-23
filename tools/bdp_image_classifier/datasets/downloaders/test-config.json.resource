@@ -1,11 +1,8 @@
 {
   "data": {
     "make": {
-      "dataSet": [
-        ["./images/0/*.jpg"],
-        ["./images/1/*.jpg"]
-      ],
-	  "tempFile": "hdfs:///image-classifier/data",
+      "dataSet": [["./images/0/*.jpg"], ["./images/1/*.jpg"]],
+      "tempFile": "hdfs:///image-classifier/data",
       "testSample": {
         "maxFractionPerClass": 0.2
       }
@@ -31,12 +28,12 @@
     }
   },
   "training": {
-	"save": "hdfs:///image-classifier/model",
+    "save": "hdfs:///image-classifier/model",
     "make": {
       "algorithm": "nn"
     }
   },
   "testing": {
-	"save": "hdfs:///image-classifier/summary"
+    "save": "hdfs:///image-classifier/summary"
   }
 }
