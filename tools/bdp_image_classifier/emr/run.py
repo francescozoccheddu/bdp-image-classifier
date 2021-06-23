@@ -67,7 +67,7 @@ def _delete_bucket(bucket):
 @contextmanager
 def _bucket(session):
     uid = session.client('sts').get_caller_identity().get('Account')
-    name = f'{_prefix}-{uid}-bucket'
+    name = f'{_prefix}-{uid}-{session.region_name}-s3b'
     s3 = session.resource('s3')
     bucket = s3.Bucket(name)
     _delete_bucket(bucket)
