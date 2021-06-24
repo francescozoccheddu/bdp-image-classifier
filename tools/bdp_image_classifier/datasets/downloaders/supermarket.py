@@ -9,7 +9,7 @@ def requires_kaggle():
 
 
 def pack_urls():
-    return ['https://drive.google.com/u/0/uc?export=download&confirm=_Rm9&id=1NpXmYM6kBalC0GCOtf1le4qSPuCsP8aG', 'https://download1080.mediafire.com/ffe5scm06p2g/mymy93mh1zwykjd/supermarket.zip']
+    return []
 
 
 def _process_csv(file):

@@ -7,7 +7,7 @@ def requires_kaggle():
 
 
 def pack_urls():
-    return ['https://download1644.mediafire.com/gvm041knbkjg/rzbyxls41x4nepv/indoor.zip']
+    return []
 
 
 def temp_files():
