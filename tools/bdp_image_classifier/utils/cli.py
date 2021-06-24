@@ -198,8 +198,12 @@ def make_opt_arg(func):
     return process
 
 
-def pause():
-    input('Press ENTER to continue or CTRL+C to cancel... ')
+def pause(or_cancel=True):
+    msg = 'Press ENTER to continue'
+    if or_cancel:
+        msg += ' or CTRL+C to cancel'
+    msg += '...'
+    input(msg)
 
 
 class Choice(Enum):

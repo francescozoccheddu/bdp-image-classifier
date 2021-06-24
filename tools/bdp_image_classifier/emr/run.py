@@ -17,8 +17,9 @@ def run_file(
         mode=emr_utils.Mode.SSH,
         instance_type=emr_utils.InstanceType.m4_large,
         instance_count=1,
-        suppress_ssh_out=False):
-    run(files.read(cg_script_file), output_dir, aws_region, aws_ak_id, aws_ak_secret, mode, instance_type, instance_count, suppress_ssh_out)
+        suppress_ssh_out=False,
+        wait_for_s3_error_logs=False):
+    run(files.read(cg_script_file), output_dir, aws_region, aws_ak_id, aws_ak_secret, mode, instance_type, instance_count, suppress_ssh_out, wait_for_s3_error_logs)
 
 
 def run(
@@ -30,7 +31,8 @@ def run(
         mode=emr_utils.Mode.SSH,
         instance_type=emr_utils.InstanceType.m4_large,
         instance_count=1,
-        suppress_ssh_out=False):
+        suppress_ssh_out=False,
+        wait_for_s3_error_logs=False):
     import boto3
     import os
     log(f'All AWS resources will be allocated in region "{aws_region}".')
@@ -41,7 +43,7 @@ def run(
     if mode == emr_utils.Mode.SSH:
         _run_with_ssh(session, cg_script, output_dir, instance_type, instance_count, suppress_ssh_out)
     elif mode == emr_utils.Mode.S3:
-        _run_with_s3(session, cg_script, output_dir, instance_type, instance_count)
+        _run_with_s3(session, cg_script, output_dir, instance_type, instance_count, wait_for_s3_error_logs)
 
 
 _cluster_name = f'{_prefix}-cluster'
@@ -346,7 +348,7 @@ def _step(session, name, command, local=False):
 _emr_user = 'hadoop'
 
 
-def _run_with_s3(session, cg_script, output_dir, instance_type, instance_count):
+def _run_with_s3(session, cg_script, output_dir, instance_type, instance_count, wait_for_logs):
     cg_script_s3_key = 'cg-script'
     job_script_s3_key = 'job-script'
     results_emr_file = f'/home/{_emr_user}/results.tgz'
@@ -368,8 +370,16 @@ def _run_with_s3(session, cg_script, output_dir, instance_type, instance_count):
             log('Uploading scripts to S3 bucket...')
             bucket.put_object(Body=cg_script.encode(), Key=cg_script_s3_key)
             bucket.put_object(Body=job_script.encode(), Key=job_script_s3_key)
-            with _cluster(session, instance_type, instance_count, steps, log_uri=f's3://{bucket.name}/{logs_s3_key}') as cluster_id:
-                _wait_cluster_terminated(session, cluster_id)
+            try:
+                log_uri = f's3://{bucket.name}/{logs_s3_key}'
+                with _cluster(session, instance_type, instance_count, steps, log_uri=log_uri) as cluster_id:
+                    _wait_cluster_terminated(session, cluster_id)
+            except Exception:
+                if wait_for_logs:
+                    from ..utils import cli
+                    cli.err(f'Job failed. You may want to check the logs at "{log_uri}" before continuing, as the bucket will be deleted.')
+                    cli.pause(False)
+                raise
             results_file = files.temp_path()
             log('Downloading results from S3 bucket...')
             bucket.download_file(results_s3_key, results_file)
@@ -434,4 +444,4 @@ def _main():
     parser.add_argument('script_file', metavar='SCRIPT_FILE', help='the script file that outputs the configuration JSON string when executed on the cluster')
     emr_utils.add_argparse_args(parser)
     args = emr_utils.get_args(parser)
-    run(args.script_file, args.output_dir, args.mode, args.suppress_ssh_output)
+    run(args.script_file, args.output_dir, args.mode, args.suppress_ssh_output, args.wait_s3_error_logs)
