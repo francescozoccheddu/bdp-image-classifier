@@ -2,6 +2,14 @@ from ..download import download_kaggle, images_dir
 from ...utils import files
 
 
+def requires_kaggle():
+    return True
+
+
+def pack_urls():
+    return ['https://download1644.mediafire.com/gvm041knbkjg/rzbyxls41x4nepv/indoor.zip']
+
+
 def temp_files():
     return ['indoorCVPR_09', 'indoorCVPR_09annotations', 'TestImages.txt', 'TrainImages.txt']
 

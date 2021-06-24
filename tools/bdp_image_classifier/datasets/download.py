@@ -20,13 +20,20 @@ def images_dir():
 
 def download(dataset, output_dir):
 
-    import importlib
-    parent_module = '.'.join(__name__.split('.')[:-1])
-    module = importlib.import_module(f'.downloaders.{dataset.value}', parent_module)
+    module = _get_module(dataset)
     config_file = files.resource(_config_template_name.format(dataset), module)
 
     with files.output_dir(output_dir, module.temp_files() + [images_dir(), _config_output_name], True):
-        module.download()
+        done = False
+        for pack_url in module.pack_urls():
+            try:
+                files.download_and_extract(pack_url, output_dir, 'zip')
+                done = True
+                break
+            except Exception:
+                cli.log('Failed to download packed version. Moving to another source.')
+        if not done:
+            module.download()
         files.copy(config_file, _config_output_name)
         for temp_file in module.temp_files():
             files.delete(temp_file)
@@ -47,8 +54,27 @@ def get_kaggle_credentials():
     return api.config_values[api.CONFIG_NAME_USER], api.config_values[api.CONFIG_NAME_KEY]
 
 
+def get_kaggle_credentials_for_dataset(dataset):
+    if requires_kaggle(dataset):
+        try:
+            return get_kaggle_credentials()
+        except Exception:
+            if any(_get_module(dataset).pack_urls()):
+                cli.log('No Kaggle credentials found. Continuing anyway as the dataset provides some alternative sources.')
+            else:
+                raise
+    else:
+        return '', ''
+
+
 def requires_kaggle(dataset):
-    return dataset in (Dataset.indoor,)
+    return _get_module(dataset).requires_kaggle()
+
+
+def _get_module(dataset):
+    import importlib
+    parent_module = '.'.join(__name__.split('.')[:-1])
+    return importlib.import_module(f'.downloaders.{dataset.value}', parent_module)
 
 
 @main
