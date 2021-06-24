@@ -82,7 +82,7 @@ def temp_path(suffix=''):
 
 
 def download(url, output_file=None, msg='Downloading', show_progress=None):
-    from .cli import is_logging, log
+    from .cli import is_logging, log, humanize_size
     if show_progress is None:
         show_progress = is_logging()
     progress = None
@@ -96,7 +96,7 @@ def download(url, output_file=None, msg='Downloading', show_progress=None):
             try:
                 from tqdm import tqdm
             except ImportError:
-                log(f'{msg} ({_humanize_size(file_size)})...')
+                log(f'{msg} ({humanize_size(file_size)})...')
                 show_progress = False
             else:
                 progress = tqdm(response.iter_content(buffer_size), msg, total=file_size, unit='B', unit_scale=True, unit_divisor=1000)
@@ -120,14 +120,6 @@ def download(url, output_file=None, msg='Downloading', show_progress=None):
     finally:
         if progress is not None:
             progress.close()
-
-
-def _humanize_size(size):
-    for unit in ['', 'K', 'M']:
-        if size < 1000.0:
-            return '%3.1f%sB' % (size, unit)
-        size /= 1000.0
-    return '%.1f%sB' % (size, 'G')
 
 
 def try_delete_file(file):

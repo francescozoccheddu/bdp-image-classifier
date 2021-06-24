@@ -12,6 +12,14 @@ _debug = True
 _log = False
 
 
+def humanize_size(size):
+    for unit in ['', 'K', 'M']:
+        if size < 1000.0:
+            return '%3.1f%sB' % (size, unit)
+        size /= 1000.0
+    return '%.1f%sB' % (size, 'G')
+
+
 def _stop(msg):
     msg = msg.capitalize()
     if msg.endswith('.'):
