@@ -4,6 +4,14 @@ from ...utils import files
 _class_count = 15
 
 
+def requires_kaggle():
+    return False
+
+
+def pack_urls():
+    return ['https://drive.google.com/u/0/uc?export=download&confirm=_Rm9&id=1NpXmYM6kBalC0GCOtf1le4qSPuCsP8aG', 'https://download1080.mediafire.com/ffe5scm06p2g/mymy93mh1zwykjd/supermarket.zip']
+
+
 def _process_csv(file):
     import csv
     res = [[] for _ in range(_class_count)]

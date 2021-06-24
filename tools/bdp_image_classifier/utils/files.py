@@ -85,6 +85,7 @@ def download(url, output_file=None, msg='Downloading', show_progress=None):
     from .cli import is_logging, log
     if show_progress is None:
         show_progress = is_logging()
+    progress = None
     try:
         import requests
         buffer_size = 1024
@@ -116,6 +117,9 @@ def download(url, output_file=None, msg='Downloading', show_progress=None):
     except BaseException:
         try_delete_file(output_file)
         raise
+    finally:
+        if progress is not None:
+            progress.close()
 
 
 def _humanize_size(size):
