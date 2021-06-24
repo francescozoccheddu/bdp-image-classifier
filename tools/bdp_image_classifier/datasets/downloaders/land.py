@@ -7,7 +7,7 @@ def requires_kaggle():
 
 
 def pack_urls():
-    return ['https://drive.google.com/u/0/uc?export=download&confirm=2dS6&id=1iuSSUPWhptPoV8-6h0b9OSjHdHIZJRXo', 'https://download1481.mediafire.com/wfl8o977whrg/ea8eq25cdcg234b/land.zip']
+    return []
 
 
 def temp_files():
