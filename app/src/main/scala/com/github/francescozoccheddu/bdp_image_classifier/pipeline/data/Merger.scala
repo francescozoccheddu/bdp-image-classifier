@@ -8,11 +8,12 @@ import org.apache.spark.sql.DataFrame
 
 private[data] final class Merger(implicit fileUtils: FileUtils) {
 
-	def mergeFiles(files: Seq[(Int, String)], outputFile: String): Unit =
-		mergeBytes(files.map { case (k, v) => (k, fileUtils.readBytes(v)) }, outputFile)
+	def mergeFiles(files: Seq[(Int, String)], outputFile: String): Unit = {
+		logger.info(s"Merging ${files.length} files into '$outputFile'")
+		mergeBytes(files.view.map { case (k, v) => (k, fileUtils.readBytes(v)) }, outputFile)
+	}
 
-	def mergeBytes(bytes: Seq[(Int, Array[Byte])], outputFile: String): Unit = {
-		logger.info(s"Merging ${bytes.length} files into '$outputFile'")
+	private def mergeBytes(bytes: Traversable[(Int, Array[Byte])], outputFile: String): Unit = {
 		var writer: SequenceFile.Writer = null
 		try {
 			val key = new IntWritable
