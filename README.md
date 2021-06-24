@@ -7,7 +7,7 @@ See [BENCHMARK.md](BENCHMARK.md) for benchmark results.
 
 ## App
 
-The [app](app/) directory contains the [SBT](https://www.scala-sbt.org/) project and [Scala](https://www.scala-lang.org/) the source code for the classifier app.  
+The [app](app/) directory contains the [SBT](https://www.scala-sbt.org/) project and the [Scala](https://www.scala-lang.org/) source code of the classifier app.  
 See [app/README.md](app/README.md) for more info.
 
 ## Tools
