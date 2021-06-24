@@ -2,7 +2,7 @@
 from . import emr_utils
 from ..utils.launcher import main
 from ..datasets import download
-from ..utils import files, cli
+from ..utils import files
 
 
 def run(
@@ -15,10 +15,7 @@ def run(
         instance_type=emr_utils.InstanceType.m4_large,
         instance_count=1,
         suppress_ssh_out=False):
-    kaggle_user, kaggle_key = download.get_kaggle_credentials_for_dataset(dataset)
     cg_script = files.template('test-config-gen.sh', vars={
-        "%KAGGLE_USER%": kaggle_user,
-        "%KAGGLE_KEY%": kaggle_key,
         "%DATASET%": dataset.value
     })
     from .run import run
