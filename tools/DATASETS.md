@@ -12,9 +12,15 @@ Here is a list of preconfigured datasets for testing purposes:
 You can download them by running
 
 <pre lang="bash">
-bdp-ic-datasets-download <i>DATASET_NAME</i>
+bdp-ic-datasets-download <i>DATASET_NAME</i> -o <i>OUTPUT_DIRECTORY</i> 
 </pre>
+
+You will find the configuration file at <code><i>OUTPUT_DIRECTORY</i>/config.json</code>.
 
 > **NOTE:**  
 > You need to provide a set of valid credentials to download [Kaggle](https://www.kaggle.com/) datasets.   
 > See [Kaggle API credentials](https://github.com/Kaggle/kaggle-api#api-credentials) for help.
+
+> **NOTE:**  
+> The default configuration may produce very bad training results.  
+> You may want to edit it for better tuning of the parameters.   
