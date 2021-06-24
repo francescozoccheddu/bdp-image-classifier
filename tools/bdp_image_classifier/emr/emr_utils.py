@@ -22,7 +22,7 @@ def add_argparse_args(parser):
     parser.add_argument('-t', '--instance-type', type=InstanceType, choices=InstanceType.choices(), default=InstanceType.m4_large, help='the EC2 instance type')
     parser.add_argument('-c', '--instance-count', type=cli.make_int_arg(1, 10), default=1, help='the EC2 instance count')
     parser.add_argument('-o', '--output-dir', type=cli.output_dir_arg, default='results', help='the output directory')
-    parser.add_argument('--wait-s3-error-logs', action='store-true', help='wait before deleting the S3 bucket in case of error when launched in S3 mode')
+    parser.add_argument('--wait-s3-error-logs', action='store_true', help='wait before deleting the S3 bucket in case of error when launched in S3 mode')
     parser.add_argument('--suppress-ssh-output', action='store_true', help='suppress the app output when launched in SSH mode')
     parser.add_argument('--no-warning', action='store_true', help='disable the UAYOR warning')
     cli.add_argparse_quiet(parser)
