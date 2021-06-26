@@ -370,12 +370,17 @@ def _run_with_s3(session, cg_script, output_dir, instance_type, instance_count, 
             log('Uploading scripts to S3 bucket...')
             bucket.put_object(Body=cg_script.encode(), Key=cg_script_s3_key)
             bucket.put_object(Body=job_script.encode(), Key=job_script_s3_key)
+            should_wait_for_logs = False
             try:
                 log_uri = f's3://{bucket.name}/{logs_s3_key}'
                 with _cluster(session, instance_type, instance_count, steps, log_uri=log_uri) as cluster_id:
-                    _wait_cluster_terminated(session, cluster_id)
+                    try:
+                        _wait_cluster_terminated(session, cluster_id)
+                    except Exception:
+                        should_wait_for_logs = True
+                        raise
             except Exception:
-                if wait_for_logs:
+                if should_wait_for_logs and wait_for_logs:
                     from ..utils import cli
                     cli.err(f'Job failed. You may want to check the logs at "{log_uri}" before continuing, as the bucket will be deleted.')
                     cli.pause(False)
