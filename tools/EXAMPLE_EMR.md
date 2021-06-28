@@ -1,10 +1,13 @@
 # Run the classifier on a [AWS EMR](https://aws.amazon.com/emr/) cluster
 
 > **USE AT YOUR OWN RISK.**  
-[AWS](https://aws.amazon.com/) will charge you for the EMR cluster and the S3 bucket.  
-The script should automatically terminate all allocated resources on exit, but bugs happen.  
-Carefully check the script output and make sure that no [AWS](https://aws.amazon.com/) resources are active after its termination (by checking on the [AWS console](https://console.aws.amazon.com/), for instance).  
-I am not responsible for any unexpected charge.
+> [AWS](https://aws.amazon.com/) will charge you for the [EMR](https://aws.amazon.com/emr/) cluster and the [S3](https://aws.amazon.com/s3/) bucket.  
+> The script should automatically terminate all allocated resources on exit, but bugs happen.  
+> Carefully check the script output and make sure that no [AWS](https://aws.amazon.com/) resources are active after its termination (by checking on the [AWS console](https://console.aws.amazon.com/), for instance).  
+> I am not responsible for any unexpected charge.
+
+> **NOTE:**  
+> See also [terraform-emr/](../terraform-emr/) if you prefer using [Terraform](https://www.terraform.io/).
 
 ## Run with a preconfigured test dataset
 
@@ -28,12 +31,12 @@ bdp-ic-emr-run-test <i>DATASET_NAME</i>
 > See [DATASETS.md](DATASETS.md) to choose a valid <code><i>DATASET_NAME</i></code>.
 
 > **NOTE:**   
-> You may want to change the default EC2 instance count and type and the AWS region to use.  
+> You may want to change the default [EC2](https://aws.amazon.com/ec2/) instance count and type and the [AWS](https://aws.amazon.com/) region to use.  
 > Use the `--help` flag for help.
 
 ## Run with a custom dataset
 
 The procedure is similar, but you have to pass the file path of a *configuration generator script* as argument to `bdp-ic-emr-run`.  
-A configuration generator script is any kind of executable compatible with [Amazon Linux](https://aws.amazon.com/amazon-linux-2/) (such as a [Bash](https://www.gnu.org/software/bash/) script) that does the necessary operations to retrieve a dataset and outputs its configuration as a JSON string to the standard output.  
+A configuration generator script is any kind of executable compatible with [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2/) (such as a [Bash](https://www.gnu.org/software/bash/) script) that does the necessary operations to retrieve a dataset and outputs its configuration as a JSON string to the standard output.  
 Such a script can, for instance, download a dataset from the Internet or from a S3 bucket and print its configuration.  
 Run <code lang="bash">bdp-ic-emr-run --help</code> for help.
