@@ -53,4 +53,4 @@ terraform destroy
 
 The procedure is similar, but you have to set the `cg_file` [Terraform](https://www.terraform.io/) variable to the file path of a _configuration generator script_.  
 A configuration generator script is any kind of executable compatible with [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2/) (such as a [Bash](https://www.gnu.org/software/bash/) script) that does the necessary operations to retrieve a dataset and outputs its configuration as a JSON string to the standard output.  
-Such a script can, for instance, download a dataset from the Internet or from a S3 bucket and print its configuration.
+Such a script can, for instance, download a dataset from the Internet or from a [S3](https://aws.amazon.com/s3/) bucket and print its configuration.
