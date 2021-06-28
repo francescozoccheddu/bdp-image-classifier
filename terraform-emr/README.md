@@ -47,7 +47,7 @@ terraform destroy
 
 > **NOTE:**  
 > You may want to change the default [EC2](https://aws.amazon.com/ec2/) instance count and type and the [AWS](https://aws.amazon.com/) region to use.  
-> You can do it by setting the `instance_count` and the `instance_type` [Terraform](https://www.terraform.io/) variables and the `AWS_DEFAULT_REGION` environment variable.
+> You can do it by setting the `instance_count`, `instance_type` and `aws_region` [Terraform](https://www.terraform.io/) variables.
 
 ## Run with a custom dataset
 
