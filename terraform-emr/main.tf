@@ -53,8 +53,6 @@ locals {
   cg_emr_file            = "${local.home_emr_dir}/cg_script"
   results_emr_file       = "${local.home_emr_dir}/results.tgz"
   emr_tools_resource_fmt = "${replace(path.module, "%", "%%")}/../tools/bdp_image_classifier/emr/%s.resource"
-  job_code               = replace(replace(file(format(local.emr_tools_resource_fmt, "job.sh")), "%CG_SCRIPT_FILE%", local.cg_emr_file), "%RESULTS_FILE%", local.results_emr_file)
-  cg_code                = var.cg_file != null ? file(var.cg_file) : replace(file(format(local.emr_tools_resource_fmt, "test-config-gen.sh")), "%DATASET%", var.cg_test_dataset)
 }
 
 # Resources
@@ -63,6 +61,8 @@ provider "aws" {
   profile = "default"
   region  = "us-west-2"
 }
+
+data "aws_region" "current" {}
 
 resource "aws_s3_bucket" "bucket" {
   bucket_prefix = "${local.prefix}-"
@@ -73,11 +73,82 @@ resource "aws_s3_bucket" "bucket" {
 resource "aws_s3_bucket_object" "job" {
   key     = "job_script"
   bucket  = aws_s3_bucket.bucket.id
-  content = local.job_code
+  content = replace(replace(file(format(local.emr_tools_resource_fmt, "job.sh")), "%CG_SCRIPT_FILE%", local.cg_emr_file), "%RESULTS_FILE%", local.results_emr_file)
 }
 
 resource "aws_s3_bucket_object" "cg" {
   key     = "cg_script"
   bucket  = aws_s3_bucket.bucket.id
-  content = local.cg_code
+  content = var.cg_file != null ? file(var.cg_file) : replace(file(format(local.emr_tools_resource_fmt, "test-config-gen.sh")), "%DATASET%", var.cg_test_dataset)
+}
+
+resource "aws_emr_cluster" "cluster" {
+  name                              = "${local.prefix}-cluster"
+  release_label                     = "emr-6.3.0"
+  applications                      = ["Spark"]
+  log_uri                           = "s3://${aws_s3_bucket.bucket.id}/logs"
+  keep_job_flow_alive_when_no_steps = false
+  ebs_root_volume_size              = 10
+  visible_to_all_users              = true
+
+  step {
+    name              = "Download config generator script from S3"
+    action_on_failure = "TERMINATE_CLUSTER"
+    hadoop_jar_step {
+      jar  = "command-runner.jar"
+      args = ["aws", "s3", "cp", "s3://${aws_s3_bucket_object.cg.bucket}/${aws_s3_bucket_object.cg.key}", local.cg_emr_file]
+    }
+  }
+
+  step {
+    name              = "Run job"
+    action_on_failure = "TERMINATE_CLUSTER"
+    hadoop_jar_step {
+      jar  = "s3://${data.aws_region.current.name}.elasticmapreduce/libs/script-runner/script-runner.jar"
+      args = ["s3://${aws_s3_bucket_object.job.bucket}/${aws_s3_bucket_object.job.key}"]
+    }
+  }
+  
+  step {
+    name              = "Upload results to S3"
+    action_on_failure = "TERMINATE_CLUSTER"
+    hadoop_jar_step {
+      jar  = "command-runner.jar"
+      args = ["aws", "s3", "cp", local.results_emr_file, "s3://${aws_s3_bucket.bucket.id}"]
+    }
+  }
+
+  ec2_attributes {
+    instance_profile = aws_iam_instance_profile.ec2.arn
+  }
+
+  master_instance_group {
+    instance_type = var.instance_type
+  }
+
+  core_instance_group {
+    instance_count = var.instance_count
+    instance_type  = var.instance_type
+  }
+
+  configurations_json = file(format(local.emr_tools_resource_fmt, "emr-configuration.json"))
+  service_role        = aws_iam_role.service.arn
+
+}
+
+resource "aws_iam_role" "service" {
+  name_prefix         = "${local.prefix}-service-"
+  assume_role_policy  = file(format(local.emr_tools_resource_fmt, "emr-service-policy.json"))
+  managed_policy_arns = ["arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceRole"]
+}
+
+resource "aws_iam_role" "ec2" {
+  name_prefix         = "${local.prefix}-ec2-"
+  assume_role_policy  = file(format(local.emr_tools_resource_fmt, "emr-ec2-policy.json"))
+  managed_policy_arns = ["arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceforEC2Role"]
+}
+
+resource "aws_iam_instance_profile" "ec2" {
+  name = "emr_profile"
+  role = aws_iam_role.ec2.name
 }
