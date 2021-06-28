@@ -13,3 +13,8 @@ __pycache__
 /tools/dist
 /tools/bdp_image_classifier.egg-info
 /tools/setup.py
+.terraform
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+.terraform.tfstate.lock.info
