@@ -32,6 +32,11 @@ variable "instance_type" {
   }
 }
 
+variable "aws_region" {
+  type    = string
+  default = "us-east-1"
+}
+
 variable "cg_file" {
   type    = string
   default = null
@@ -59,10 +64,8 @@ locals {
 
 provider "aws" {
   profile = "default"
-  region  = "us-west-2"
+  region  = var.aws_region
 }
-
-data "aws_region" "current" {}
 
 resource "aws_s3_bucket" "bucket" {
   bucket_prefix = "${local.prefix}-"
@@ -104,11 +107,11 @@ resource "aws_emr_cluster" "cluster" {
     name              = "Run job"
     action_on_failure = "TERMINATE_CLUSTER"
     hadoop_jar_step {
-      jar  = "s3://${data.aws_region.current.name}.elasticmapreduce/libs/script-runner/script-runner.jar"
+      jar  = "s3://${var.aws_region}.elasticmapreduce/libs/script-runner/script-runner.jar"
       args = ["s3://${aws_s3_bucket_object.job.bucket}/${aws_s3_bucket_object.job.key}"]
     }
   }
-  
+
   step {
     name              = "Upload results to S3"
     action_on_failure = "TERMINATE_CLUSTER"
