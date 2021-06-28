@@ -1,6 +1,10 @@
 # Run the classifier on a [AWS EMR](https://aws.amazon.com/emr/) cluster using [Terraform](https://www.terraform.io/)
 
 > **NOTE:**  
+> [AWS](https://aws.amazon.com/) will charge you for the [EMR](https://aws.amazon.com/emr/) cluster and the [S3](https://aws.amazon.com/s3/) bucket.  
+> I am not responsible for any unexpected charge.
+
+> **NOTE:**  
 > See also [tools/EXAMPLE_EMR.md](../tools/EXAMPLE_EMR.md) for a better experience.
 
 ## Run with a preconfigured test dataset
